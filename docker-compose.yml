@@ -1,0 +1,12 @@
+services:
+  nav:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src/config/data.json:/app/src/config/data.json
+    environment:
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+    restart: always
