@@ -1,14 +1,80 @@
 <template>
   <div class="search-container">
     <div class="search-input-wrapper">
-      <el-input v-model="searchText" placeholder="请输入搜索内容" clearable @input="handleInputChange" @clear="clearSearch" @focus="handleFocus" @blur="handleBlur">
+      <el-input
+        v-model="searchText"
+        :placeholder="currentEngine ? `在 ${currentEngine.name} 中搜索...` : '请输入搜索内容'"
+        clearable
+        @input="handleInputChange"
+        @clear="clearSearch"
+        @focus="handleFocus"
+        @blur="handleBlur"
+        @keyup.enter="handleEnter"
+      >
         <template #prefix>
-          <el-icon><Search /></el-icon>
+          <el-popover
+            placement="bottom-start"
+            :width="300"
+            trigger="click"
+            popper-class="search-engine-popover"
+            :disabled="!adminStore.isAuthenticated"
+          >
+            <template #reference>
+              <div class="search-engine-trigger" :class="{ 'disabled': !adminStore.isAuthenticated }">
+                <el-icon v-if="!currentEngine" :size="20"><Search /></el-icon>
+                <img 
+                  v-else 
+                  :src="getEngineIcon(currentEngine.url)" 
+                  class="engine-icon-trigger"
+                  alt="icon"
+                />
+                <el-icon v-if="adminStore.isAuthenticated" class="arrow-icon"><ArrowDown /></el-icon>
+              </div>
+            </template>
+            <div class="engine-list">
+              <div
+                v-for="(engine, index) in searchEngines"
+                :key="index"
+                class="engine-item"
+                :class="{ active: currentEngine?.name === engine.name }"
+                @click="selectEngine(engine)"
+              >
+                <div class="engine-info">
+                  <img :src="getEngineIcon(engine.url)" class="engine-icon-list" alt="icon" />
+                  <span class="name">{{ engine.name }}</span>
+                </div>
+                <!-- 选中状态显示对号 -->
+                <el-icon v-if="currentEngine?.name === engine.name" class="check-icon"><Check /></el-icon>
+                
+                <!-- 操作按钮组 (移动/编辑/删除) -->
+                <div class="action-group">
+                   <el-icon 
+                     class="action-icon move" 
+                     :class="{ disabled: index === 0 }"
+                     @click.stop="moveEngine(index, -1)"
+                     title="上移"
+                   ><Top /></el-icon>
+                   <el-icon 
+                     class="action-icon move" 
+                     :class="{ disabled: index === searchEngines.length - 1 }"
+                     @click.stop="moveEngine(index, 1)"
+                     title="下移"
+                   ><Bottom /></el-icon>
+                   <el-icon class="action-icon edit" @click.stop="openEditDialog(engine, index)" title="编辑"><Edit /></el-icon>
+                   <el-icon class="action-icon delete" @click.stop="deleteEngine(index)" title="删除"><Delete /></el-icon>
+                </div>
+              </div>
+              <div class="engine-item add-btn" @click="openAddDialog">
+                <el-icon><Plus /></el-icon>
+                <span>添加搜索引擎</span>
+              </div>
+            </div>
+          </el-popover>
         </template>
       </el-input>
-      <div class="search-results-container" v-if="hasSearched && !loading && isActive">
-        <el-empty v-if="searchResults.length === 0" description="未找到相关结果" />
-        <div class="search-results" v-else>
+      
+      <div class="search-results-container" v-if="hasSearched && !loading && isActive && searchResults.length > 0">
+        <div class="search-results">
           <ul>
             <a class="relative site inherit-text" target="_blank" v-for="item in searchResults" :key="item.id" @click="handleItemClick(item.url)">
               <el-card class="site-card" shadow="never">
@@ -25,19 +91,51 @@
           </ul>
         </div>
       </div>
+      
+      <!-- 本地搜索无结果提示，仅当不使用搜索引擎且无结果时显示 -->
+      <div class="search-results-container" v-if="hasSearched && !loading && isActive && searchResults.length === 0 && !currentEngine">
+         <el-empty description="未找到相关结果" />
+      </div>
+
       <div v-if="loading && isActive" class="loading search-results-container">
         <el-skeleton :rows="3" animated />
       </div>
     </div>
+
+    <!-- 添加/编辑搜索引擎对话框 -->
+    <el-dialog
+      v-model="showDialog"
+      :title="isEditing ? '编辑搜索引擎' : '添加搜索引擎'"
+      width="400px"
+      append-to-body
+      class="mobile-dialog"
+    >
+      <el-form :model="engineForm" label-width="80px">
+        <el-form-item label="名称">
+          <el-input v-model="engineForm.name" placeholder="例如：Google" />
+        </el-form-item>
+        <el-form-item label="地址">
+          <el-input v-model="engineForm.url" placeholder="例如：https://www.google.com/search?q=" />
+          <div class="form-tip">URL 需包含查询参数，搜索词将拼接到末尾</div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showDialog = false">取消</el-button>
+          <el-button type="primary" @click="saveEngine">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, reactive, watch } from 'vue'
 import { Favicon } from '@/config'
 import { openUrl } from '@/utils'
 import { useAdminStore } from '@/store/admin'
-import { Search } from '@element-plus/icons-vue'
+import { Search, ArrowDown, Check, Plus, Delete, Edit, Top, Bottom } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 // 定义搜索结果项的接口
 interface SearchResultItem {
@@ -50,16 +148,173 @@ interface SearchResultItem {
   [key: string]: any
 }
 
+interface SearchEngine {
+  name: string
+  url: string
+}
+
 const searchText = ref('')
 const searchResults = ref<SearchResultItem[]>([])
-const total = ref(0)
-const pageNum = ref(1)
-const pageSize = ref(10)
 const hasSearched = ref(false)
 const loading = ref(false)
 const debounceTimeout = ref<number | null>(null)
 const isActive = ref(false)
 const adminStore = useAdminStore()
+
+// 搜索引擎相关
+const defaultEngines: SearchEngine[] = [
+  { name: '百度', url: 'https://www.baidu.com/s?wd=' },
+  { name: 'Bing', url: 'https://cn.bing.com/search?q=' },
+  { name: 'Google', url: 'https://www.google.com/search?q=' }
+]
+
+const searchEngines = ref<SearchEngine[]>([...defaultEngines])
+const currentEngine = ref<SearchEngine | null>(defaultEngines[0]) 
+
+// 监听登录状态变化
+watch(() => adminStore.isAuthenticated, (isAuthenticated) => {
+  if (isAuthenticated) {
+     // 恢复用户保存的设置
+     const savedEngines = localStorage.getItem('user_search_engines')
+     if (savedEngines) {
+       searchEngines.value = JSON.parse(savedEngines)
+     }
+     
+     const savedCurrent = localStorage.getItem('current_search_engine')
+     if (savedCurrent) {
+       currentEngine.value = JSON.parse(savedCurrent)
+     } else {
+       currentEngine.value = defaultEngines[0] 
+     }
+  } else {
+    // 未登录强制使用 Bing
+    const bing = defaultEngines.find(e => e.name === 'Bing')
+    if (bing) currentEngine.value = bing
+    // 重置列表为默认（虽然可能看不到）
+    searchEngines.value = [...defaultEngines] // 主要是为了防止缓存了旧数据
+  }
+}, { immediate: true })
+
+const showDialog = ref(false)
+const isEditing = ref(false)
+const editingIndex = ref(-1)
+const engineForm = reactive({ name: '', url: '' })
+
+// 初始化加载搜索引擎
+onMounted(() => {
+  // onMounted 里的逻辑已经由 watch immediate 覆盖，这里其实可以删了或者留着做兜底
+  // 但为了不破坏原有结构，保留为空也行，或者移除重复逻辑
+})
+
+//获取搜索引擎图标
+const getEngineIcon = (url: string) => {
+  try {
+    const urlObj = new URL(url)
+    return `${Favicon}${urlObj.origin}`
+  } catch (e) {
+    return ''
+  }
+}
+
+// 选择搜索引擎
+const selectEngine = (engine: SearchEngine) => {
+  if (!adminStore.isAuthenticated) return // 未登录禁止切换
+  
+  currentEngine.value = engine
+  localStorage.setItem('current_search_engine', JSON.stringify(engine))
+  // 聚焦回输入框
+  handleFocus()
+}
+
+// 打开添加对话框
+const openAddDialog = () => {
+  isEditing.value = false
+  engineForm.name = ''
+  engineForm.url = ''
+  showDialog.value = true
+}
+
+// 打开编辑对话框
+const openEditDialog = (engine: SearchEngine, index: number) => {
+  isEditing.value = true
+  editingIndex.value = index
+  engineForm.name = engine.name
+  engineForm.url = engine.url
+  showDialog.value = true
+}
+
+// 保存搜索引擎（添加或更新）
+const saveEngine = () => {
+  if (!engineForm.name || !engineForm.url) {
+    ElMessage.warning('请填写完整信息')
+    return
+  }
+  
+  if (isEditing.value && editingIndex.value > -1) {
+    // 更新
+    searchEngines.value[editingIndex.value] = { ...engineForm }
+    // 如果更新的是当前选中的，同步更新
+    if (currentEngine.value?.name === searchEngines.value[editingIndex.value].name) {
+       currentEngine.value = searchEngines.value[editingIndex.value]
+       localStorage.setItem('current_search_engine', JSON.stringify(currentEngine.value))
+    }
+    ElMessage.success('修改成功')
+  } else {
+    // 添加
+    searchEngines.value.push({ ...engineForm })
+    ElMessage.success('添加成功')
+  }
+  
+  localStorage.setItem('user_search_engines', JSON.stringify(searchEngines.value))
+  showDialog.value = false
+}
+
+// 删除搜索引擎
+const deleteEngine = (index: number) => {
+  if (searchEngines.value.length <= 1) {
+    ElMessage.warning('请至少保留一个搜索引擎')
+    return
+  }
+  
+  // 确认删除（这里直接删，也可以加确认框，为了流畅性先直接删）
+  const deletedEngine = searchEngines.value[index]
+  const isCurrent = currentEngine.value?.name === deletedEngine.name
+  
+  searchEngines.value.splice(index, 1)
+  localStorage.setItem('user_search_engines', JSON.stringify(searchEngines.value))
+  
+  // 如果删除的是当前选中的，重置为第一个
+  if (isCurrent) {
+    currentEngine.value = searchEngines.value[0]
+    localStorage.setItem('current_search_engine', JSON.stringify(currentEngine.value))
+  }
+}
+
+// 移动搜索引擎
+const moveEngine = (index: number, direction: number) => {
+  const newIndex = index + direction
+  if (newIndex < 0 || newIndex >= searchEngines.value.length) return
+  
+  const temp = searchEngines.value[index]
+  searchEngines.value[index] = searchEngines.value[newIndex]
+  searchEngines.value[newIndex] = temp
+  
+  localStorage.setItem('user_search_engines', JSON.stringify(searchEngines.value))
+}
+
+// 处理回车键
+const handleEnter = () => {
+  if (!searchText.value.trim()) return
+  
+  if (currentEngine.value) {
+    window.open(currentEngine.value.url + encodeURIComponent(searchText.value), '_blank')
+  } else {
+    // 如果没有选搜索引擎，且有搜索结果，打开第一个
+    if (searchResults.value.length > 0) {
+      openUrl(searchResults.value[0].url)
+    }
+  }
+}
 
 // 处理聚焦事件
 const handleFocus = () => {
@@ -71,8 +326,9 @@ const handleBlur = (e: FocusEvent) => {
   // 获取点击的元素
   const target = e.relatedTarget as HTMLElement
 
-  // 只有当点击到搜索区域外才关闭结果
-  if (!target || !document.querySelector('.search-container')?.contains(target)) {
+  // 只有当点击到搜索区域外才关闭结果，且不是在点击popover内的元素
+  const isClickInsideSearch = document.querySelector('.search-container')?.contains(target)
+  if (!isClickInsideSearch) {
     setTimeout(() => {
       isActive.value = false
     }, 200)
@@ -81,22 +337,18 @@ const handleBlur = (e: FocusEvent) => {
 
 // 处理输入变化的函数
 const handleInputChange = () => {
-  // 如果已有等待执行的搜索，则取消它
   if (debounceTimeout.value !== null) {
     clearTimeout(debounceTimeout.value)
   }
 
-  // 如果搜索框为空，则清空结果
   if (!searchText.value.trim()) {
     searchResults.value = []
     hasSearched.value = false
     return
   }
 
-  // 确保搜索结果显示
   isActive.value = true
 
-  // 设置300ms的防抖延迟
   debounceTimeout.value = setTimeout(() => {
     performSearch()
   }, 300) as unknown as number
@@ -130,14 +382,10 @@ const performSearch = async () => {
       return item.name.toLowerCase().includes(keyword) || item.description.toLowerCase().includes(keyword)
     })
 
-    const startIndex = (pageNum.value - 1) * pageSize.value
-    const endIndex = startIndex + pageSize.value
-    searchResults.value = filteredItems.slice(startIndex, endIndex)
-    total.value = filteredItems.length
+    searchResults.value = filteredItems.slice(0, 10) // 限制显示10条
   } catch (error) {
     console.error('搜索出错:', error)
     searchResults.value = []
-    total.value = 0
   } finally {
     loading.value = false
   }
@@ -145,7 +393,6 @@ const performSearch = async () => {
 
 // 处理点击项目
 const handleItemClick = (url: string) => {
-  // 保存最后一次点击
   setTimeout(() => {
     isActive.value = false
   }, 100)
@@ -169,6 +416,175 @@ const handleItemClick = (url: string) => {
 .search-input-wrapper {
   position: relative;
   width: 100%;
+}
+
+.search-engine-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0 4px;
+  width: 46px;
+  height: 100%;
+  border-right: 1px solid var(--el-border-color-lighter);
+  margin-right: 8px;
+  user-select: none;
+  transition: opacity 0.3s;
+  
+  &:hover {
+    opacity: 0.7;
+  }
+  
+  .engine-icon-trigger {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    object-fit: cover;
+  }
+  
+  .arrow-icon {
+    font-size: 10px;
+    color: var(--el-text-color-secondary);
+    margin-left: 2px;
+    transform: scale(0.8);
+  }
+}
+
+.engine-list {
+  padding: 4px 0;
+  
+  .engine-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.1s; // 缩短hover反应时间，避免闪烁
+    border-radius: 4px;
+    position: relative; // 为了绝对定位的 actions 准备（如果需要）
+    
+    &:hover {
+      background-color: var(--el-fill-color-light);
+      
+      .action-group {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      
+      .check-icon {
+        opacity: 0; // Hover时隐藏对号，显示操作按钮，避免重叠
+      }
+    }
+    
+    &.active {
+      background-color: var(--el-color-primary-light-9);
+      .name {
+        color: var(--el-color-primary);
+        font-weight: 500;
+      }
+    }
+    
+    .engine-info {
+       display: flex;
+       align-items: center;
+       gap: 8px;
+       flex: 1;
+       overflow: hidden;
+       padding-right: 100px; // 留出按钮空间
+       
+       .engine-icon-list {
+         width: 16px;
+         height: 16px;
+         border-radius: 2px;
+         flex-shrink: 0;
+       }
+       
+       .name {
+         font-size: 14px;
+         white-space: nowrap;
+         overflow: hidden;
+         text-overflow: ellipsis;
+       }
+    }
+    
+    .check-icon {
+      color: var(--el-color-primary);
+      position: absolute;
+      right: 12px;
+    }
+    
+    .action-group {
+      display: flex;
+      align-items: center;
+      gap: 6px; // 增加按钮间距
+      position: absolute;
+      right: 8px;
+      opacity: 0; // 默认隐藏
+      pointer-events: none;
+      transition: opacity 0.2s;
+      
+      .action-icon {
+         width: 32px;  // 固定宽
+         height: 32px; // 固定高
+         display: flex;
+         justify-content: center;
+         align-items: center;
+         border-radius: 6px; // 圆角稍微大一点
+         color: #606266;
+         font-size: 20px; // 图标更大
+         cursor: pointer;
+         background-color: rgba(255, 255, 255, 0.95);
+         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15); // 阴影更明显
+         margin-left: 2px;
+         transition: all 0.2s;
+         
+         &:hover {
+           background-color: var(--el-color-primary);
+           color: white;
+           transform: scale(1.15); // 放大效果更明显
+           box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+           z-index: 10; // 确保放大后在最上层
+         }
+         
+         &.delete:hover {
+           background-color: #f56c6c;
+           color: white;
+         }
+         
+         &.disabled {
+           color: #dcdfe6;
+           background-color: rgba(255, 255, 255, 0.5);
+           box-shadow: none;
+           cursor: not-allowed;
+           transform: none;
+           
+           &:hover {
+             background-color: rgba(255, 255, 255, 0.5);
+             color: #dcdfe6;
+           }
+         }
+      }
+    }
+  }
+  
+  .add-btn {
+    margin-top: 4px;
+    border-top: 1px solid var(--el-border-color-lighter);
+    color: var(--el-text-color-secondary);
+    justify-content: center;
+    gap: 4px;
+    
+    &:hover {
+      color: var(--el-color-primary);
+    }
+  }
+}
+
+.form-tip {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.4;
+  margin-top: 4px;
 }
 
 .loading {
@@ -302,6 +718,7 @@ const handleItemClick = (url: string) => {
   height: 46px;
   border-radius: 23px;
   border: 1px solid var(--el-border-color-lighter);
+  padding-left: 0; 
 
   &:focus-within {
     box-shadow: 0 0 0 1px var(--el-color-primary) inset !important;
@@ -317,6 +734,7 @@ const handleItemClick = (url: string) => {
 
 :deep(.el-input__prefix) {
   padding-left: 8px;
+  margin-right: 0;
 }
 
 :deep(.el-input__suffix) {

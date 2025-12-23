@@ -5,6 +5,7 @@ import Search from '@/components/index/Search.vue'
 import Anchor from '@/components/index/Anchor.vue'
 import Site from '@/components/index/Site.vue'
 import Sidebar from '@/components/index/Sidebar.vue'
+import Footer from '@/components/index/Footer.vue'
 
 </script>
 
@@ -19,6 +20,7 @@ import Sidebar from '@/components/index/Sidebar.vue'
         <Search></Search>
         <Anchor></Anchor>
         <Site></Site>
+        <Footer></Footer>
         <Sidebar></Sidebar>
         <!-- 空内容展示 -->
       </main>

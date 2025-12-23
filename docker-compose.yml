@@ -6,7 +6,7 @@ services:
     volumes:
       - ./src/config/data.json:/app/src/config/data.json
     environment:
-      - ADMIN_USERNAME=${ADMIN_USERNAME}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - JWT_SECRET=starnav_secret_key_2025
     restart: always

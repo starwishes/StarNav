@@ -1,5 +1,7 @@
 # 星语导航 (Nav) v1.0.0
 
+**本项目基于在佬 https://github.com/sese972010/CloudNav-https://github.com/xia-66/nav 的项目上，根据我的个性化需求做了一些修改**
+
 > 一个极简、美观、功能强大的个人导航网站。
 > A minimalist, beautiful, and powerful personal navigation website.
 
@@ -8,7 +10,6 @@
 [![Vue](https://img.shields.io/badge/vue-3.4.29-brightgreen.svg)](https://vuejs.org/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
 
-![Preview](./doc/preview.png)
 
 ## ✨ 特性 (Features)
 
@@ -104,16 +105,6 @@ environment:
 ├── Dockerfile         # Docker 构建文件
 └── docker-compose.yml # Docker Compose 编排文件
 ```
-
-## 🤝 贡献代码
-
-欢迎提交 Pull Request 或 Issue！
-
-1. Fork 本仓库
-2. 创建你的特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交你的改动 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启一个 Pull Request
 
 ## 📄 开源协议
 
