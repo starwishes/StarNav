@@ -1,11 +1,12 @@
 services:
   nav:
-    image: starwisher/starnav:latest
+    image: starwisher/starnav
     container_name: starnav
+    build: .
     ports:
       - "3000:3000"
     volumes:
-      - ./src/config:/app/src/config
+      - ./src/config/data.json:/app/src/config/data.json
     environment:
       - ADMIN_USERNAME=admin # 管理员用户名
       - ADMIN_PASSWORD=admin123 # 管理员密码

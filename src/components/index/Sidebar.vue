@@ -71,14 +71,14 @@ onUnmounted(() => {
       
       i {
         font-size: 20px;
-        color: var(--gray-700);
+        color: var(--gray-900);
       }
 
       &.glass-effect {
-        background: rgba(255, 255, 255, 0.7);
+        background: var(--gray-o7);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        border: 1px solid var(--gray-o3);
       }
 
       &:hover {

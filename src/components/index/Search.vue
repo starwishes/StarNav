@@ -73,8 +73,24 @@
         </template>
       </el-input>
       
-      <div class="search-results-container" v-if="hasSearched && !loading && isActive && searchResults.length > 0">
-        <div class="search-results">
+      <div class="search-results-container" v-if="isActive && (suggestions.length > 0 || (hasSearched && !loading && searchResults.length > 0))">
+        <!-- Keyword Suggestions -->
+        <div class="suggestion-list" v-if="suggestions.length > 0">
+          <div 
+            v-for="(sug, index) in suggestions" 
+            :key="index" 
+            class="suggestion-item"
+            :class="{ active: activeSuggestionIndex === index }"
+            @click="handleSuggestionClick(sug)"
+            @mouseenter="activeSuggestionIndex = index"
+          >
+            <el-icon><Search /></el-icon>
+            <span>{{ sug }}</span>
+          </div>
+          <div class="suggestion-divider" v-if="searchResults.length > 0">本地搜索结果</div>
+        </div>
+
+        <div class="search-results" v-if="hasSearched && !loading && searchResults.length > 0">
           <ul>
             <a class="relative site inherit-text" target="_blank" v-for="item in searchResults" :key="item.id" @click="handleItemClick(item.url)">
               <el-card class="site-card" shadow="never">
@@ -93,7 +109,7 @@
       </div>
       
       <!-- 本地搜索无结果提示，仅当不使用搜索引擎且无结果时显示 -->
-      <div class="search-results-container" v-if="hasSearched && !loading && isActive && searchResults.length === 0 && !currentEngine">
+      <div class="search-results-container" v-if="hasSearched && !loading && isActive && searchResults.length === 0 && suggestions.length === 0 && !currentEngine">
          <el-empty description="未找到相关结果" />
       </div>
 
@@ -159,6 +175,8 @@ const hasSearched = ref(false)
 const loading = ref(false)
 const debounceTimeout = ref<number | null>(null)
 const isActive = ref(false)
+const suggestions = ref<string[]>([])
+const activeSuggestionIndex = ref(-1)
 const adminStore = useAdminStore()
 
 // 搜索引擎相关
@@ -343,6 +361,7 @@ const handleInputChange = () => {
 
   if (!searchText.value.trim()) {
     searchResults.value = []
+    suggestions.value = []
     hasSearched.value = false
     return
   }
@@ -351,13 +370,36 @@ const handleInputChange = () => {
 
   debounceTimeout.value = setTimeout(() => {
     performSearch()
+    fetchSuggestions()
   }, 300) as unknown as number
 }
+
+// 获取搜索建议
+const fetchSuggestions = async () => {
+  if (!searchText.value.trim()) return
+  try {
+    const type = currentEngine.value?.name === 'Google' ? 'google' : 'baidu'
+    const response = await fetch(`/api/suggest?keyword=${encodeURIComponent(searchText.value)}&type=${type}`)
+    const data = await response.json()
+    suggestions.value = data
+  } catch (err) {
+    console.error('Fetch suggestions error:', err)
+  }
+}
+
+// 处理建议点击
+const handleSuggestionClick = (sug: string) => {
+  searchText.value = sug
+  suggestions.value = []
+  handleEnter()
+}
+
 
 // 清空搜索
 const clearSearch = () => {
   searchText.value = ''
   searchResults.value = []
+  suggestions.value = []
   hasSearched.value = false
 }
 
@@ -533,8 +575,8 @@ const handleItemClick = (url: string) => {
          color: #606266;
          font-size: 20px; // 图标更大
          cursor: pointer;
-         background-color: rgba(255, 255, 255, 0.95);
-         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15); // 阴影更明显
+         background-color: var(--gray-o9);
+         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); // 阴影更明显
          margin-left: 2px;
          transition: all 0.2s;
          
@@ -598,12 +640,12 @@ const handleItemClick = (url: string) => {
   width: 100%;
   max-height: 70vh;
   overflow-y: auto;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: var(--gray-o8);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--gray-o3);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   padding: 16px;
   z-index: 9999;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -615,6 +657,43 @@ const handleItemClick = (url: string) => {
   &::-webkit-scrollbar-thumb {
     background-color: var(--el-border-color-lighter);
     border-radius: 3px;
+  }
+}
+
+.suggestion-list {
+  margin-bottom: 12px;
+  
+  .suggestion-item {
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    border-radius: 8px;
+    color: var(--el-text-color-primary);
+    transition: all 0.2s;
+    
+    .el-icon {
+      color: var(--el-text-color-secondary);
+      font-size: 14px;
+    }
+    
+    &:hover, &.active {
+      background-color: var(--el-color-primary-light-9);
+      color: var(--el-color-primary);
+      
+      .el-icon {
+        color: var(--el-color-primary);
+      }
+    }
+  }
+  
+  .suggestion-divider {
+    font-size: 12px;
+    color: var(--el-text-color-placeholder);
+    padding: 12px 12px 8px;
+    border-top: 1px solid var(--el-border-color-extra-light);
+    margin-top: 8px;
   }
 }
 

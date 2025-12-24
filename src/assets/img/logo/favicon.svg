@@ -1,0 +1,18 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" rx="16" fill="url(#paint0_linear_starry)" />
+  <g opacity="0.8">
+    <circle cx="15.5" cy="18.5" r="1.5" fill="white" />
+    <circle cx="45.5" cy="12.5" r="1.2" fill="white" />
+    <circle cx="32.5" cy="32.5" r="2.5" fill="white" />
+    <circle cx="51.5" cy="48.5" r="1.8" fill="white" />
+    <circle cx="12.5" cy="45.5" r="1.2" fill="white" />
+    <circle cx="28.5" cy="54.5" r="1.5" fill="white" />
+    <path d="M32.5 28L33.5 31.5L37 32.5L33.5 33.5L32.5 37L31.5 33.5L28 32.5L31.5 31.5L32.5 28Z" fill="white" opacity="0.9" />
+  </g>
+  <defs>
+    <linearGradient id="paint0_linear_starry" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A" />
+      <stop offset="1" stop-color="#334155" />
+    </linearGradient>
+  </defs>
+</svg>

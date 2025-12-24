@@ -5,37 +5,53 @@
       <el-empty v-else description="暂无数据" />
     </div>
     <template v-else>
-      <section v-for="(category, catIndex) in dataValue" :key="category.id" :id="`site-anchor-${category.name}`">
+      <section v-for="(category, catIndex) in dataValue" :key="category.id" class="category-section" :data-cat-index="catIndex" :id="`site-anchor-${category.name}`">
         <div class="site-item">
-          <header :id="category.name" class="category-header" @click.stop="handleCategoryClick(catIndex, $event)">
+            <header 
+              :id="category.name" 
+              class="category-header" 
+              :data-cat-index="catIndex" 
+              @click.stop="handleCategoryClick(catIndex, $event)"
+              @contextmenu.prevent="showCategoryContextMenu($event, category, catIndex)"
+            >
             <i class="category-icon relative left-px-2 iconfont icon-tag"></i>
             <a class="category-title" :name="category.name">{{ category.name }}</a>
+            <span class="category-count">({{ category.content.length }})</span>
           </header>
           <main>
             <ul>
-              <a 
-                class="relative site-wrapper inherit-text" 
-                target="_blank" 
-                v-for="(item, itemIndex) in category.content" 
-                :key="item.id" 
-                @click.prevent="handleItemClick(item, $event)"
+              <li
+                v-for="(item, itemIndex) in category.content"
+                :key="item.id"
+                class="site-wrapper"
+                :class="{
+                  'is-moving': moveState.active && moveState.item?.id === item.id,
+                  'moving-target': isHovering(catIndex, itemIndex)
+                }"
+                :data-cat-index="catIndex"
+                :data-item-index="itemIndex"
+                @mouseenter="handleMouseEnter(catIndex, itemIndex)"
                 @contextmenu.prevent="showContextMenu($event, item, catIndex, itemIndex)"
                 @touchstart="handleTouchStart($event, item, catIndex, itemIndex)"
                 @touchend="handleMouseUp"
-                :class="{ 'moving-target': moveState.active && isHovering(catIndex, itemIndex) }"
-                @mouseenter="handleMouseEnter(catIndex, itemIndex)"
               >
-                <div class="site-card glass-card" :class="{ 'is-moving': moveState.active && moveState.item?.id === item.id }">
-                  <div class="img-group">
-                    <img v-lazy :src="`${Favicon}${item.url}`" class="site-icon" />
+                <a
+                  class="inherit-text"
+                  target="_blank"
+                  @click.prevent="handleItemClick(item, $event)"
+                >
+                  <div class="site-card glass-card">
+                    <div class="img-group">
+                      <img v-lazy :src="`${Favicon}${item.url}`" class="site-icon" />
+                    </div>
+                    <div class="text-group">
+                      <div class="site-name text">{{ item.name }}</div>
+                      <div class="site-desc text">{{ item.description }}</div>
+                    </div>
+                    <div class="hover-glow"></div>
                   </div>
-                  <div class="text-group">
-                    <div class="site-name text">{{ item.name }}</div>
-                    <div class="site-desc text">{{ item.description }}</div>
-                  </div>
-                  <div class="hover-glow"></div>
-                </div>
-              </a>
+                </a>
+              </li>
               <i style="width: 200px" v-for="i in 6" :key="i"></i>
             </ul>
           </main>
@@ -44,15 +60,35 @@
     </template>
 
     <!-- Context Menu -->
-    <div 
-      v-if="contextMenu.visible" 
-      class="context-menu" 
+    <div
+      v-if="contextMenu.visible"
+      class="context-menu"
       :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
       @click.stop
     >
-      <div class="menu-item" @click="startMove"><el-icon><Rank /></el-icon> 移动位置</div>
-      <div class="menu-item" @click="handleEdit"><el-icon><Edit /></el-icon> 编辑</div>
-      <div class="menu-item delete" @click="handleDelete"><el-icon><Delete /></el-icon> 删除</div>
+      <template v-if="contextMenu.item">
+        <div class="menu-item" @click="togglePin">
+          <el-icon v-if="contextMenu.item?.pinned"><Bottom /></el-icon>
+          <el-icon v-else><Top /></el-icon>
+          {{ contextMenu.item?.pinned ? '取消置顶' : '置顶' }}
+        </div>
+        <div class="menu-item" @click="startMove"><el-icon><Rank /></el-icon> 移动位置</div>
+        <div class="menu-item" @click="handleEdit"><el-icon><Edit /></el-icon> 编辑</div>
+        <div class="menu-item delete" @click="handleDelete"><el-icon><Delete /></el-icon> 删除</div>
+      </template>
+      <template v-else-if="contextMenu.category">
+        <div class="menu-item" :class="{ disabled: isFirstCategory }" @click="!isFirstCategory && moveCategory(-1)">
+          <el-icon><SortUp /></el-icon> 上移分类
+        </div>
+        <div class="menu-item" :class="{ disabled: isLastCategory }" @click="!isLastCategory && moveCategory(1)">
+          <el-icon><SortDown /></el-icon> 下移分类
+        </div>
+        <div class="menu-item" @click="toggleCategoryPrivate">
+          <el-icon v-if="contextMenu.category.private"><View /></el-icon>
+          <el-icon v-else><Hide /></el-icon>
+          {{ contextMenu.category.private ? '取消隐藏 (设为公开)' : '隐藏分类 (仅登录可见)' }}
+        </div>
+      </template>
     </div>
 
     <!-- Edit Dialog -->
@@ -65,8 +101,8 @@
     />
 
     <!-- Moving Ghost Element -->
-    <div 
-      v-if="moveState.active && moveState.item" 
+    <div
+      v-if="moveState.active && moveState.item"
       class="ghost-element"
       :style="{ top: moveState.y + 'px', left: moveState.x + 'px' }"
     >
@@ -92,17 +128,22 @@ import loadImg from '@/assets/img/loading/3.gif'
 import { ref, onMounted, computed, watch, onUnmounted, reactive } from 'vue'
 import { useAdminStore } from '@/store/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Rank, Edit, Delete } from '@element-plus/icons-vue'
+import { Rank, Edit, Delete, Top, Bottom, View, Hide, SortUp, SortDown } from '@element-plus/icons-vue'
 import SiteDialog from '@/components/SiteDialog.vue'
 
 const adminStore = useAdminStore()
 const store = useMainStore()
 const rawDataValue = ref([]) // 存储原始数据
 const dataValue = computed(() => {
-  return rawDataValue.value
+  const visitorLevel = adminStore.user?.level || 0;
+
+  const filtered = rawDataValue.value
     .map(category => ({
       ...category,
       content: category.content.filter(item => {
+        // 等级过滤：书签等级必须小于等于访问者等级
+        if (item.level !== undefined && item.level > visitorLevel) return false;
+        
         if (!adminStore.isAuthenticated) {
           return !item.private
         }
@@ -112,12 +153,49 @@ const dataValue = computed(() => {
     .filter(category => {
       // 移动模式下不过滤空分类，方便放入
       if (moveState.active && adminStore.isAuthenticated) return true
-      
+
+      // 分类等级过滤
+      if (category.level !== undefined && category.level > visitorLevel) return false;
+
       if (!adminStore.isAuthenticated) {
         return !category.private && category.content.length > 0
       }
       return category.content.length > 0
     })
+
+  // 处理置顶项 (常用推荐)
+  const pinnedItems = []
+  rawDataValue.value.forEach(cat => {
+    // 隐藏分类下的置顶项不显示
+    if (cat.level !== undefined && cat.level > visitorLevel) return;
+
+    cat.content.forEach(item => {
+      if (item.pinned) {
+        // 等级过滤
+        if (item.level !== undefined && item.level > visitorLevel) return;
+
+        // 如果未登录，检查私有属性
+        if (!adminStore.isAuthenticated && item.private) {
+            return
+        }
+        pinnedItems.push({ ...item, _isPinnedReplica: true })
+      }
+    })
+  })
+
+  if (pinnedItems.length > 0) {
+    return [
+      {
+        id: -1, // 虚拟 ID
+        name: '常用推荐',
+        content: pinnedItems,
+        isVirtual: true
+      },
+      ...filtered
+    ]
+  }
+
+  return filtered
 })
 const loading = ref(true)
 let loadedCategories = {}
@@ -128,6 +206,7 @@ const contextMenu = reactive({
   x: 0,
   y: 0,
   item: null,
+  category: null,
   catIndex: -1,
   itemIndex: -1
 })
@@ -149,6 +228,20 @@ const moveState = reactive({
   y: 0,
   hoverCatIndex: -1,
   hoverItemIndex: -1
+})
+
+const isFirstCategory = computed(() => {
+  if (!contextMenu.category) return false
+  const hasVirtual = dataValue.value[0]?.isVirtual
+  const catIndex = hasVirtual ? contextMenu.catIndex - 1 : contextMenu.catIndex
+  return catIndex <= 0
+})
+
+const isLastCategory = computed(() => {
+  if (!contextMenu.category) return false
+  const hasVirtual = dataValue.value[0]?.isVirtual
+  const catIndex = hasVirtual ? contextMenu.catIndex - 1 : contextMenu.catIndex
+  return catIndex >= rawDataValue.value.length - 1
 })
 
 // Long Press Logic
@@ -183,6 +276,14 @@ const loadData = async () => {
 
       let items = data.content.items
       if (Array.isArray(items) && items.length > 0) {
+        // 数据去重：防止因为之前的 Bug 产生的重复 ID 干扰
+        const seenIds = new Set()
+        items = items.filter(item => {
+          if (!item.id || seenIds.has(item.id)) return false
+          seenIds.add(item.id)
+          return true
+        })
+
         const arrays = {}
         Object.keys(loadedCategories).forEach(key => {
           arrays[key] = []
@@ -223,7 +324,7 @@ const saveData = async () => {
       name: cat.name,
       private: cat.private
     }))
-    
+
     // Flatten items from all categories
     const items = []
     rawDataValue.value.forEach(cat => {
@@ -234,7 +335,7 @@ const saveData = async () => {
         })
       })
     })
-    
+
     await adminStore.updateFileContent({ categories, items })
     ElMessage.success('保存成功')
   } catch (e) {
@@ -265,36 +366,112 @@ const handleMouseUp = () => {
 
 const handleItemClick = (item, e) => {
   if (moveState.active) {
-    // Handling move click placement logic here or in global click?
-    // Let's rely on global click handler for placement to capture category clicks too
     return
   }
-  
-  // If timer triggered menu contextMenu.visible check
-  // But timer clears on mouseup. 
-  // We need to prevent link opening if context menu opened.
-  // Actually, opening context menu usually happens BEFORE mouse up if holding.
-  // But standard "click" fires on mouseup.
-  
-  // If moving, don't open
-  if (moveState.active) return 
+
+  if (moveState.active) return
 
   utilsOpenUrl(item.url)
 }
 
-const showContextMenu = (e, item, catIndex, itemIndex) => {
-  if (!adminStore.isAuthenticated) return
+const togglePin = async () => {
+  const item = contextMenu.item
+  if (!item) return
+
+  // 查找原始对象（因为常用推荐中的是副本）
+  const originalItem = findOriginalItem(item.id)
+  if (originalItem) {
+    originalItem.pinned = !originalItem.pinned
+  } else {
+    // 如果没找到（兜底情况），直接修改当前对象
+    item.pinned = !item.pinned
+  }
+
+  closeContextMenu()
+  await saveData()
+  ElMessage.success(item.pinned ? '已置顶' : '已取消置顶')
+}
+
+const findOriginalItem = (id) => {
+  for (const cat of rawDataValue.value) {
+    const found = cat.content.find(i => i.id === id)
+    if (found) return found
+  }
+  return null
+}
+
+const findOriginalLocation = (id) => {
+  for (let catIdx = 0; catIdx < rawDataValue.value.length; catIdx++) {
+    const itemIdx = rawDataValue.value[catIdx].content.findIndex(i => i.id === id)
+    if (itemIdx !== -1) {
+      return { catIdx, itemIdx }
+    }
+  }
+  return null
+}
+
+const showCategoryContextMenu = (e, category, catIndex) => {
+  if (!adminStore.isAuthenticated || category.isVirtual) return
   
-  // Prevent default context menu
   if (e.preventDefault) e.preventDefault()
   
   contextMenu.visible = true
   contextMenu.x = e.clientX
   contextMenu.y = e.clientY
+  contextMenu.item = null
+  contextMenu.category = category
+  contextMenu.catIndex = catIndex
+}
+
+const toggleCategoryPrivate = async () => {
+  const category = contextMenu.category
+  if (!category) return
+  
+  // 查找原始分类对象
+  const originalCat = rawDataValue.value.find(c => c.id === category.id)
+  if (originalCat) {
+    originalCat.private = !originalCat.private
+    ElMessage.success(originalCat.private ? '该分类已设为隐藏' : '该分类已设为公开')
+  }
+  
+  closeContextMenu()
+  await saveData()
+}
+
+const moveCategory = async (direction) => {
+  const category = contextMenu.category
+  if (!category) return
+  
+  const hasVirtual = dataValue.value[0]?.isVirtual
+  const currentIndex = hasVirtual ? contextMenu.catIndex - 1 : contextMenu.catIndex
+  const targetIndex = currentIndex + direction
+  
+  if (targetIndex < 0 || targetIndex >= rawDataValue.value.length) return
+  
+  // 交换位置
+  const temp = rawDataValue.value[currentIndex]
+  rawDataValue.value[currentIndex] = rawDataValue.value[targetIndex]
+  rawDataValue.value[targetIndex] = temp
+  
+  ElMessage.success(direction === -1 ? '已上移' : '已下移')
+  closeContextMenu()
+  await saveData()
+}
+
+const showContextMenu = (e, item, catIndex, itemIndex) => {
+  if (!adminStore.isAuthenticated) return
+
+  // Prevent default context menu
+  if (e.preventDefault) e.preventDefault()
+
+  contextMenu.visible = true
+  contextMenu.x = e.clientX
+  contextMenu.y = e.clientY
   contextMenu.item = item
+  contextMenu.category = null
   contextMenu.catIndex = catIndex
   contextMenu.itemIndex = itemIndex
-  
+
   // Clear timer to prevent click
   if (pressTimer) clearTimeout(pressTimer)
 }
@@ -311,52 +488,71 @@ const handleEdit = () => {
 }
 
 const saveSite = async () => {
-  // Update local data
-  const { catIndex, itemIndex } = contextMenu
   const newItem = { ...editForm.value }
-  
-  // If category changed
-  const oldCatId = rawDataValue.value[catIndex].id
-  if (newItem.categoryId !== oldCatId) {
-    // Remove from old
-    rawDataValue.value[catIndex].content.splice(itemIndex, 1)
-    // Add to new
+
+  // 查找原位置
+  const location = findOriginalLocation(newItem.id)
+
+  if (location) {
+    // 如果分类改变了，或者是从原位置移除并重新插入
+    const oldCatId = rawDataValue.value[location.catIdx].id
+    if (newItem.categoryId !== oldCatId) {
+      // 移除旧的
+      rawDataValue.value[location.catIdx].content.splice(location.itemIdx, 1)
+      // 添加到新分类
+      const newCatIndex = rawDataValue.value.findIndex(c => c.id === newItem.categoryId)
+      if (newCatIndex !== -1) {
+        rawDataValue.value[newCatIndex].content.push(newItem)
+      }
+    } else {
+      // 在原位置更新
+      rawDataValue.value[location.catIdx].content[location.itemIdx] = newItem
+    }
+  } else {
+    // 如果没找到原位置（新加？），则直接加到对应分类
     const newCatIndex = rawDataValue.value.findIndex(c => c.id === newItem.categoryId)
     if (newCatIndex !== -1) {
       rawDataValue.value[newCatIndex].content.push(newItem)
     }
-  } else {
-    // Update in place
-    rawDataValue.value[catIndex].content[itemIndex] = newItem
   }
-  
+
   showEditDialog.value = false
   await saveData()
 }
 
 const handleDelete = () => {
+  const item = contextMenu.item
+  if (!item) return
+
   ElMessageBox.confirm('确定要删除这个书签吗？', '提示', {
     type: 'warning'
   }).then(async () => {
-    rawDataValue.value[contextMenu.catIndex].content.splice(contextMenu.itemIndex, 1)
-    closeContextMenu()
-    await saveData()
+    const location = findOriginalLocation(item.id)
+    if (location) {
+      rawDataValue.value[location.catIdx].content.splice(location.itemIdx, 1)
+      closeContextMenu()
+      await saveData()
+    }
   })
 }
 
 // Move Logic
 const startMove = () => {
+  const item = contextMenu.item
+  if (!item) return
+
   moveState.active = true
-  moveState.item = contextMenu.item
-  moveState.fromCatIndex = contextMenu.catIndex
-  moveState.fromItemIndex = contextMenu.itemIndex
+  moveState.item = item
+  // 置标记位，标识是否在移动副本
+  moveState.isMovingReplica = !!item._isPinnedReplica
+
   moveState.x = contextMenu.x
   moveState.y = contextMenu.y
-  
+
   closeContextMenu()
   document.addEventListener('mousemove', handleGlobalMouseMove)
   // No need for touchmove listener if we use fixed bar on mobile
-  
+
   // Use timeout to avoid immediate click triggering placement
   setTimeout(() => {
     document.addEventListener('click', handlePlacementClick, { capture: true, once: true })
@@ -385,95 +581,59 @@ const handleMouseEnter = (catIndex, itemIndex) => {
 
 const handleCategoryClick = async (catIndex, e) => {
   if (moveState.active) {
-    e.stopPropagation() 
-    await performMove(catIndex, rawDataValue.value[catIndex].content.length)
+    e.stopPropagation()
+    const targetCat = dataValue.value[catIndex]
+    if (targetCat?.isVirtual) return
+    await performMove(catIndex, targetCat.content.length)
   }
 }
 
 const handlePlacementClick = async (e) => {
   e.stopPropagation()
   e.preventDefault()
-  
+
   if (!moveState.active) return
-  
-  // Handle Cancel Button Click (if we add one, or generic cancel logic)
-  // For now, if clicking 'ghost-element' (which is fixed on mobile), maybe ignore or cancel?
-  // Current ghost is pointer-events-none.
-  
+
   let targetCatIndex = -1
   let targetItemIndex = -1
-  
+
   // Try to determine target from event coordinates (crucial for mobile tap)
   const clientX = e.clientX || (e.changedTouches && e.changedTouches[0]?.clientX)
   const clientY = e.clientY || (e.changedTouches && e.changedTouches[0]?.clientY)
-  
+
   if (clientX && clientY) {
-    // Hide ghost temporarily to peek underneath if it wasn't pointer-events: none
-    // But it is none.
     const el = document.elementFromPoint(clientX, clientY)
     if (el) {
-      // Find closest site item
       const siteWrapper = el.closest('.site-wrapper')
       const categoryHeader = el.closest('.category-header')
-      
-      if (siteWrapper) {
-         // Find indices. This is tricky without data attributes.
-         // Let's search in our refs? Or better: add data attributes to DOM.
-         // Or rely on the loop structure if we can map DOM to data.
-         // Adding data-cat-index and data-item-index to template is best.
-         // But I can't easily modify template fully here without re-rendering everything.
-         // WAIT! I can access the Vue component context if I use `__vueParentComponent` etc but that's hacky.
-         // Let's modify the template to add data attributes!
-         
-         // Fallback: Use the hover state if available (desktop)
-         if (moveState.hoverCatIndex !== -1) {
-             targetCatIndex = moveState.hoverCatIndex
-             targetItemIndex = moveState.hoverItemIndex
-         }
-      } else if (categoryHeader) {
-         // Similar issue, need index.
-         // Rely on manual lookup?
-         // Let's look up by ID since ID is unique per category (name)
-         // header :id="category.name"
-         const catName = categoryHeader.id
-         targetCatIndex = rawDataValue.value.findIndex(c => c.name === catName)
-         if (targetCatIndex !== -1) {
-            targetItemIndex = rawDataValue.value[targetCatIndex].content.length
-         }
+      const categorySection = el.closest('.category-section')
+
+      if (siteWrapper && siteWrapper.dataset.catIndex && siteWrapper.dataset.itemIndex) {
+          targetCatIndex = parseInt(siteWrapper.dataset.catIndex)
+          targetItemIndex = parseInt(siteWrapper.dataset.itemIndex)
+      } else if (categoryHeader && categoryHeader.dataset.catIndex) {
+          targetCatIndex = parseInt(categoryHeader.dataset.catIndex)
+          if (!isNaN(targetCatIndex)) {
+            const targetCat = dataValue.value[targetCatIndex]
+            targetItemIndex = targetCat ? targetCat.content.length : 0
+          }
+      } else if (categorySection && categorySection.dataset.catIndex) {
+          // If clicked on an empty area within a category section
+          targetCatIndex = parseInt(categorySection.dataset.catIndex)
+          if (!isNaN(targetCatIndex)) {
+            const targetCat = dataValue.value[targetCatIndex]
+            targetItemIndex = targetCat ? targetCat.content.length : 0
+          }
       }
     }
   }
-  
-  // If we still don't have a target (e.g. mobile tap on item didn't trigger mouseenter)
-  // We REALLY need those data attributes.
-  // I will update the template to include data-indices for robust lookups.
-  // But for this 'replace_file_content' I can only change script?
-  // No, I can change template too if I select a large range.
-  // I will assume for this step I am only changing script logic and I need a robust way.
-  // Actually, without data attributes, detecting index from element is slow/hard.
-  // Strategy: Update template in next step? Or merge steps?
-  // I'll assume hover works for desktop. 
-  // For mobile, 'elementFromPoint' returns the DOM. 
-  // Maybe I can traverse the DOM to find the index? 
-  // parent ul > children... index of child.
-  
-  if (targetCatIndex === -1 && (clientX && clientY)) {
-      const el = document.elementFromPoint(clientX, clientY)
-      const siteWrapper = el?.closest('.site-wrapper')
-      if (siteWrapper) {
-          const ul = siteWrapper.parentElement
-          const section = ul.closest('section')
-          // Find category index based on section order?
-          // This assumes sections match dataValue order.
-          const sections = Array.from(document.querySelectorAll('.home-site section'))
-          targetCatIndex = sections.indexOf(section)
-          
-          if (targetCatIndex !== -1) {
-             const items = Array.from(ul.children).filter(c => c.classList.contains('site-wrapper'))
-             targetItemIndex = items.indexOf(siteWrapper)
-          }
-      }
+
+  // 保留 hover 状态作为兜底
+  if (targetCatIndex === -1 && moveState.hoverCatIndex !== -1) {
+      targetCatIndex = moveState.hoverCatIndex
+      targetItemIndex = moveState.hoverItemIndex
   }
+
 
   if (targetCatIndex === -1) {
      cancelMove()
@@ -483,32 +643,56 @@ const handlePlacementClick = async (e) => {
   await performMove(targetCatIndex, targetItemIndex)
 }
 
-const performMove = async (toCatIndex, toItemIndex) => {
-  const { fromCatIndex, fromItemIndex, item } = moveState
+const performMove = async (toPublicCatIndex, toItemIndex) => {
+  const item = moveState.item
+  if (!item) return
+  
+  // 目标分类是否为虚拟分类？
+  if (dataValue.value[toPublicCatIndex]?.isVirtual) {
+    cancelMove()
+    return
+  }
+
+  // 查找原位置
+  const location = findOriginalLocation(item.id)
+  if (!location) {
+    cancelMove()
+    return
+  }
+  
+  const fromCatIndex = location.catIdx
+  const fromItemIndex = location.itemIdx
+
+  // 映射公共索引到原始索引
+  // 必须考虑 dataValue 中是否有虚拟分类影响索引偏移
+  const hasVirtual = dataValue.value[0]?.isVirtual
+  const toCatIndex = hasVirtual ? toPublicCatIndex - 1 : toPublicCatIndex
+  
+  if (toCatIndex < 0 || toCatIndex >= rawDataValue.value.length) {
+    cancelMove()
+    return
+  }
   
   if (fromCatIndex === toCatIndex && fromItemIndex === toItemIndex) {
       cancelMove()
       return
   }
   
-  // Remove from old
+  // 从原位置移除
   rawDataValue.value[fromCatIndex].content.splice(fromItemIndex, 1)
   
-  // Adjust index if moving within same category and down
+  // 如果在同一个分类内移动，且是向后移，目标索引需要减1
   let finalToItemIndex = toItemIndex
   if (fromCatIndex === toCatIndex && fromItemIndex < toItemIndex) {
     finalToItemIndex--
   }
   
-  // Insert at new
   if (finalToItemIndex < 0) finalToItemIndex = 0
   
-  // Safety check
-  if (!rawDataValue.value[toCatIndex].content) rawDataValue.value[toCatIndex].content = []
-  
+  // 插入新位置
   rawDataValue.value[toCatIndex].content.splice(finalToItemIndex, 0, item)
   
-  // Update item categoryId
+  // 更新分类 ID
   item.categoryId = rawDataValue.value[toCatIndex].id
   
   cancelMove()
@@ -574,15 +758,17 @@ function handleLazy(el, binding) {
   flex: 1;
   position: relative;
   min-height: 100vh;
-  background-color: #f9fafb;
+  background-color: var(--gray-50);
   z-index: 1;
+  transition: background-color 0.3s ease;
 
   .site-container {
     width: calc(100% - 20px);
     margin: 0 auto;
-    background-color: #ffffff;
+    background-color: var(--gray-0);
     border-radius: 2px;
     padding: 10px;
+    transition: background-color 0.3s ease;
   }
 
   section {
@@ -594,8 +780,9 @@ function handleLazy(el, binding) {
     .site-item {
       padding: 10px;
       border-radius: 2px;
-      background-color: #ffffff;
+      background-color: var(--gray-0);
       box-sizing: border-box;
+      transition: background-color 0.3s ease;
       header {
         display: flex;
         align-items: center;
@@ -610,6 +797,12 @@ function handleLazy(el, binding) {
           margin-left: 8px;
           font-size: 16px;
           font-weight: 500;
+        }
+        .category-count {
+          margin-left: 6px;
+          font-size: 14px;
+          color: var(--gray-400);
+          font-weight: normal;
         }
       }
       main {
@@ -644,9 +837,11 @@ function handleLazy(el, binding) {
               display: flex;
               align-items: center;
               border-radius: 12px;
-              background: rgba(255, 255, 255, 0.7);
-              border: 1px solid rgba(255, 255, 255, 0.4);
-              box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05);
+              background: var(--gray-o7);
+              backdrop-filter: blur(10px);
+              -webkit-backdrop-filter: blur(10px);
+              border: 1px solid var(--gray-o2);
+              box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.1);
               transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
               overflow: hidden;
               user-select: none;
@@ -666,10 +861,10 @@ function handleLazy(el, binding) {
                 flex-shrink: 0;
                 width: 44px;
                 height: 44px;
-                background: #fff;
+                background: var(--gray-0);
                 border-radius: 10px;
                 padding: 8px;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
                 display: flex;
                 justify-content: center;
                 align-items: center;
@@ -689,7 +884,7 @@ function handleLazy(el, binding) {
                 .site-name {
                   font-size: 14px;
                   font-weight: 600;
-                  color: #1f2937;
+                  color: var(--gray-900);
                   white-space: nowrap;
                   overflow: hidden;
                   text-overflow: ellipsis;
@@ -697,7 +892,7 @@ function handleLazy(el, binding) {
                 
                 .site-desc {
                   font-size: 11px;
-                  color: #6b7280;
+                  color: var(--gray-500);
                   white-space: nowrap;
                   overflow: hidden;
                   text-overflow: ellipsis;
@@ -707,9 +902,9 @@ function handleLazy(el, binding) {
 
               &:hover {
                 transform: translateY(-5px) scale(1.02);
-                background: #fff;
-                border-color: #3b82f6;
-                box-shadow: 0 15px 30px -10px rgba(59, 130, 246, 0.3);
+                background: var(--gray-0);
+                border-color: var(--el-color-primary);
+                box-shadow: 0 15px 30px -10px rgba(59, 130, 246, 0.5);
                 
                 .img-group {
                   transform: scale(1.05);
@@ -751,6 +946,14 @@ function handleLazy(el, binding) {
       color: #f56c6c;
       &:hover {
         background-color: #fef0f0;
+      }
+    }
+
+    &.disabled {
+      color: var(--el-text-color-placeholder);
+      cursor: not-allowed;
+      &:hover {
+        background-color: transparent;
       }
     }
   }

@@ -54,9 +54,18 @@ export function useAdminDashboard() {
     loading.value = true;
     try {
       const data = await adminStore.getFileContent();
-      categories.value = data.content.categories;
-      items.value = data.content.items;
-      ElMessage.success('数据加载成功');
+      if (data && data.content) {
+        categories.value = data.content.categories;
+
+        // 数据去重：防止重复 ID 导致后台页面显示异常
+        const seenIds = new Set();
+        items.value = (data.content.items || []).filter((item: Item) => {
+          if (!item.id || seenIds.has(item.id)) return false;
+          seenIds.add(item.id);
+          return true;
+        });
+        ElMessage.success('数据加载成功');
+      }
     } catch (error: any) {
       ElMessage.error(error.message || '加载数据失败');
     } finally {
@@ -226,6 +235,22 @@ export function useAdminDashboard() {
     ElMessage.success(isEdit.value ? '编辑成功' : '添加成功');
   };
 
+  // 批量操作
+  const handleBatchDelete = (ids: number[]) => {
+    items.value = items.value.filter((item: Item) => !ids.includes(item.id));
+    ElMessage.success('批量删除成功');
+  };
+
+  const handleBatchMove = (ids: number[], categoryId: number) => {
+    items.value = items.value.map((item: Item) => {
+      if (ids.includes(item.id)) {
+        return { ...item, categoryId };
+      }
+      return item;
+    });
+    ElMessage.success('批量移动成功');
+  };
+
   return {
     loading,
     saving,
@@ -250,5 +275,7 @@ export function useAdminDashboard() {
     handleEditItem,
     handleDeleteItem,
     saveItem,
+    handleBatchDelete,
+    handleBatchMove,
   };
 }

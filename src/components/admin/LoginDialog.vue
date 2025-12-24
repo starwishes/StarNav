@@ -21,7 +21,12 @@
     </template> -->
     
     <div class="login-content">
-      <el-form :model="loginForm" @submit.prevent="handleLogin">
+      <div class="login-tabs">
+        <span :class="{ active: mode === 'login' }" @click="mode = 'login'">登录</span>
+        <span v-if="registrationEnabled" :class="{ active: mode === 'register' }" @click="mode = 'register'">注册</span>
+      </div>
+
+      <el-form :model="loginForm" @submit.prevent="handleSubmit">
         <el-form-item>
           <el-input 
             v-model="loginForm.username" 
@@ -45,23 +50,23 @@
           :loading="loading"
           class="login-btn"
         >
-          登录
+          {{ mode === 'login' ? '登录' : '立即注册' }}
         </el-button>
       </el-form>
       
       <p class="notice">
         <el-icon><InfoFilled /></el-icon>
-        请输入管理员账号密码访问后台
+        {{ mode === 'login' ? '请输入账号密码访问' : '创建一个新账户以保存自己的导航数据' }}
       </p>
     </div>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue';
+import { ref, computed, reactive, onMounted } from 'vue';
 import { useAdminStore } from '@/store/admin';
 import { ElMessage } from 'element-plus';
-import { User, Lock, InfoFilled } from '@element-plus/icons-vue';
+import { InfoFilled } from '@element-plus/icons-vue';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -73,6 +78,8 @@ const emit = defineEmits<{
 
 const adminStore = useAdminStore();
 const loading = ref(false);
+const mode = ref('login');
+const registrationEnabled = ref(true);
 
 const loginForm = reactive({
   username: '',
@@ -84,7 +91,25 @@ const visible = computed({
   set: (value) => emit('update:modelValue', value)
 });
 
-const handleLogin = async () => {
+const fetchSettings = async () => {
+  try {
+    const response = await fetch('/api/settings');
+    const data = await response.json();
+    registrationEnabled.value = data.registrationEnabled;
+    // 如果注册已关闭且当前处于注册模式，切回登录模式
+    if (!registrationEnabled.value && mode.value === 'register') {
+      mode.value = 'login';
+    }
+  } catch (e) {
+    console.error('获取注册设置失败', e);
+  }
+};
+
+onMounted(() => {
+  fetchSettings();
+});
+
+const handleSubmit = async () => {
   if (!loginForm.username || !loginForm.password) {
     ElMessage.warning('请输入用户名和密码');
     return;
@@ -92,15 +117,25 @@ const handleLogin = async () => {
 
   loading.value = true;
   try {
-    const result = await adminStore.login(loginForm.username, loginForm.password);
-    if (result.success) {
-      ElMessage.success('登录成功');
-      emit('update:modelValue', false);
+    if (mode.value === 'login') {
+      const result = await adminStore.login(loginForm.username, loginForm.password);
+      if (result.success) {
+        ElMessage.success('登录成功');
+        emit('update:modelValue', false);
+      } else {
+        ElMessage.error(result.error || '登录失败');
+      }
     } else {
-      ElMessage.error(result.error || '登录失败');
+      const result = await adminStore.register(loginForm.username, loginForm.password);
+      if (result.success) {
+        ElMessage.success('注册成功，请登录');
+        mode.value = 'login';
+      } else {
+        ElMessage.error(result.error || '注册失败');
+      }
     }
   } catch (error: any) {
-    ElMessage.error(error.message || '登录发生错误');
+    ElMessage.error(error.message || '操作失败');
   } finally {
     loading.value = false;
   }
@@ -212,7 +247,38 @@ const handleLogin = async () => {
 }
 
 .login-content {
-  padding-top: 30px;
+  padding-top: 20px;
+
+  .login-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 25px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--gray-500);
+    
+    span {
+      cursor: pointer;
+      position: relative;
+      padding: 4px 8px;
+      transition: all 0.3s;
+      
+      &.active {
+        color: var(--ui-theme);
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: -4px;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: var(--ui-theme);
+          border-radius: 2px;
+        }
+      }
+    }
+  }
 
   .feature-list {
     margin-bottom: 25px;

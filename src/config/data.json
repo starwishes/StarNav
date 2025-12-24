@@ -373,13 +373,6 @@
       "categoryId": 10
     },
     {
-      "id": 93,
-      "name": "异次元发卡",
-      "url": "https://github.com/lizhipay/acg-faka",
-      "description": "开源自动发卡系统",
-      "categoryId": 10
-    },
-    {
       "id": 121,
       "name": "宝可梦",
       "url": "https://web2.52pokemon.cc/dashboard",
@@ -405,6 +398,13 @@
       "name": "v2rayNG",
       "url": "https://github.com/2dust/v2rayNG/releases",
       "description": "Android代理客户端",
+      "categoryId": 10
+    },
+    {
+      "id": 93,
+      "name": "异次元发卡",
+      "url": "https://github.com/lizhipay/acg-faka",
+      "description": "开源自动发卡系统",
       "categoryId": 10
     },
     {

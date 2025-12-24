@@ -2,6 +2,7 @@ export interface Category {
     id: number;
     name: string;
     private?: boolean;
+    level?: number;
 }
 
 export interface Item {
@@ -11,6 +12,8 @@ export interface Item {
     description: string;
     categoryId: number;
     private?: boolean;
+    pinned?: boolean;
+    level?: number;
 }
 
 export interface SiteConfig {

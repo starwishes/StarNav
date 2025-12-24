@@ -36,16 +36,17 @@ const currentYear = computed(() => new Date().getFullYear())
     align-items: center;
     justify-content: center;
     gap: 8px;
-    color: #6b7280;
+    color: var(--gray-500);
     font-size: 14px;
+    transition: color 0.3s ease;
     
     a {
-      color: #6b7280;
+      color: var(--gray-500);
       text-decoration: none;
       transition: color 0.3s;
       
       &:hover {
-        color: #3b82f6;
+        color: var(--ui-theme);
       }
     }
 

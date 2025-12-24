@@ -43,13 +43,15 @@ const changeAnchorPosition = name => {
   margin-top: 300px;
   padding-bottom: 10px;
   box-sizing: border-box;
-  background-color: #f9fafb;
+  background-color: var(--gray-50);
+  transition: background-color 0.3s ease;
   main {
     width: calc(100% - 20px);
     margin: 0 auto;
     padding: 10px 0;
     box-sizing: border-box;
-    background-color: #ffffff;
+    background-color: var(--gray-0);
+    transition: background-color 0.3s ease;
     ul {
       width: calc(100% - 20px);
       margin: 0 auto;
@@ -58,7 +60,8 @@ const changeAnchorPosition = name => {
       justify-content: space-between;
 
       flex-wrap: wrap;
-      background-color: #f9fafb;
+      background-color: var(--gray-50);
+      transition: background-color 0.3s ease;
       .record-item {
         position: relative;
         width: 100px;

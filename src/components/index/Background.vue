@@ -22,6 +22,7 @@
     background-position: center center;
     background-size: cover;
     background-image: url(/src/assets/img/wallpaper/2.jpeg);
+    transition: filter 0.5s ease;
   }
   @media screen and (max-width: 414px) {
     .bg {
@@ -34,6 +35,7 @@
     left: 0;
     width: 100%;
     height: 100%;
+    transition: background-color 0.5s ease;
   }
   .bg-fiiter {
     position: absolute;
@@ -41,6 +43,15 @@
     right: 0;
     top: 0;
     bottom: 0;
+  }
+}
+
+:root[theme-mode='dark'] {
+  .bg {
+    filter: brightness(0.6) contrast(1.1);
+  }
+  .bg-shadow {
+    background-color: rgba(0, 0, 0, 0.4);
   }
 }
 .fullscreen {

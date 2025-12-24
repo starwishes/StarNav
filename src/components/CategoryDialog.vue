@@ -20,6 +20,14 @@
       <el-form-item label="隐藏分类">
         <el-switch v-model="form.private" active-text="仅登录可见" inactive-text="公开" />
       </el-form-item>
+      <el-form-item label="通过权限">
+        <el-select v-model="form.level" placeholder="请选择最小可见等级">
+          <el-option label="游客 (公开)" :value="0" />
+          <el-option label="注册用户" :value="1" />
+          <el-option label="VIP用户" :value="2" />
+          <el-option label="管理员" :value="3" />
+        </el-select>
+      </el-form-item>
     </el-form>
     <template #footer>
       <el-button @click="visible = false">取消</el-button>

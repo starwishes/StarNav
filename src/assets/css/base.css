@@ -3,10 +3,7 @@
   margin: 0;
 }
 
-html {
-  /* 缅怀黑白 */
-  /* filter: grayscale(100%); */
-}
+
 
 body {
   /* element色卡 */
@@ -29,6 +26,14 @@ body {
 
   /* --ui-theme: rgba(255, 0, 0, 0.8); */
   --ui-theme: #409eff;
+
+  background-color: var(--gray-0);
+  color: var(--gray-1000);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+html, body {
+  height: 100%;
 }
 
 /* 明亮模式 */

@@ -27,6 +27,11 @@
         <span class="admin-text">登录</span>
       </div>
     </template>
+
+    <div class="theme-toggle admin-menu-item" @click="toggleTheme">
+      <el-icon v-if="themeMode === 'light'"><Moon /></el-icon>
+      <el-icon v-else><Sunny /></el-icon>
+    </div>
   </div>
   <LeftDrawer></LeftDrawer>
   <LoginDialog v-model="showLoginDialog" />
@@ -40,6 +45,7 @@ import LoginDialog from '@/components/admin/LoginDialog.vue';
 import { useMainStore } from '@/store';
 import { useAdminStore } from '@/store/admin';
 import { ElMessage } from 'element-plus';
+import { Moon, Sunny } from '@element-plus/icons-vue';
 
 const change = ref(false)
 const store = useMainStore()
@@ -47,6 +53,23 @@ const router = useRouter()
 const adminStore = useAdminStore()
 const scrollHeight = ref(0);
 const showLoginDialog = ref(false);
+const themeMode = ref('light');
+
+const toggleTheme = () => {
+  themeMode.value = themeMode.value === 'light' ? 'dark' : 'light';
+  applyTheme();
+};
+
+const applyTheme = () => {
+  document.documentElement.setAttribute('theme-mode', themeMode.value);
+  localStorage.setItem('theme-mode', themeMode.value);
+  // Also toggle element-plus dark mode if needed
+  if (themeMode.value === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+};
 
 const showDrawer = () => {
   store.$state.isShowDrawer = true
@@ -71,8 +94,10 @@ const handleScroll = () => {
 };
 
 onMounted(() => {
-  // 监听整个窗口的滚动事件
   window.addEventListener('scroll', handleScroll);
+  const savedTheme = localStorage.getItem('theme-mode') || 'light';
+  themeMode.value = savedTheme;
+  applyTheme();
 });
 
 onUnmounted(() => {
@@ -180,17 +205,17 @@ onUnmounted(() => {
 }
 
 .headsp {
-  background-color: rgba(255, 255, 255, 0.85);
+  background-color: var(--gray-o8);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  color: #1f2937;
-  box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.1);
+  color: var(--gray-900);
+  box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.2);
   height: 64px;
   line-height: 64px;
   
   .admin-menu-item {
     &:hover {
-      background-color: rgba(0, 0, 0, 0.05);
+      background-color: var(--gray-o1);
     }
   }
 }
