@@ -56,10 +56,11 @@ services:
     image: starwisher/starnav:latest
     container_name: starnav
     ports:
-      - "3000:3000"
+      - "3333:3333"  # 更改后的端口
     volumes:
       - ./src/config:/app/src/config  # 关键：持久化存储账号、设置与数据
     environment:
+      - PORT=3333
       - ADMIN_USERNAME=admin  # 管理员用户名
       - ADMIN_PASSWORD=admin123  # 管理员密码
       - JWT_SECRET=random_secret_string  # JWT 签名密钥，长度至少 32 位

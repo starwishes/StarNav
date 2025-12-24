@@ -42,12 +42,12 @@ COPY --chown=node:node --from=build-stage /app/src/config/data.json ./src/config
 
 # Set environment variables
 ENV NODE_ENV=production \
-    PORT=3000 \
+    PORT=3333 \
     ADMIN_USERNAME=admin \
     ADMIN_PASSWORD=admin123 \
     JWT_SECRET=change-me-in-production
 
-EXPOSE 3000
+EXPOSE 3333
 
 # Use dumb-init as entrypoint to handle signals correctly
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]

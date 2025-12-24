@@ -4,7 +4,7 @@ services:
     container_name: starnav
     build: .
     ports:
-      - "3000:3000"
+      - "3333:3333"
     volumes:
       - ./src/config/data.json:/app/src/config/data.json
     environment:

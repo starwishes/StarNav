@@ -3,7 +3,7 @@ services:
     image: starwisher/starnav:latest
     container_name: starnav
     ports:
-      - "3000:3000"
+      - "3333:3333"
     volumes:
       - ./src/config:/app/src/config
     environment:
