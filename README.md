@@ -1,11 +1,11 @@
-# 星语导航 (StarNav) v1.1.0
+# 星语导航 (StarNav) v1.1.1
 
 一个极简、美观、功能强大的个人/私有导航系统。
 A minimalist, beautiful, and powerful personal/private navigation system.
 
 **本项目基于开源项目 [CloudNav](https://github.com/sese972010/CloudNav) 进行深度开发与重构，旨在提供更完善的用户权限管理与更精致的 UI 体验。**
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/starwishes/Nav)
+[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](https://github.com/starwishes/Nav)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Vue](https://img.shields.io/badge/vue-3.4.29-brightgreen.svg)](https://vuejs.org/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
@@ -19,36 +19,29 @@ A minimalist, beautiful, and powerful personal/private navigation system.
   - **4 级权限**：游客 (0)、注册用户 (1)、VIP 用户 (2)、管理员 (3)；
   - **分级控制**：可为分类或书签设置“最小可见等级”，实现无感内容隔离。
 - � **用户系统重构**：
+-  **用户系统重构**：
   - **自主注册**：支持管理员一键开关用户注册功能，注册入口动态显示；
   - **账号管理**：管理员可手动添加用户、修改等级、重置密码或删除账号；
   - **个人中心**：用户可自主修改用户名与密码，系统自动同步关联数据。
-- �️ **全能管理后台**：
+- 🔒 **全能管理后台**：
   - **全新架构**：侧边栏导航布局，功能模块清晰，支持移动端自适应。
   - **数据控制**：分类管理、书签管理、批量操作、数据导入/导出。
-- � **生产就绪**：
+- 🔒 **生产就绪**：
   - **Docker Compose**：一键拉取镜像部署，数据自动持久化。
-  - **安全加固**：后端基于 BCrypt 强力加密，JWT 令牌验证。
+  - **安全加固**：后端基于 BCrypt 强力加密，JWT 令牌验证，密钥自动生成。
 
-## 🚀 快速部署 (Quick Start)
+### 🆕 v1.1.1 新功能
 
-### 1. 使用 Docker Hub 镜像
+- 🏷️ **标签筛选**：首页支持按标签筛选书签，支持多标签组合
+- 🔥 **热门访问**：首页展示 Top 10 点击排行
+- 🩺 **链接健康检查**：管理后台批量检测无效链接
+- �️ **背景图更换**：支持自定义 URL 或本地上传
+- 🔐 **JWT Secret 自动生成**：无需手动配置，首次启动自动生成
+- 🛡️ **安全增强**：CSP + CORS 配置优化
 
-这是最简单快捷的部署方式：
+## �🚀 快速部署 (Quick Start)
 
-```bash
-docker pull starwisher/starnav:latest
-```
-
-### 2. 构建多架构镜像 (AMD64 & ARM64)
-
-如果你需要支持不同架构（如树莓派或 ARM 架构服务器），可以使用 Docker Buildx：
-
-```bash
-# 构建并推送多架构镜像
-docker buildx build --platform linux/amd64,linux/arm64 -t your-username/starnav:latest --push .
-```
-
-### 3. 编辑 docker-compose.yml
+### 1. 编辑 docker-compose.yml
 
 ```yaml
 services:
@@ -56,24 +49,23 @@ services:
     image: starwisher/starnav:latest
     container_name: starnav
     ports:
-      - "3333:3333"  # 更改后的端口
+      - "3333:3333"
     volumes:
-      - ./src/config:/app/src/config  # 关键：持久化存储账号、设置与数据
+      - ./src/config:/app/src/config  
     environment:
-      - PORT=3333
       - ADMIN_USERNAME=admin  # 管理员用户名
       - ADMIN_PASSWORD=admin123  # 管理员密码
-      - JWT_SECRET=random_secret_string  # JWT 签名密钥，长度至少 32 位
+      # - CORS_ORIGINS=https://your-domain.com  # 生产环境设置允许的域名
     restart: always
 ```
 
-### 3. 启动
+### 2. 启动
 
 ```bash
 docker-compose up -d
 ```
 
-访问 `http://localhost:3000` 即可开始使用。
+访问 `http://localhost:3333` 即可开始使用。
 
 ## ⚙️ 系统管理
 

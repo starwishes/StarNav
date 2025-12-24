@@ -1,10 +1,36 @@
 <template>
-  <div class="home-wallpaper" >
-    <section class="bg" ></section>
-    <div class="bg-shadow" ></div>
-    <div class="bg-fiiter" ></div>
+  <div class="home-wallpaper">
+    <section class="bg" :style="bgStyle"></section>
+    <div class="bg-shadow"></div>
+    <div class="bg-fiiter"></div>
   </div>
 </template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+
+const backgroundUrl = ref('');
+const defaultBg = '/src/assets/img/wallpaper/khadmv.webp';
+
+// 获取公开设置
+const fetchSettings = async () => {
+  try {
+    const res = await fetch('/api/public-settings');
+    const data = await res.json();
+    if (data.backgroundUrl) {
+      backgroundUrl.value = data.backgroundUrl;
+    }
+  } catch (err) {
+    console.error('获取背景设置失败', err);
+  }
+};
+
+onMounted(fetchSettings);
+
+const bgStyle = computed(() => ({
+  backgroundImage: `url(${backgroundUrl.value || defaultBg})`
+}));
+</script>
 
 <style lang="scss" scoped>
 .home-wallpaper {
@@ -21,14 +47,9 @@
     height: 100%;
     background-position: center center;
     background-size: cover;
-    background-image: url(/src/assets/img/wallpaper/2.jpeg);
-    transition: filter 0.5s ease;
+    transition: filter 0.5s ease, background-image 0.5s ease;
   }
-  @media screen and (max-width: 414px) {
-    .bg {
-      background-image: url(/src/assets/img//wallpaper/khadmv.webp);
-    }
-  }
+
   .bg-shadow {
     position: absolute;
     top: 0;

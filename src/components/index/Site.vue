@@ -1,5 +1,50 @@
 <template>
   <div id="js-home-site" class="home-site">
+    <!-- 标签筛选栏 -->
+    <div v-if="allTags.length > 0 && !loading" class="tag-filter-bar">
+      <div class="tag-filter-label">🏷️ 标签筛选：</div>
+      <div class="tag-filter-list">
+        <el-tag
+          v-for="tag in allTags"
+          :key="tag"
+          :type="selectedTags.includes(tag) ? '' : 'info'"
+          :effect="selectedTags.includes(tag) ? 'dark' : 'plain'"
+          class="tag-filter-item"
+          @click="toggleTag(tag)"
+        >
+          {{ tag }}
+        </el-tag>
+        <el-button
+          v-if="selectedTags.length > 0"
+          size="small"
+          type="danger"
+          plain
+          @click="clearTags"
+        >
+          清除筛选
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 热门书签展示 -->
+    <div v-if="topBookmarks.length > 0 && !loading" class="hot-bookmarks-bar">
+      <div class="hot-bookmarks-label">🔥 热门访问：</div>
+      <div class="hot-bookmarks-list">
+        <a
+          v-for="(item, index) in topBookmarks"
+          :key="item.id"
+          :href="item.url"
+          class="hot-bookmark-item"
+          target="_blank"
+          @click.prevent="handleItemClick(item, $event)"
+        >
+          <span class="hot-rank">{{ index + 1 }}</span>
+          <span class="hot-name">{{ item.name }}</span>
+          <el-tag size="small" type="warning">{{ item.clickCount || 0 }}</el-tag>
+        </a>
+      </div>
+    </div>
+
     <div v-if="loading || dataValue.length === 0" class="site-container">
       <el-skeleton v-if="loading" :rows="5" animated />
       <el-empty v-else description="暂无数据" />
@@ -47,6 +92,17 @@
                     <div class="text-group">
                       <div class="site-name text">{{ item.name }}</div>
                       <div class="site-desc text">{{ item.description }}</div>
+                      <div class="site-tags" v-if="item.tags && item.tags.length > 0">
+                        <el-tag
+                          v-for="tag in item.tags"
+                          :key="tag"
+                          size="small"
+                          type="info"
+                          effect="plain"
+                        >
+                          {{ tag }}
+                        </el-tag>
+                      </div>
                     </div>
                     <div class="hover-glow"></div>
                   </div>
@@ -144,6 +200,13 @@ const dataValue = computed(() => {
         // 等级过滤：书签等级必须小于等于访问者等级
         if (item.level !== undefined && item.level > visitorLevel) return false;
         
+        // 标签过滤：如果选中了标签，只显示包含这些标签的书签
+        if (selectedTags.value.length > 0) {
+          if (!item.tags || !Array.isArray(item.tags)) return false;
+          const hasMatchingTag = selectedTags.value.some(tag => item.tags.includes(tag));
+          if (!hasMatchingTag) return false;
+        }
+        
         if (!adminStore.isAuthenticated) {
           return !item.private
         }
@@ -199,6 +262,52 @@ const dataValue = computed(() => {
 })
 const loading = ref(true)
 let loadedCategories = {}
+
+// 标签筛选状态
+const selectedTags = ref([])
+
+// 获取所有标签
+const allTags = computed(() => {
+  const tags = new Set()
+  rawDataValue.value.forEach(cat => {
+    cat.content.forEach(item => {
+      if (item.tags && Array.isArray(item.tags)) {
+        item.tags.forEach(tag => tags.add(tag))
+      }
+    })
+  })
+  return Array.from(tags).sort()
+})
+
+// 切换标签选中状态
+const toggleTag = (tag) => {
+  const index = selectedTags.value.indexOf(tag)
+  if (index > -1) {
+    selectedTags.value.splice(index, 1)
+  } else {
+    selectedTags.value.push(tag)
+  }
+}
+
+// 清除所有标签筛选
+const clearTags = () => {
+  selectedTags.value = []
+}
+
+// 热门书签 TOP 10
+const topBookmarks = computed(() => {
+  const allItems = []
+  rawDataValue.value.forEach(cat => {
+    cat.content.forEach(item => {
+      if (item.clickCount && item.clickCount > 0) {
+        allItems.push(item)
+      }
+    })
+  })
+  return allItems
+    .sort((a, b) => (b.clickCount || 0) - (a.clickCount || 0))
+    .slice(0, 10)
+})
 
 // Context Menu State
 const contextMenu = reactive({
@@ -364,15 +473,27 @@ const handleMouseUp = () => {
   }
 }
 
-const handleItemClick = (item, e) => {
+const handleItemClick = async (item, e) => {
   if (moveState.active) {
     return
   }
 
   if (moveState.active) return
 
+  // 发送统计请求（静默，不等待响应）
+  try {
+    const username = adminStore.user?.username || 'admin'
+    await fetch(`/api/sites/${item.id}/click?user=${username}`, {
+      method: 'POST'
+    })
+  } catch (err) {
+    // 静默失败，不影响用户体验
+    console.log('统计更新失败', err)
+  }
+
   utilsOpenUrl(item.url)
 }
+
 
 const togglePin = async () => {
   const item = contextMenu.item
@@ -762,6 +883,115 @@ function handleLazy(el, binding) {
   z-index: 1;
   transition: background-color 0.3s ease;
 
+  // 标签筛选栏样式
+  .tag-filter-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 20px;
+    margin: 10px auto;
+    width: calc(100% - 40px);
+    background: var(--gray-0);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    
+    .tag-filter-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-700);
+      white-space: nowrap;
+    }
+    
+    .tag-filter-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      
+      .tag-filter-item {
+        cursor: pointer;
+        transition: all 0.2s;
+        
+        &:hover {
+          transform: scale(1.05);
+        }
+      }
+    }
+  }
+
+  // 热门书签区块样式
+  .hot-bookmarks-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 20px;
+    margin: 0 auto 10px;
+    width: calc(100% - 40px);
+    background: linear-gradient(135deg, #fff5f5 0%, #fff 100%);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 100, 100, 0.1);
+    
+    .hot-bookmarks-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #e74c3c;
+      white-space: nowrap;
+    }
+    
+    .hot-bookmarks-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      
+      .hot-bookmark-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid var(--gray-200);
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        color: inherit;
+        
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          border-color: var(--el-color-primary);
+        }
+        
+        .hot-rank {
+          width: 18px;
+          height: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          font-weight: bold;
+          border-radius: 4px;
+          
+          &:nth-child(1) { background: #ffd700; color: #333; }
+        }
+        
+        .hot-name {
+          font-size: 13px;
+          max-width: 100px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+      
+      .hot-bookmark-item:nth-child(1) .hot-rank { background: #ffd700; color: #333; }
+      .hot-bookmark-item:nth-child(2) .hot-rank { background: #c0c0c0; color: #333; }
+      .hot-bookmark-item:nth-child(3) .hot-rank { background: #cd7f32; color: #fff; }
+      .hot-bookmark-item:nth-child(n+4) .hot-rank { background: var(--gray-200); color: var(--gray-600); }
+    }
+  }
+
   .site-container {
     width: calc(100% - 20px);
     margin: 0 auto;
@@ -897,6 +1127,20 @@ function handleLazy(el, binding) {
                   overflow: hidden;
                   text-overflow: ellipsis;
                   margin-top: 2px;
+                }
+
+                .site-tags {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 4px;
+                  margin-top: 4px;
+                  
+                  .el-tag {
+                    font-size: 10px;
+                    padding: 0 4px;
+                    height: 16px;
+                    line-height: 14px;
+                  }
                 }
               }
 

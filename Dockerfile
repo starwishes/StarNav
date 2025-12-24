@@ -41,11 +41,12 @@ COPY --chown=node:node --from=build-stage /app/server.js ./
 COPY --chown=node:node --from=build-stage /app/src/config/data.json ./src/config/data.json
 
 # Set environment variables
+# JWT_SECRET 会自动生成，无需配置
+# CORS_ORIGINS 可通过 docker-compose 覆盖，如: CORS_ORIGINS=https://your-domain.com
 ENV NODE_ENV=production \
     PORT=3333 \
     ADMIN_USERNAME=admin \
-    ADMIN_PASSWORD=admin123 \
-    JWT_SECRET=change-me-in-production
+    ADMIN_PASSWORD=admin123
 
 EXPOSE 3333
 

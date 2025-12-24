@@ -22,6 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.jwt_secret
 .env
 .env.local
 .env.development

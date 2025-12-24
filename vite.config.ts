@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 import pkg from './package.json'
+import viteCompression from 'vite-plugin-compression'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -11,6 +12,15 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       vue(),
+      // 生产环境开启 gzip 压缩
+      viteCompression({
+        verbose: true, // 是否在控制台输出压缩结果
+        disable: false, // 是否禁用
+        threshold: 10240, // 体积大于 threshold 才会被压缩，单位 b（10KB）
+        algorithm: 'gzip', // 压缩算法，可选 ['gzip', 'brotliCompress', 'deflate', 'deflateRaw']
+        ext: '.gz', // 生成的压缩包后缀
+        deleteOriginFile: false // 压缩后是否删除源文件
+      })
     ],
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),

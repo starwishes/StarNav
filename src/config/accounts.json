@@ -1,8 +1,8 @@
 [
-    {
-        "username": "admin",
-        "password": "$2a$10$YourHashedPasswordHere",
-        "level": 3,
-        "createdAt": "2025-12-24T11:45:00.000Z"
-    }
+  {
+    "username": "admin",
+    "password": "$2a$10$0yfHonUwSfoyiWdasYcnBuvLxxakhbSl4sKK/9kLbupTmuntWEzxC",
+    "level": 3,
+    "createdAt": "2025-12-24T13:09:38.956Z"
+  }
 ]

@@ -71,6 +71,7 @@
               </el-button>
               <el-button type="info" @click="handleExport" class="hover-scale">导出 JSON</el-button>
               <el-button type="warning" @click="triggerImport" class="hover-scale">导入 JSON</el-button>
+              <el-button type="success" @click="showBookmarkImport = true" class="hover-scale">导入浏览器书签</el-button>
               <input type="file" ref="fileInput" style="display: none" accept=".json" @change="handleImport" />
             </div>
           </div>
@@ -142,6 +143,7 @@
     <!-- Dialogs -->
     <CategoryDialog v-model="categoryDialogVisible" :form="categoryForm" :is-edit="isEdit" @save="saveCategory" />
     <SiteDialog v-model="itemDialogVisible" :form="itemForm" :categories="categories" :is-edit="isEdit" @save="saveItem" />
+    <BookmarkImport v-model="showBookmarkImport" @import="handleBookmarkImport" />
   </div>
 </template>
 
@@ -165,6 +167,7 @@ import SiteDialog from '@/components/SiteDialog.vue';
 import UserTable from '@/components/admin/UserTable.vue';
 import SystemSettings from '@/components/admin/SystemSettings.vue';
 import ProfileSettings from '@/components/admin/ProfileSettings.vue';
+import BookmarkImport from '@/components/admin/BookmarkImport.vue';
 
 const router = useRouter();
 const adminStore = useAdminStore();
@@ -172,6 +175,7 @@ const currentView = ref('data');
 const sidebarVisible = ref(false);
 const users = ref([]);
 const systemSettings = ref({});
+const showBookmarkImport = ref(false);
 
 const menuItems = computed(() => {
   const items = [
@@ -323,6 +327,51 @@ const handleImport = (e: Event) => {
     finally { target.value = ''; }
   };
   reader.readAsText(file);
+};
+
+// 浏览器书签导入处理
+const handleBookmarkImport = (data: { categories: string[]; items: any[] }) => {
+  // 获取当前最大分类 ID 和书签 ID
+  let maxCatId = categories.value.reduce((max, cat) => Math.max(max, cat.id), 0);
+  let maxItemId = items.value.reduce((max, item) => Math.max(max, item.id), 0);
+  
+  // 分类名称到 ID 的映射
+  const catNameToId: Record<string, number> = {};
+  categories.value.forEach(cat => {
+    catNameToId[cat.name] = cat.id;
+  });
+  
+  // 添加新分类
+  data.categories.forEach(catName => {
+    if (!catNameToId[catName]) {
+      maxCatId++;
+      const newCat = { id: maxCatId, name: catName };
+      categories.value.push(newCat);
+      catNameToId[catName] = maxCatId;
+    }
+  });
+  
+  // 添加新书签
+  data.items.forEach((item: any) => {
+    // 检查是否已存在相同 URL
+    const exists = items.value.some(i => i.url === item.url);
+    if (!exists) {
+      maxItemId++;
+      items.value.push({
+        id: maxItemId,
+        name: item.name,
+        url: item.url,
+        description: item.description || '',
+        categoryId: catNameToId[item.categoryName] || categories.value[0]?.id || 1,
+        private: false,
+        pinned: false,
+        level: 0,
+        tags: []
+      });
+    }
+  });
+  
+  ElMessage.success(`导入成功，请点击"保存并同步"生效`);
 };
 </script>
 

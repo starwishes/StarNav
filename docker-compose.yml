@@ -9,5 +9,5 @@ services:
     environment:
       - ADMIN_USERNAME=admin # 管理员用户名
       - ADMIN_PASSWORD=admin123 # 管理员密码
-      - JWT_SECRET=random_secret_string # JWT 签名密钥，长度至少 32 位
+      # - CORS_ORIGINS=https://your-domain.com # 生产环境设置允许的域名
     restart: always
