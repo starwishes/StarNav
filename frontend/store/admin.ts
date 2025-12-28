@@ -73,11 +73,12 @@ export const useAdminStore = defineStore('admin', () => {
   // 获取文件内容
   const getFileContent = async (username?: string) => {
     try {
-      const targetUser = username || user.value?.login || 'admin';
+      const targetUser = username || user.value?.login;
       const headers: any = {};
       if (token.value) headers['Authorization'] = `Bearer ${token.value}`;
 
-      const response = await fetch(`/api/data?user=${targetUser}`, { headers });
+      const url = targetUser ? `/api/data?user=${targetUser}` : '/api/data';
+      const response = await fetch(url, { headers });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || '获取文件失败');
       return data;

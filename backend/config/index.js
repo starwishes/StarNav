@@ -21,6 +21,11 @@ export const SESSIONS_PATH = path.join(DATA_DIR, 'sessions.json');
 export const JWT_SECRET_PATH = path.join(DATA_DIR, '.jwt_secret');
 
 /**
+ * 默认管理员名称 (主数据拥有者)
+ */
+export const DEFAULT_ADMIN_NAME = process.env.ADMIN_USERNAME || 'admin';
+
+/**
  * 获取 JWT 密钥
  * 优先级：环境变量 JWT_SECRET > 文件 .jwt_secret > 自动生成
  */
@@ -50,6 +55,7 @@ export const JWT_SECRET = getOrCreateJwtSecret();
  * 获取用户数据文件路径
  */
 export const getUserDataPath = (username) => {
-    if (username === 'admin') return path.join(DATA_DIR, 'data.json');
+    // 只有主管理员的数据保存在根目录 data.json，作为游客展示的默认数据
+    if (username === DEFAULT_ADMIN_NAME) return path.join(DATA_DIR, 'data.json');
     return path.join(DATA_DIR, 'users', `${username}.json`);
 };

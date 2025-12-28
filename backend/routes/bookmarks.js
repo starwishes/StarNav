@@ -1,16 +1,15 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import { db, logger } from '../services/db.js';
-import { JWT_SECRET, getUserDataPath } from '../config/index.js';
+import { JWT_SECRET, getUserDataPath, DEFAULT_ADMIN_NAME } from '../config/index.js';
 import { authenticate } from '../middleware/auth.js';
 import { dataUpdateLimiter } from '../middleware/limiter.js';
 import { dataSchema } from '../middleware/validation.js';
 
 const router = express.Router();
-const ADMIN_USERNAME = 'admin';
 
 router.get('/data', (req, res) => {
-  const targetUser = req.query.user || ADMIN_USERNAME;
+  const targetUser = req.query.user || DEFAULT_ADMIN_NAME;
   const dataPath = getUserDataPath(targetUser);
 
   let visitorLevel = 0;
@@ -45,7 +44,7 @@ router.post('/data', authenticate, dataUpdateLimiter, (req, res) => {
 
 router.post('/sites/:id/click', (req, res) => {
   const siteId = parseInt(req.params.id);
-  const targetUser = req.query.user || ADMIN_USERNAME;
+  const targetUser = req.query.user || DEFAULT_ADMIN_NAME;
   const dataPath = getUserDataPath(targetUser);
 
   const rawData = db.read(dataPath, null);
