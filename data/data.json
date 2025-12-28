@@ -22,14 +22,16 @@
       "name": "Google",
       "url": "https://www.google.com",
       "description": "全球最大的搜索引擎",
-      "categoryId": 1
+      "categoryId": 1,
+      "pinned": true
     },
     {
       "id": 2,
       "name": "GitHub",
       "url": "https://github.com",
       "description": "全球最大开源社区",
-      "categoryId": 1
+      "categoryId": 1,
+      "pinned": false
     },
     {
       "id": 3,

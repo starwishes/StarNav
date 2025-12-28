@@ -276,7 +276,8 @@
         "placeholderDesc": "Enter description",
         "placeholderCategory": "Select category",
         "placeholderTags": "Select or type tags, press Enter to add",
-        "tagsTip": "Tip: Press Enter to add new tag"
+        "tagsTip": "Tip: Press Enter to add new tag",
+        "pinnedCategory": "Pinned"
     },
     "notification": {
         "dataLoaded": "Data loaded successfully",

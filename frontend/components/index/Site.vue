@@ -17,10 +17,36 @@
       @item-click="handleItemClick"
     />
 
-    <!-- 数据容器 -->
-    <div v-if="loading || dataValue.length === 0" class="site-container">
-      <el-skeleton v-if="loading" :rows="5" animated />
-      <el-empty v-else description="暂无数据" />
+    <!-- Loading / Empty State -->
+    <div v-if="loading" class="site-container loading-state">
+      <div class="category-section">
+        <div class="site-item glass-panel">
+          <header class="category-header" style="opacity: 0.6">
+            <el-skeleton-item variant="rect" style="width: 24px; height: 24px; border-radius: 4px" />
+            <el-skeleton-item variant="text" style="width: 150px; height: 24px" />
+          </header>
+          <ul>
+            <li v-for="i in 12" :key="i" class="site-wrapper">
+              <div class="site-card glass-card skeleton-card">
+                <el-skeleton animated style="width: 100%">
+                  <template #template>
+                    <div style="display: flex; gap: 12px; align-items: center; padding: 4px 0;">
+                      <el-skeleton-item variant="image" style="width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0" />
+                      <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; overflow: hidden">
+                        <el-skeleton-item variant="text" style="width: 60%; height: 16px" />
+                        <el-skeleton-item variant="text" style="width: 90%; height: 12px" />
+                      </div>
+                    </div>
+                  </template>
+                </el-skeleton>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div v-else-if="dataValue.length === 0" class="site-container">
+      <el-empty description="暂无数据" />
     </div>
 
     <!-- 列表主渲染区 -->
@@ -200,7 +226,7 @@ const dataValue = computed(() => {
   });
 
   return pinnedItems.length > 0 
-    ? [{ id: -1, name: '常用推荐', content: pinnedItems, isVirtual: true }, ...filtered]
+    ? [{ id: -1, name: t('site.pinnedCategory'), content: pinnedItems, isVirtual: true }, ...filtered]
     : filtered;
 });
 
@@ -505,6 +531,14 @@ ul {
   transition: all 0.3s;
   &.is-moving { opacity: 0.3; transform: scale(0.95); }
   &.moving-target { border: 2px dashed var(--ui-theme); border-radius: 12px; }
+}
+
+.skeleton-card {
+  padding: 12px;
+  height: 100%;
+  display: flex !important;
+  align-items: center;
+  :deep(.el-skeleton) { height: auto; }
 }
 
 .context-menu {
