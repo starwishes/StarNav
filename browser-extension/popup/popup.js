@@ -3,50 +3,39 @@ import { normalizeUrl } from '../utils/url.js';
 /**
  * StarNav Browser Extension - Popup Script
  */
-// ... (existing code)
 
-// Inside showAddForm
-if (!tab) return;
-const rawUrl = tab.url;
-
-// 使用与后端一致的规范化逻辑
-const url = normalizeUrl(rawUrl);
-
-if (!url) {
-    showToast(i18n[currentLang].webOnly, 'error');
-    return;
-}
-notConnected: document.getElementById('notConnected'),
+const elements = {
+    notConnected: document.getElementById('notConnected'),
     mainContent: document.getElementById('mainContent'),
-        searchInput: document.getElementById('searchInput'),
-            clearSearch: document.getElementById('clearSearch'),
-                searchResults: document.getElementById('searchResults'),
-                    bookmarkList: document.getElementById('bookmarkList'),
-                        recentBookmarks: document.getElementById('recentBookmarks'),
-                            addSection: document.getElementById('addSection'),
-                                addCurrentBtn: document.getElementById('addCurrentBtn'),
-                                    addForm: document.getElementById('addForm'),
-                                        cancelAdd: document.getElementById('cancelAdd'),
-                                            bookmarkName: document.getElementById('bookmarkName'),
-                                                bookmarkUrl: document.getElementById('bookmarkUrl'),
-                                                    bookmarkCategory: document.getElementById('bookmarkCategory'),
-                                                        bookmarkLevel: document.getElementById('bookmarkLevel'),
-                                                            bookmarkDesc: document.getElementById('bookmarkDesc'),
-                                                                submitBookmark: document.getElementById('submitBookmark'),
-                                                                    addCategoryBtn: document.getElementById('addCategoryBtn'),
-                                                                        categoryModal: document.getElementById('categoryModal'),
-                                                                            closeCategoryModal: document.getElementById('closeCategoryModal'),
-                                                                                newCategoryName: document.getElementById('newCategoryName'),
-                                                                                    newCategoryLevel: document.getElementById('newCategoryLevel'),
-                                                                                        submitCategory: document.getElementById('submitCategory'),
-                                                                                            duplicateWarning: document.getElementById('duplicateWarning'),
-                                                                                                duplicateName: document.getElementById('duplicateName'),
-                                                                                                    openSite: document.getElementById('openSite'),
-                                                                                                        openSettings: document.getElementById('openSettings'),
-                                                                                                            i18nToggle: document.getElementById('i18nToggle'),
-                                                                                                                goToSettings: document.getElementById('goToSettings'),
-                                                                                                                    loading: document.getElementById('loading'),
-                                                                                                                        toast: document.getElementById('toast')
+    searchInput: document.getElementById('searchInput'),
+    clearSearch: document.getElementById('clearSearch'),
+    searchResults: document.getElementById('searchResults'),
+    bookmarkList: document.getElementById('bookmarkList'),
+    recentBookmarks: document.getElementById('recentBookmarks'),
+    addSection: document.getElementById('addSection'),
+    addCurrentBtn: document.getElementById('addCurrentBtn'),
+    addForm: document.getElementById('addForm'),
+    cancelAdd: document.getElementById('cancelAdd'),
+    bookmarkName: document.getElementById('bookmarkName'),
+    bookmarkUrl: document.getElementById('bookmarkUrl'),
+    bookmarkCategory: document.getElementById('bookmarkCategory'),
+    bookmarkLevel: document.getElementById('bookmarkLevel'),
+    bookmarkDesc: document.getElementById('bookmarkDesc'),
+    submitBookmark: document.getElementById('submitBookmark'),
+    addCategoryBtn: document.getElementById('addCategoryBtn'),
+    categoryModal: document.getElementById('categoryModal'),
+    closeCategoryModal: document.getElementById('closeCategoryModal'),
+    newCategoryName: document.getElementById('newCategoryName'),
+    newCategoryLevel: document.getElementById('newCategoryLevel'),
+    submitCategory: document.getElementById('submitCategory'),
+    duplicateWarning: document.getElementById('duplicateWarning'),
+    duplicateName: document.getElementById('duplicateName'),
+    openSite: document.getElementById('openSite'),
+    openSettings: document.getElementById('openSettings'),
+    i18nToggle: document.getElementById('i18nToggle'),
+    goToSettings: document.getElementById('goToSettings'),
+    loading: document.getElementById('loading'),
+    toast: document.getElementById('toast')
 };
 
 const i18n = {

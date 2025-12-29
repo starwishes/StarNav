@@ -25,9 +25,13 @@ A minimalist, beautiful, and powerful personal/private navigation system.
 
 ### 🆕 v1.5.0 重大更新 (2025-12-29)
 
-- 🛡️ **安全加固：管理员初始化逻辑强化**：支持通过 `ADMIN_PASSWORD` 注入密码；如果使用默认密码 `admin123`，系统将强制生成高强度随机密码并输出到 Docker 日志，极大提升首屏安全性。
-- 🧹 **日志精简**：优化后端请求日志，自动过滤 `/api/favicon`、`/api/settings` 及静态资源等高频非关键日志，保持 Docker 日志清爽。
-- 🛠️ **版本同步**：全站版本升级至 v1.5.0。
+- 🗑️ **回收站功能**：删除的书签会进入回收站，支持恢复和永久删除，防止误删数据丢失。
+- 📱 **移动端拖拽**：长按书签卡片 (500ms) 激活拖拽模式，支持触控设备的拖放排序。
+- 🦊 **Firefox 扩展支持**：浏览器扩展下载现提供 Chrome/Edge 和 Firefox 两个版本选择。
+- 🧪 **单元测试基础设施**：集成 Vitest 测试框架，为核心工具函数提供自动化测试保障。
+- 🛡️ **安全加固**：管理员初始化逻辑强化，若使用默认密码 `admin123`，系统将强制生成高强度随机密码。
+- 🧹 **日志精简**：自动过滤高频非关键日志（favicon、settings、静态资源），保持 Docker 日志清爽。
+- 📊 **管理后台响应式优化**：移动端自动隐藏次要表格列，提升小屏幕可读性。
 
 ### 🆕 v1.3.5 更新摘要 (2025-12-29)
 
@@ -112,26 +116,39 @@ docker-compose up -d
 
 ## 📂 项目结构
 
-```text
+```
 .
 ├── backend/             # Node.js + Express 后端
 │   ├── routes/          # API 路由接口
 │   ├── controllers/     # 业务解析控制器
 │   ├── middleware/      # 安全与权限中间件
-│   ├── services/        # 数据处理核心逻辑
+│   ├── services/        # 数据处理核心逻辑 (含回收站服务)
 │   └── config/          # 系统环境变量与常量配置
 ├── frontend/            # Vue 3 + Vite 前端
 │   ├── components/      # 玻璃态 UI 组件库
+│   ├── composables/     # Vue Composition API 可复用逻辑
 │   ├── store/           # Pinia 响应式状态管理
 │   ├── views/           # SPA 页面路由入口
-│   └── locales/         # i18n 多语言包
-├── data/                # 持久化存储 (JSON 数据库 & 上传资源)
+│   └── locales/         # i18n 多语言包 (中/英)
+├── common/              # 前后端共享模块
+│   ├── url.js           # URL 规范化与清洗
+│   ├── constants.js     # 用户等级常量
+│   └── sanitize.js      # 输入消毒工具
+├── browser-extension/   # 浏览器扩展 (Chrome/Edge/Firefox)
+│   ├── popup/           # 弹窗界面
+│   ├── options/         # 设置页面
+│   └── utils/           # 扩展工具函数
+├── tests/               # 单元测试 (Vitest)
+│   └── common/          # 共享模块测试
+├── data/                # 持久化存储 (JSON 数据库)
 │   ├── accounts.json    # 加密账户数据
 │   ├── data.json        # 导航书签主数据
+│   ├── trash.json       # 回收站数据
 │   └── settings.json    # 系统运行配置
-├── server.js            # 服务端入口 (API + 静态资源托管)
-├── Dockerfile           # 多架构镜像构建指令
-└── docker-compose.yml   # 容器化一键编排
+├── server.js            # 服务端入口
+├── vitest.config.ts     # 测试框架配置
+├── Dockerfile           # 多架构镜像构建
+└── docker-compose.yml   # 容器编排
 ```
 
 ## 📄 开源说明

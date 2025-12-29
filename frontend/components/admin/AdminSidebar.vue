@@ -22,9 +22,27 @@
     </nav>
 
     <div class="sidebar-footer">
-      <el-button class="extension-btn" type="primary" plain @click="downloadExtension">
-        <el-icon><Download /></el-icon> {{ t('menu.extension') }}
-      </el-button>
+      <el-dropdown @command="downloadExtension">
+        <el-button class="extension-btn" type="primary" plain>
+          <el-icon><Download /></el-icon> {{ t('menu.extension') }} <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+        </el-button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="chrome">
+              <div class="dropdown-item-content">
+                <span class="item-title">Chrome / Edge</span>
+                <span class="item-desc">chrome://extensions → 加载已解压的扩展</span>
+              </div>
+            </el-dropdown-item>
+            <el-dropdown-item command="firefox">
+              <div class="dropdown-item-content">
+                <span class="item-title">Firefox</span>
+                <span class="item-desc">about:debugging → 此 Firefox → 加载临时附加组件</span>
+              </div>
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
       <div class="user-block glass-card">
         <el-avatar :size="32" :src="adminStore.user?.avatar_url">{{ adminStore.user?.login?.charAt(0).toUpperCase() }}</el-avatar>
         <div class="user-info">
@@ -42,7 +60,7 @@
 <script setup lang="ts">
 import { useAdminStore } from '@/store/admin';
 import { useMainStore } from '@/store';
-import { Close, SwitchButton, Download } from '@element-plus/icons-vue';
+import { Close, SwitchButton, Download, ArrowDown } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 import { ElMessage } from 'element-plus';
 
@@ -73,7 +91,7 @@ const getMenuKey = (id: string) => {
 }
 
 // 下载预配置的浏览器插件
-const downloadExtension = async () => {
+const downloadExtension = async (browser: string = 'chrome') => {
   try {
     const token = adminStore.token;
     if (!token) {
@@ -83,11 +101,11 @@ const downloadExtension = async () => {
     
     // 创建隐藏的 a 标签触发下载
     const link = document.createElement('a');
-    link.href = `/api/extension/download`;
-    link.setAttribute('download', 'starnav-extension.zip');
+    const filename = browser === 'firefox' ? 'starnav-extension-firefox.zip' : 'starnav-extension-chrome.zip';
+    link.setAttribute('download', filename);
     
     // 需要通过 fetch 带上 Authorization header
-    const response = await fetch('/api/extension/download', {
+    const response = await fetch(`/api/extension/download?browser=${browser}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     
@@ -210,6 +228,25 @@ const downloadExtension = async () => {
       }
     }
     .logout-btn { width: 100%; border-radius: 10px; }
+  }
+}
+
+// Dropdown 样式
+.dropdown-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+  
+  .item-title {
+    font-weight: 600;
+    font-size: 14px;
+  }
+  
+  .item-desc {
+    font-size: 11px;
+    color: #909399;
+    white-space: nowrap;
   }
 }
 

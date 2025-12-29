@@ -20,6 +20,10 @@ export const extensionController = {
             const user = req.user;
             const token = req.headers.authorization?.split(' ')[1] || '';
 
+            // 浏览器类型 (chrome/firefox)
+            const browser = req.query.browser || 'chrome';
+            const isFirefox = browser.toLowerCase() === 'firefox';
+
             // 服务器地址 (从请求头或环境变量推断)
             const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
             const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3333';
@@ -31,8 +35,9 @@ export const extensionController = {
             }
 
             // 设置响应头
+            const filename = isFirefox ? 'starnav-extension-firefox.zip' : 'starnav-extension-chrome.zip';
             res.setHeader('Content-Type', 'application/zip');
-            res.setHeader('Content-Disposition', 'attachment; filename="starnav-extension.zip"');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
             // 创建 ZIP 压缩流
             const archive = archiver('zip', { zlib: { level: 9 } });
@@ -48,8 +53,9 @@ export const extensionController = {
             archive.pipe(res);
 
             // 添加插件文件（排除需要修改的文件）
-            // manifest.json
-            const manifestPath = path.join(EXTENSION_DIR, 'manifest.json');
+            // manifest.json - 根据浏览器类型选择
+            const manifestFileName = isFirefox ? 'manifest.firefox.json' : 'manifest.json';
+            const manifestPath = path.join(EXTENSION_DIR, manifestFileName);
             if (fs.existsSync(manifestPath)) {
                 archive.file(manifestPath, { name: 'manifest.json' });
             }
@@ -64,6 +70,12 @@ export const extensionController = {
             const bgPath = path.join(EXTENSION_DIR, 'background');
             if (fs.existsSync(bgPath)) {
                 archive.directory(bgPath, 'background');
+            }
+
+            // utils 目录 (包含共享模块)
+            const utilsPath = path.join(EXTENSION_DIR, 'utils');
+            if (fs.existsSync(utilsPath)) {
+                archive.directory(utilsPath, 'utils');
             }
 
             // popup 目录 - 只添加 CSS（排除 html 和 js，后面会添加修改版本）
