@@ -433,7 +433,6 @@ const performLocalSearch = async () => {
 
     const keyword = searchText.value.toLowerCase()
     const filteredItems = data.content.items.filter((item: any) => {
-      if (!adminStore.isAuthenticated && item.private) return false
       if (item.level !== undefined && item.level > (adminStore.user?.level || 0)) return false
       
       const nameMatch = item.name?.toLowerCase().includes(keyword)

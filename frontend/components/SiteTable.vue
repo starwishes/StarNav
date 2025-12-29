@@ -1,42 +1,43 @@
 <template>
   <div class="site-table-container">
     <el-table 
-      :data="items" 
+      :data="paginatedData" 
       border 
       stripe 
       @selection-change="handleSelectionChange"
     >
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column prop="id" :label="t('table.id')" width="80" align="center" />
-      <el-table-column prop="name" :label="t('table.siteName')" width="150" align="center" />
-      <el-table-column prop="url" :label="t('table.siteUrl')" min-width="200">
+      <el-table-column v-if="!isMobile" type="selection" width="50" align="center" />
+      <el-table-column v-if="!isMobile" prop="id" :label="t('table.id')" width="70" align="center" />
+      <el-table-column prop="name" :label="t('table.siteName')" width="140" align="center" show-overflow-tooltip />
+      <el-table-column prop="url" :label="t('table.siteUrl')" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <el-link :href="row.url" target="_blank" type="primary">{{ row.url }}</el-link>
-            <el-tag v-if="linkStatus[row.url] === 'ok'" type="success" size="small">✓</el-tag>
-            <el-tag v-else-if="linkStatus[row.url] === 'error'" type="danger" size="small">✗</el-tag>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <el-link :href="row.url" target="_blank" type="primary" :underline="false" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; display: inline-block;">{{ row.url }}</el-link>
+            <el-tag v-if="linkStatus[row.url] === 'ok'" type="success" size="small" style="height: 18px; padding: 0 4px;">✓</el-tag>
+            <el-tag v-else-if="linkStatus[row.url] === 'error'" type="danger" size="small" style="height: 18px; padding: 0 4px;">✗</el-tag>
             <el-icon v-else-if="linkStatus[row.url] === 'checking'" class="is-loading"><Loading /></el-icon>
+            <span v-else></span>
           </div>
         </template>
       </el-table-column>
-      <el-table-column :label="t('table.category')" width="120" align="center">
+      <el-table-column v-if="!isMobile" :label="t('table.category')" width="110" align="center">
         <template #default="{ row }">
-          <el-tag>{{ getCategoryName(row.categoryId) }}</el-tag>
+          <el-tag size="small">{{ getCategoryName(row.categoryId) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column :label="t('table.visibility')" width="100" align="center">
+      <el-table-column v-if="!isMobile" :label="t('table.visibility')" width="100" align="center">
         <template #default="{ row }">
-          <el-tag :type="row.private ? 'danger' : 'success'" effect="plain">
-            {{ row.private ? t('table.private') : t('table.public') }}
+          <el-tag :type="row.level === 0 ? 'success' : (row.level === 3 ? 'danger' : 'warning')" effect="plain" size="small">
+            {{ row.level === 1 ? t('userLevel.user') : (row.level === 2 ? t('userLevel.vip') : (row.level === 3 ? t('userLevel.admin') : t('userLevel.guest'))) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column :label="t('table.clickCount')" prop="clickCount" sortable width="110" align="center">
+      <el-table-column v-if="!isMobile" :label="t('table.clickCount')" prop="clickCount" sortable width="90" align="center">
         <template #default="{ row }">
-          <el-tag type="info" effect="plain">{{ row.clickCount || 0 }}</el-tag>
+          <span style="color: #909399; font-size: 13px;">{{ row.clickCount || 0 }}</span>
         </template>
       </el-table-column>
-      <el-table-column :label="t('table.lastVisited')" width="160" align="center">
+      <el-table-column v-if="!isMobile" :label="t('table.lastVisited')" width="130" align="center">
         <template #default="{ row }">
           <span v-if="row.lastVisited" style="font-size: 12px; color: #909399;">
             {{ formatDate(row.lastVisited) }}
@@ -44,24 +45,20 @@
           <span v-else style="color: #c0c4cc;">-</span>
         </template>
       </el-table-column>
-      <el-table-column :label="t('table.tags')" width="200" align="center">
+      <!-- Tags: Hidden on small screens or reduced width -->
+      <el-table-column v-if="!isMobile" :label="t('table.tags')" width="140" align="center" show-overflow-tooltip>
         <template #default="{ row }">
-          <el-tag
-            v-for="tag in (row.tags || [])"
-            :key="tag"
-            size="small"
-            type="info"
-            style="margin-right: 5px; margin-bottom: 3px;"
-          >
-            {{ tag }}
-          </el-tag>
-          <span v-if="!row.tags || row.tags.length === 0" style="color: #c0c4cc;">-</span>
+          <template v-if="row.tags && row.tags.length">
+            <span style="font-size: 12px; color: #606266;">{{ row.tags.join(', ') }}</span>
+          </template>
+          <span v-else style="color: #c0c4cc;">-</span>
         </template>
       </el-table-column>
-      <el-table-column :label="t('table.action')" width="200" align="center" fixed="right">
+      <el-table-column :label="t('table.action')" width="160" align="center" fixed="right">
         <template #default="{ row }">
           <el-button 
             type="primary" 
+            link
             size="small" 
             :icon="EditIcon"
             @click="$emit('edit', row)"
@@ -70,6 +67,7 @@
           </el-button>
           <el-button 
             type="danger" 
+            link
             size="small" 
             :icon="DeleteIcon"
             @click="$emit('delete', row)"
@@ -79,6 +77,19 @@
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- Pagination -->
+    <div class="pagination-container">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="items.length"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
 
     <!-- Batch Actions Footer -->
     <div v-if="selectedItems.length > 0" class="batch-actions-footer glass-effect">
@@ -109,14 +120,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed, watch } from 'vue';
 import { Edit, Delete, ArrowDown, Loading } from '@element-plus/icons-vue';
 import { Category, Item } from '@/types';
 import { ElMessageBox, ElMessage } from 'element-plus';
 import { useAdminStore } from '@/store/admin';
 import { useI18n } from 'vue-i18n';
+import { useMobile } from '@/composables/useMobile';
 
 const { t } = useI18n();
+const { isMobile } = useMobile();
 
 const EditIcon = Edit;
 const DeleteIcon = Delete;
@@ -138,6 +151,30 @@ const linkStatus = reactive<Record<string, string>>({});
 const checking = ref(false);
 
 const selectedItems = ref<Item[]>([]);
+
+// Pagination
+const currentPage = ref(1);
+const pageSize = ref(20);
+
+// Reset pagination when data changes
+watch(() => props.items, () => {
+    currentPage.value = 1;
+});
+
+const paginatedData = computed(() => {
+    const start = (currentPage.value - 1) * pageSize.value;
+    const end = start + pageSize.value;
+    return props.items.slice(start, end);
+});
+
+const handleSizeChange = (val: number) => {
+    pageSize.value = val;
+    currentPage.value = 1; // Reset to first page
+};
+
+const handleCurrentChange = (val: number) => {
+    currentPage.value = val;
+};
 
 const handleSelectionChange = (val: Item[]) => {
   selectedItems.value = val;
@@ -265,6 +302,16 @@ const formatDate = (dateString: string) => {
     display: flex;
     gap: 12px;
   }
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 0;
+  margin-top: 16px;
+  background: var(--el-bg-color-overlay);
+  border-radius: 8px;
+  padding-right: 16px;
 }
 
 :deep(.el-table) {

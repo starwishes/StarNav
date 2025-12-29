@@ -4,7 +4,6 @@ export const useMainStore = defineStore('mainStore', {
   state: () => {
     return {
       isShowDrawer: false,
-      site: [],
       settings: {
         homeUrl: '',
         timezone: '',

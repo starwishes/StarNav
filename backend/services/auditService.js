@@ -1,76 +1,59 @@
-import { db, logger } from './db.js';
-import { AUDIT_LOG_PATH } from '../config/index.js';
+import path from 'path';
+import { db } from './db.js';
+import { DATA_DIR } from '../config/index.js';
 
-const MAX_LOG_ENTRIES = 500; // 最大保留日志条数
+const LOG_FILE = path.join(DATA_DIR, 'audit.json');
 
-/**
- * 审计日志服务
- */
 export const auditService = {
-    /**
-     * 记录审计事件
-     */
-    log(action, data) {
-        try {
-            let logs = db.read(AUDIT_LOG_PATH, []);
-            if (!Array.isArray(logs)) {
-                logs = [];
-            }
-            const entry = {
-                id: Date.now(),
-                action,
-                ...data,
-                timestamp: new Date().toISOString()
-            };
+    // 获取日志 (支持分页)
+    getLogs(page = 1, limit = 50) {
+        const logs = db.read(LOG_FILE, []);
+        // 按时间倒序
+        const sorted = logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-            logs.unshift(entry); // 新日志插入头部
-
-            // 保持日志数量在限制内
-            if (logs.length > MAX_LOG_ENTRIES) {
-                logs.length = MAX_LOG_ENTRIES;
-            }
-
-            db.write(AUDIT_LOG_PATH, logs);
-            return entry;
-        } catch (err) {
-            logger.error('审计日志写入失败', err);
-            return null;
-        }
-    },
-
-    /**
-     * 获取审计日志（分页）
-     */
-    getAll(page = 1, limit = 50) {
-        let logs = db.read(AUDIT_LOG_PATH, []);
-        if (!Array.isArray(logs)) logs = [];
         const start = (page - 1) * limit;
+        const end = start + limit;
+
         return {
-            logs: logs.slice(start, start + limit),
-            total: logs.length,
-            page,
-            limit
+            total: sorted.length,
+            logs: sorted.slice(start, end)
         };
     },
 
-    /**
-     * 按用户名筛选日志
-     */
-    getByUsername(username) {
-        const logs = db.read(AUDIT_LOG_PATH, []);
-        return logs.filter(log => log.username === username);
+    // 记录日志
+    log(action, data = {}) {
+        const logs = db.read(LOG_FILE, []);
+
+        const {
+            username = 'anonymous',
+            ip = 'unknown',
+            userAgent = 'unknown',
+            success = true,
+            details = ''
+        } = data;
+
+        const entry = {
+            id: Date.now(),
+            action,
+            username,
+            ip,
+            userAgent,
+            success,
+            details,
+            timestamp: new Date().toISOString()
+        };
+
+        // 限制日志总数 (保留最近 2000 条)
+        if (logs.length >= 2000) {
+            logs.splice(0, logs.length - 1999);
+        }
+
+        logs.push(entry);
+        db.write(LOG_FILE, logs);
     },
 
-    /**
-     * 清空审计日志
-     */
+    // 清空日志
     clear() {
-        try {
-            db.write(AUDIT_LOG_PATH, []);
-            return true;
-        } catch (err) {
-            logger.error('清空审计日志失败', err);
-            return false;
-        }
+        return db.write(LOG_FILE, []);
     }
 };

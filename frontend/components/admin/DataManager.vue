@@ -12,6 +12,10 @@
         <el-button type="info" @click="handleExport" class="hover-scale">{{ t('manage.exportJson') }}</el-button>
         <el-button type="warning" @click="triggerImport" class="hover-scale">{{ t('manage.importJson') }}</el-button>
         <el-button type="success" @click="$emit('show-bookmark-import')" class="hover-scale">{{ t('manage.importBookmark') }}</el-button>
+        <!-- New Clean Duplicates Button -->
+        <el-button type="danger" @click="$emit('clean-duplicates')" class="hover-scale">
+          <el-icon><Brush /></el-icon> {{ t('manage.cleanDuplicates') }}
+        </el-button>
         <input type="file" ref="fileInput" style="display: none" accept=".json" @change="handleImport" />
       </div>
     </div>
@@ -29,6 +33,7 @@
           :items="items" 
           @edit="(cat) => $emit('edit-category', cat)" 
           @delete="(id) => $emit('delete-category', id)" 
+          @move="(index, dir) => $emit('move-category', index, dir)"
         />
       </el-card>
     </div>
@@ -66,7 +71,7 @@
           @edit="(item) => $emit('edit-item', item)" 
           @delete="(id) => $emit('delete-item', id)" 
           @batch-delete="(ids) => $emit('batch-delete', ids)" 
-          @batch-move="(data) => $emit('batch-move', data)" 
+          @batch-move="(ids, categoryId) => $emit('batch-move', ids, categoryId)" 
         />
       </el-card>
     </div>
@@ -75,7 +80,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { Upload, Plus } from '@element-plus/icons-vue';
+import { Upload, Plus, Brush } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import CategoryTable from '@/components/CategoryTable.vue';
 import SiteTable from '@/components/SiteTable.vue';
@@ -97,7 +102,7 @@ const emit = defineEmits([
   'update:activeTab', 'update:searchKeyword', 'update:filterCategory',
   'save', 'add-category', 'edit-category', 'delete-category',
   'add-item', 'edit-item', 'delete-item', 'batch-delete', 'batch-move',
-  'show-bookmark-import', 'json-import'
+  'show-bookmark-import', 'json-import', 'move-category', 'clean-duplicates'
 ]);
 
 const internalActiveTab = ref(props.activeTab);

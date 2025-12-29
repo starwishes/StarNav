@@ -36,4 +36,10 @@ router.beforeEach((to: RouteLocationNormalized, _from: RouteLocationNormalized, 
   next();
 });
 
+// @ts-ignore
+import { recordVisit } from '@/api/stats';
+router.afterEach((to) => {
+  recordVisit(to.fullPath);
+});
+
 export default router

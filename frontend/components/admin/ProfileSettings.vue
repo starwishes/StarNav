@@ -45,7 +45,8 @@ import { useI18n } from 'vue-i18n';
 const { t } = useI18n();
 
 const props = defineProps<{ username: string, level: number }>();
-const emit = defineEmits(['update']);
+const emit = defineEmits(['update-profile']);
+
 
 const loading = ref(false);
 const form = reactive({
@@ -82,7 +83,7 @@ const handleUpdate = async () => {
   if (isUsernameChanged) updateData.username = form.newUsername;
   if (isPasswordChanged) updateData.password = form.newPassword;
 
-  emit('update', updateData);
+  emit('update-profile', updateData);
   form.newPassword = '';
   loading.value = false;
 };

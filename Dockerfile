@@ -36,6 +36,8 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build-stage /app/dist ./dist
 COPY --from=build-stage /app/server.js ./
 COPY --from=build-stage /app/backend ./backend
+COPY --from=build-stage /app/common ./common
+COPY --from=build-stage /app/browser-extension ./browser-extension
 
 # Copy and setup entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/

@@ -1,8 +1,9 @@
 export interface Category {
     id: number;
     name: string;
-    private?: boolean;
     level?: number;
+    content?: Item[]; // View Model Only
+    isVirtual?: boolean; // Pinned category
 }
 
 export interface Item {
@@ -11,7 +12,6 @@ export interface Item {
     url: string;
     description: string;
     categoryId: number;
-    private?: boolean;
     pinned?: boolean;
     level?: number;
     clickCount?: number;      // 访问次数统计

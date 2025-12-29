@@ -38,7 +38,9 @@
         "users": "Users",
         "stats": "Statistics",
         "audit": "Audit Log",
-        "settings": "Settings"
+        "recycle": "Recycle Bin",
+        "settings": "Settings",
+        "extension": "Download Browser Extension"
     },
     "auth": {
         "username": "Username",
@@ -46,6 +48,7 @@
         "loginTitle": "Login",
         "registerSuccess": "Registration successful",
         "passwordTip": "Password must be at least 8 characters with uppercase, lowercase, number and symbol",
+        "passwordWeak": "Password must be 8+ chars with uppercase, lowercase, numbers & symbols",
         "loginNotice": "Please enter your credentials to access",
         "registerNotice": "Create a new account to save your navigation data",
         "loginSuccess": "Login successful",
@@ -96,6 +99,8 @@
         "siteNameTip": "Custom website name. Leave empty to use 'StarNav'."
     },
     "stats": {
+        "accessOverview": "Access Overview",
+        "contentOverview": "Content Overview",
         "totalClicks": "Total Clicks",
         "totalBookmarks": "Total Bookmarks",
         "totalCategories": "Total Categories",
@@ -107,7 +112,14 @@
         "name": "Name",
         "clickCount": "Clicks",
         "category": "Category",
-        "lastVisited": "Last Visited"
+        "lastVisited": "Last Visited",
+        "todayPV": "Today Visits (PV)",
+        "todayUV": "Today Visitors (UV)",
+        "totalPV": "Total Visits",
+        "totalUV": "Total Visitors",
+        "visitTrend": "Visit Trend (Last 7 Days)",
+        "osDistribution": "OS Distribution",
+        "browserDistribution": "Browser Distribution"
     },
     "users": {
         "addUser": "Add New User",
@@ -150,6 +162,10 @@
         "exportJson": "Export JSON",
         "importJson": "Import JSON",
         "importBookmark": "Import Bookmarks",
+        "cleanDuplicates": "Clean Duplicates",
+        "cleanSuccess": "Cleaned {count} duplicates",
+        "noDuplicates": "No duplicates found",
+        "cleanConfirm": "Are you sure you want to clean duplicates? This will keep the one with the most visits and delete others.",
         "addCategory": "Add Category",
         "addSite": "Add Site",
         "searchPlaceholder": "Search...",
@@ -166,8 +182,6 @@
         "visibility": "Visibility",
         "siteCount": "Site Count",
         "action": "Action",
-        "public": "Public",
-        "private": "Private",
         "siteName": "Site Name",
         "siteUrl": "URL",
         "category": "Category",
@@ -248,9 +262,6 @@
         "deleteConfirm": "Are you sure you want to delete this category?",
         "id": "Category ID",
         "placeholderName": "Enter category name",
-        "hide": "Hide Category",
-        "private": "Login Only",
-        "public": "Public",
         "permission": "Access Level",
         "permissionPlaceholder": "Select minimum access level",
         "updateSuccess": "Update successful",
@@ -265,7 +276,6 @@
         "url": "URL",
         "description": "Description",
         "category": "Category",
-        "private": "Private Bookmark",
         "permission": "Access Level",
         "tags": "Tags",
         "pinned": "Pinned",
@@ -281,15 +291,27 @@
     },
     "notification": {
         "dataLoaded": "Data loaded successfully",
-        "siteName": "StarNav"
+        "siteName": "StarNav",
+        "downloadSuccess": "Extension downloaded successfully",
+        "downloadFailed": "Extension download failed",
+        "loginRequired": "Please login first"
     },
     "context": {
         "pin": "Pin",
         "unpin": "Unpin",
         "move": "Move",
         "moveUp": "Move Up",
-        "moveDown": "Move Down",
-        "hide": "Hide (Login Only)",
-        "show": "Unhide (Public)"
+        "moveDown": "Move Down"
+    },
+    "recycle": {
+        "title": "Recycle Bin",
+        "empty": "Recycle bin is empty",
+        "emptyTrash": "Empty Trash",
+        "restore": "Restore",
+        "restoreSuccess": "Restored successfully",
+        "deletedAt": "Deleted At",
+        "permanentDeleteConfirm": "This item will be permanently deleted. Continue?",
+        "emptyConfirm": "Empty the recycle bin? This cannot be undone!",
+        "emptySuccess": "Recycle bin emptied"
     }
 }

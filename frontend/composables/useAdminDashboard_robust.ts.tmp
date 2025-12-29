@@ -1,0 +1,206 @@
+import { ref, computed } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { useAdminStore } from '@/store/admin';
+import { Category, Item } from '@/types';
+import { useI18n } from 'vue-i18n';
+
+export function useAdminDashboard() {
+  const adminStore = useAdminStore();
+  const { t } = useI18n();
+
+  const loading = ref(false);
+  const saving = ref(false);
+  const activeTab = ref('categories');
+
+  const categories = ref<Category[]>([]);
+  const items = ref<Item[]>([]);
+
+  const filterCategory = ref(0);
+  const searchKeyword = ref('');
+
+  const categoryDialogVisible = ref(false);
+  const itemDialogVisible = ref(false);
+  const isEdit = ref(false);
+
+  const categoryForm = ref<Partial<Category>>({});
+  const itemForm = ref<Partial<Item>>({});
+
+  const filteredItems = computed(() => {
+    let result = items.value || [];
+    if (filterCategory.value !== 0) {
+      result = result.filter((item: Item) => item && item.categoryId === filterCategory.value);
+    }
+    if (searchKeyword.value.trim()) {
+      const keyword = searchKeyword.value.toLowerCase().trim();
+      result = result.filter((item: Item) =>
+        item && (
+          (item.name || '').toLowerCase().includes(keyword) ||
+          (item.url || '').toLowerCase().includes(keyword) ||
+          (item.description || '').toLowerCase().includes(keyword)
+        )
+      );
+    }
+    return result;
+  });
+
+  const loadData = async () => {
+    loading.value = true;
+    try {
+      const data = await adminStore.getFileContent();
+      if (data && data.content) {
+        categories.value = data.content.categories || [];
+        const seenIds = new Set();
+        items.value = (data.content.items || []).filter((item: Item) => {
+          if (!item || !item.id || seenIds.has(item.id)) return false;
+          seenIds.add(item.id);
+          return true;
+        });
+      }
+    } catch (error: any) {
+      ElMessage.error(error.message || t('common.error'));
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const saveDataSync = async () => {
+    saving.value = true;
+    try {
+      const content = {
+        categories: categories.value,
+        items: items.value,
+      };
+      await adminStore.updateFileContent(content);
+      console.log('[Sync] Data saved');
+    } catch (error: any) {
+      ElMessage.error(t('common.fail') + ': ' + (error.message || 'Unknown error'));
+      throw error;
+    } finally {
+      saving.value = false;
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      await ElMessageBox.confirm(t('common.confirm'), t('common.warning'), { type: 'warning' });
+      await saveDataSync();
+      ElMessage.success(t('common.success'));
+      await loadData();
+    } catch (error) {
+      if (error !== 'cancel') ElMessage.error(t('common.fail'));
+    }
+  };
+
+  const handleAddCategory = () => {
+    isEdit.value = false;
+    const maxId = categories.value.length > 0 ? Math.max(...categories.value.map(c => c.id || 0)) : 0;
+    categoryForm.value = { id: maxId + 1, name: '', private: false, level: 0 };
+    categoryDialogVisible.value = true;
+  };
+
+  const handleEditCategory = (row: Category) => {
+    isEdit.value = true;
+    categoryForm.value = { ...row };
+    categoryDialogVisible.value = true;
+  };
+
+  const moveCategory = async (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= categories.value.length) return;
+    const newCategories = [...categories.value];
+    const [moved] = newCategories.splice(index, 1);
+    newCategories.splice(newIndex, 0, moved);
+    categories.value = newCategories;
+    await saveDataSync();
+  };
+
+  const handleDeleteCategory = async (row: Category) => {
+    try {
+      await ElMessageBox.confirm(t('category.deleteConfirm'), t('common.delete'), { type: 'warning' });
+      categories.value = categories.value.filter(c => c.id !== row.id);
+      items.value = items.value.map(item => item.categoryId === row.id ? { ...item, categoryId: 0 } : item);
+      await saveDataSync();
+      ElMessage.success(t('category.deleteSuccess'));
+    } catch (error) { if (error !== 'cancel') ElMessage.error(t('common.fail')); }
+  };
+
+  const saveCategory = async () => {
+    if (!categoryForm.value.name) return ElMessage.warning(t('category.placeholderName'));
+    if (isEdit.value) {
+      const idx = categories.value.findIndex(c => c.id === categoryForm.value.id);
+      if (idx !== -1) categories.value[idx] = { ...categoryForm.value } as Category;
+    } else {
+      categories.value.push({ ...categoryForm.value } as Category);
+    }
+    categoryDialogVisible.value = false;
+    await saveDataSync();
+    ElMessage.success(isEdit.value ? t('category.updateSuccess') : t('category.addSuccess'));
+  };
+
+  const handleAddItem = () => {
+    isEdit.value = false;
+    const maxId = items.value.length > 0 ? Math.max(...items.value.map(i => i.id || 0)) : 0;
+    itemForm.value = { 
+      id: maxId + 1, name: '', url: '', description: '', 
+      categoryId: categories.value[0]?.id || 0, private: false, 
+      pinned: false, level: 0, tags: [] 
+    };
+    itemDialogVisible.value = true;
+  };
+
+  const handleEditItem = (row: Item) => {
+    isEdit.value = true;
+    itemForm.value = { ...row, tags: row.tags || [] };
+    itemDialogVisible.value = true;
+  };
+
+  const handleDeleteItem = async (row: Item) => {
+    try {
+      await ElMessageBox.confirm(t('table.deleteConfirm', { count: 1 }), t('common.delete'), { type: 'warning' });
+      items.value = items.value.filter(i => i.id !== row.id);
+      await saveDataSync();
+      ElMessage.success(t('table.deleteSuccess'));
+    } catch (error) { if (error !== 'cancel') ElMessage.error(t('common.fail')); }
+  };
+
+  const saveItem = async () => {
+    console.log('[Site] Saving item:', itemForm.value);
+    if (!itemForm.value || !itemForm.value.name || !itemForm.value.url) return ElMessage.warning(t('common.tips'));
+    
+    try {
+      if (isEdit.value) {
+        const idx = items.value.findIndex(i => i && String(i.id) === String(itemForm.value.id));
+        if (idx !== -1) items.value[idx] = { ...itemForm.value } as Item;
+      } else {
+        items.value.push({ ...itemForm.value } as Item);
+      }
+      itemDialogVisible.value = false;
+      await saveDataSync();
+      ElMessage.success(isEdit.value ? t('category.updateSuccess') : t('category.addSuccess'));
+    } catch (err) {
+      console.error('[Site] Save failed:', err);
+      ElMessage.error(t('common.fail'));
+    }
+  };
+
+  const handleBatchDelete = async (ids: number[]) => {
+    items.value = items.value.filter(i => !ids.includes(i.id));
+    await saveDataSync();
+    ElMessage.success(t('table.deleteSuccess'));
+  };
+
+  const handleBatchMove = async (ids: number[], categoryId: number) => {
+    items.value = items.value.map(i => ids.includes(i.id) ? { ...i, categoryId } : i);
+    await saveDataSync();
+    ElMessage.success(t('table.moveSuccess'));
+  };
+
+  return {
+    loading, saving, activeTab, categories, items, filterCategory, searchKeyword,
+    categoryDialogVisible, itemDialogVisible, isEdit, categoryForm, itemForm,
+    filteredItems, loadData, handleSave, handleAddCategory, handleEditCategory,
+    handleDeleteCategory, saveCategory, handleAddItem, handleEditItem,
+    handleDeleteItem, saveItem, handleBatchDelete, handleBatchMove,
+    saveDataSync, moveCategory
+  };
+}

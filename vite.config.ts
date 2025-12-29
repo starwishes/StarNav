@@ -29,7 +29,8 @@ export default defineConfig(({ mode }) => {
     resolve: {
       // ↓路径别名，主要是这部分
       alias: {
-        '@': resolve(__dirname, './frontend')
+        '@': resolve(__dirname, './frontend'),
+        '@common': resolve(__dirname, './common')
       }
     },
     css: {

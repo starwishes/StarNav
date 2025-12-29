@@ -20,7 +20,7 @@ export const strongPasswordSchema = Joi.object({
         .pattern(passwordPattern)
         .required()
         .messages({
-            'string.pattern.base': '密码必须至少8位，包含大小写字母、数字和特殊符号'
+            'string.pattern.base': 'ERR_PASSWORD_WEAK'
         }),
     level: Joi.number().integer().min(1).max(3).optional()
 });
@@ -28,27 +28,27 @@ export const strongPasswordSchema = Joi.object({
 export const itemSchema = Joi.object({
     id: Joi.number().required(),
     name: Joi.string().required(),
-    url: Joi.string().uri().required(),
-    description: Joi.string().allow(''),
+    url: Joi.string().required(), // 移除 uri() 校验，兼容内网 IP 或不规范地址
+    description: Joi.string().allow('', null),
     categoryId: Joi.number().required(),
     private: Joi.boolean().default(false),
     pinned: Joi.boolean().default(false),
     level: Joi.number().integer().min(0).max(3).default(0),
-    clickCount: Joi.number().integer().min(0).optional(),
-    lastVisited: Joi.string().optional(),
+    clickCount: Joi.number().integer().min(0).allow(null).optional(),
+    lastVisited: Joi.string().allow(null, '').optional(),
     tags: Joi.array().items(Joi.string()).optional(),
-});
+}).unknown(true); // 允许未知字段，防止因前端增加额外属性导致保存失败
 
 export const categorySchema = Joi.object({
     id: Joi.number().required(),
     name: Joi.string().required(),
     private: Joi.boolean().optional(),
     level: Joi.number().integer().min(0).max(3).default(0),
-});
+}).unknown(true);
 
 export const dataSchema = Joi.object({
     content: Joi.object({
         categories: Joi.array().items(categorySchema).required(),
         items: Joi.array().items(itemSchema).required(),
-    }).required(),
+    }).unknown(true).required(),
 });

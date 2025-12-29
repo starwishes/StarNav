@@ -3,7 +3,7 @@
     <header></header>
     <main id="js-home-nav__main">
       <ul id="js-home-nav__main-ul">
-        <li class="record-item pointer text" v-for="category in store.$state.site" :key="category.id" @click="changeAnchorPosition(category.name)">
+        <li class="record-item pointer text" v-for="category in dataStore.siteData" :key="category.id" @click="changeAnchorPosition(category.name)">
           {{ category.name }}
         </li>
       </ul>
@@ -11,10 +11,10 @@
   </div>
 </template>
 <script setup>
-import { useMainStore } from '@/store'
+import { useDataStore } from '@/store/data'
 import { ref } from 'vue'
 
-const store = useMainStore()
+const dataStore = useDataStore()
 const changeAnchorPosition = name => {
   let target = document.getElementById(`site-anchor-${name}`)
   if (!target) return

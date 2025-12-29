@@ -6,6 +6,9 @@
           <i class="iconfont icon-md-rocket"></i>
         </li>
       </transition>
+      <li v-if="adminStore.isAuthenticated" class="sidebar-item glass-effect hover-scale" @click="emit('add')" title="快速添加">
+        <i class="iconfont icon-tianjia"></i>
+      </li>
       <li class="sidebar-item glass-effect hover-scale" @click="showDrawer" title="菜单">
         <i class="iconfont icon-md-menu"></i>
       </li>
@@ -15,10 +18,14 @@
 
 <script setup lang="ts">
 import { useMainStore } from '@/store';
+import { useAdminStore } from '@/store/admin';
 import { ref, onMounted, onUnmounted } from 'vue';
 
 const store = useMainStore();
+const adminStore = useAdminStore();
 const isVisible = ref(false);
+
+const emit = defineEmits(['add']);
 
 const showDrawer = () => {
   store.$state.isShowDrawer = true;
@@ -51,6 +58,11 @@ onUnmounted(() => {
   bottom: 50px;
   z-index: 999;
 
+  @media screen and (max-width: 768px) {
+    right: 16px;
+    bottom: 80px; /* Raise to avoid conflict with potential bottom UI or accidental touches */
+  }
+
   ul {
     list-style: none;
     padding: 0;
@@ -72,19 +84,23 @@ onUnmounted(() => {
       i {
         font-size: 20px;
         color: var(--gray-900);
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
       }
 
       &.glass-effect {
-        background: var(--gray-o7);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid var(--gray-o3);
+        background: rgba(255, 255, 255, 0.45);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
       }
 
       &:hover {
         background: var(--ui-theme);
+        box-shadow: 0 0 20px rgba(var(--ui-theme-rgb), 0.5);
         i {
           color: white;
+          text-shadow: none;
         }
       }
     }

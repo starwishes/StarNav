@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=400, initial-scale=1.0">
+    <title>StarNav</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="popup-container">
+        <header class="popup-header">
+            <div class="logo">
+                <span class="logo-icon">🌟</span>
+                <span class="logo-text">StarNav</span>
+            </div>
+            <div class="header-actions">
+                <button id="openSite" class="icon-btn" title="打开导航站">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                </button>
+                <button id="i18nToggle" class="icon-btn lang-toggle-btn" title="切换语言">
+                    <span class="main-char">文</span>
+                    <span class="badge-char">A</span>
+                </button>
+                <button id="openSettings" class="icon-btn" title="设置">⚙️</button>
+            </div>
+        </header>
+
+        <div id="notConnected" class="state-container" style="display: none;">
+            <div class="empty-state">
+                <span class="empty-icon">🔗</span>
+                <p data-i18n="notConnectedTip">请先配置服务器地址</p>
+                <button id="goToSettings" class="primary-btn" data-i18n="goToSettings">前往设置</button>
+            </div>
+        </div>
+
+        <main id="mainContent" class="popup-main">
+            <div id="addSection" class="add-section">
+                <button id="addCurrentBtn" class="add-btn" data-i18n="addCurrent">➕ 添加当前页面</button>
+            </div>
+
+            <div class="search-container">
+                <input type="text" id="searchInput" class="search-input">
+                <button id="clearSearch" class="clear-btn" style="display: none;">×</button>
+            </div>
+
+            <div id="searchResults" class="bookmark-list" style="display: none;"></div>
+
+            <div id="bookmarkList" class="bookmark-list">
+                <div class="section-title" data-i18n="recentVisit">最近访问</div>
+                <div id="recentBookmarks" class="bookmark-items"></div>
+            </div>
+
+            <div id="addForm" class="add-form" style="display: none;">
+                <div class="form-header">
+                    <span data-i18n="addBookmark">添加书签</span>
+                    <button id="cancelAdd" class="icon-btn">×</button>
+                </div>
+                <!-- 查重警告 -->
+                <div id="duplicateWarning" class="warning-alert" style="display: none;">
+                    ⚠️ <span data-i18n="urlStored">该网址已收藏：</span><span id="duplicateName"></span>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="name">名称</label>
+                    <input type="text" id="bookmarkName" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="url">网址</label>
+                    <input type="text" id="bookmarkUrl" class="form-input" readonly>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label data-i18n="category">分类</label>
+                        <div class="select-with-add">
+                            <select id="bookmarkCategory" class="form-select"></select>
+                            <button id="addCategoryBtn" class="add-category-btn" title="新建分类">+</button>
+                        </div>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label data-i18n="level">可见等级</label>
+                        <select id="bookmarkLevel" class="form-select">
+                            <option value="0" data-i18n="level0">游客可见</option>
+                            <option value="1" data-i18n="level1">注册用户</option>
+                            <option value="2" data-i18n="level2">VIP 用户</option>
+                            <option value="3" data-i18n="level3">仅管理员</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="description">描述 (可选)</label>
+                    <input type="text" id="bookmarkDesc" class="form-input">
+                </div>
+                <div class="form-actions">
+                    <button id="submitBookmark" class="primary-btn" data-i18n="save">保存</button>
+                </div>
+            </div>
+
+            <!-- 新建分类弹窗 -->
+            <div id="categoryModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="form-header">
+                        <span data-i18n="newCategory">新建分类</span>
+                        <button id="closeCategoryModal" class="icon-btn">×</button>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="categoryName">分类名称</label>
+                        <input type="text" id="newCategoryName" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="level">可见等级</label>
+                        <select id="newCategoryLevel" class="form-select">
+                            <option value="0" data-i18n="level0">游客可见</option>
+                            <option value="1" data-i18n="level1">注册用户</option>
+                            <option value="2" data-i18n="level2">VIP 用户</option>
+                            <option value="3" data-i18n="level3">仅管理员</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button id="submitCategory" class="primary-btn" data-i18n="create">创建</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div id="loading" class="loading-overlay" style="display: none;">
+            <div class="spinner"></div>
+        </div>
+        <div id="toast" class="toast" style="display: none;"></div>
+    </div>
+    <script type="module" src="popup.js"></script>
+</body>
+
+</html>

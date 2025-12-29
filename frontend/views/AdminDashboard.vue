@@ -21,6 +21,7 @@
         :is-mobile="isMobile" 
         :current-view-label="currentViewLabel" 
         :loading="loading"
+        :saving="saving"
         @open-sidebar="sidebarVisible = true"
         @go-home="goToIndex"
         @load-data="loadData"
@@ -30,9 +31,12 @@
         <!-- 数据管理视图组件 -->
         <DataManager 
           v-if="currentView === 'data'"
-          v-model:active-tab="activeTab"
-          v-model:search-keyword="searchKeyword"
-          v-model:filter-category="filterCategory"
+          :active-tab="activeTab"
+          @update:active-tab="activeTab = $event"
+          :search-keyword="searchKeyword"
+          @update:search-keyword="searchKeyword = $event"
+          :filter-category="filterCategory"
+          @update:filter-category="filterCategory = $event"
           :saving="saving"
           :categories="categories"
           :items="items"
@@ -48,6 +52,8 @@
           @batch-move="handleBatchMove"
           @show-bookmark-import="showBookmarkImport = true"
           @json-import="handleJsonImport"
+          @move-category="moveCategory"
+          @clean-duplicates="handleCleanDuplicates"
         />
 
         <!-- 用户管理 (已组件化) -->
@@ -57,9 +63,9 @@
               <UserTable 
                 :users="users" 
                 @update-level="handleUpdateUserLevel" 
-                @add-user="handleAddUser"
-                @delete-user="handleDeleteUser"
-                @update-user="handleUpdateUser"
+                @add="handleAddUser"
+                @delete="handleDeleteUser"
+                @update="handleUpdateUser"
               />
            </el-card>
         </div>
@@ -68,7 +74,7 @@
         <div v-if="currentView === 'profile'" class="profile-view fade-in">
            <el-card shadow="never" class="glass-card" style="max-width: 600px;">
               <template #header><span>{{ t('profile.settings') }}</span></template>
-              <ProfileSettings :username="adminStore.user?.login || ''" :level="adminStore.user?.level || 0" @update="handleUpdateProfile" />
+              <ProfileSettings :username="adminStore.user?.login || ''" :level="adminStore.user?.level || 0" @update-profile="handleUpdateProfile" />
            </el-card>
         </div>
 
@@ -98,45 +104,69 @@
         <div v-if="currentView === 'stats'" class="stats-view fade-in">
            <StatsDashboard />
         </div>
+        
+        <!-- 回收站 -->
+        <div v-if="currentView === 'recycle'" class="recycle-view fade-in">
+           <el-card shadow="never" class="glass-card">
+              <RecycleBin />
+           </el-card>
+        </div>
       </div>
     </main>
 
     <!-- 弹窗组件 -->
-    <CategoryDialog v-model="categoryDialogVisible" :form="categoryForm" :is-edit="isEdit" @save="saveCategory" />
-    <SiteDialog v-model="itemDialogVisible" :form="itemForm" :categories="categories" :is-edit="isEdit" @save="saveItem" />
+    <CategoryDialog 
+      v-model="categoryDialogVisible" 
+      v-model:form="categoryForm" 
+      :is-edit="isEdit" 
+      :saving="saving" 
+      @save="saveCategory" 
+    />
+    <SiteDialog 
+      v-model="itemDialogVisible" 
+      v-model:form="itemForm" 
+      :categories="categories" 
+      :is-edit="isEdit" 
+      :saving="saving" 
+      @save="saveItem" 
+    />
     <BookmarkImport v-model="showBookmarkImport" @import="handleBookmarkImport" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAdminStore } from '@/store/admin';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { DataAnalysis, User, Setting, UserFilled, List, Lock, TrendCharts } from '@element-plus/icons-vue';
+import { DataAnalysis, User, Setting, UserFilled, List, Lock, TrendCharts, Delete } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
 
-// Composables
-import { useAdminDashboard } from '@/composables/useAdminDashboard';
+// Store
+import { useDataStore } from '@/store/data';
+import { storeToRefs } from 'pinia';
+import { Category, Item } from '@/types';
 
-// Components
-import AdminSidebar from '@/components/admin/AdminSidebar.vue';
+// Components (Lazy Load for performance)
 import AdminHeader from '@/components/admin/AdminHeader.vue';
-import DataManager from '@/components/admin/DataManager.vue';
-import CategoryDialog from '@/components/CategoryDialog.vue';
-import SiteDialog from '@/components/SiteDialog.vue';
-import UserTable from '@/components/admin/UserTable.vue';
-import SystemSettings from '@/components/admin/SystemSettings.vue';
-import ProfileSettings from '@/components/admin/ProfileSettings.vue';
-import BookmarkImport from '@/components/admin/BookmarkImport.vue';
-import AuditLog from '@/components/admin/AuditLog.vue';
-import SessionManager from '@/components/admin/SessionManager.vue';
-import StatsDashboard from '@/components/admin/StatsDashboard.vue';
+import AdminSidebar from '@/components/admin/AdminSidebar.vue';
+
+const DataManager = defineAsyncComponent(() => import('@/components/admin/DataManager.vue'));
+const UserTable = defineAsyncComponent(() => import('@/components/admin/UserTable.vue'));
+const ProfileSettings = defineAsyncComponent(() => import('@/components/admin/ProfileSettings.vue'));
+const SystemSettings = defineAsyncComponent(() => import('@/components/admin/SystemSettings.vue'));
+const AuditLog = defineAsyncComponent(() => import('@/components/admin/AuditLog.vue'));
+const SessionManager = defineAsyncComponent(() => import('@/components/admin/SessionManager.vue'));
+const StatsDashboard = defineAsyncComponent(() => import('@/components/admin/StatsDashboard.vue'));
+const RecycleBin = defineAsyncComponent(() => import('@/components/admin/RecycleBin.vue'));
+const BookmarkImport = defineAsyncComponent(() => import('@/components/admin/BookmarkImport.vue'));
+const CategoryDialog = defineAsyncComponent(() => import('@/components/CategoryDialog.vue'));
+const SiteDialog = defineAsyncComponent(() => import('@/components/SiteDialog.vue'));
 
 const { t } = useI18n();
 const router = useRouter();
 const adminStore = useAdminStore();
-const currentView = ref('data');
+const currentView = ref('profile');
 const sidebarVisible = ref(false);
 const users = ref([]);
 const systemSettings = ref({});
@@ -144,8 +174,8 @@ const showBookmarkImport = ref(false);
 
 const menuItems = computed(() => {
   const items = [
-    { id: 'data', label: t('menu.dataManage'), icon: DataAnalysis },
     { id: 'profile', label: t('menu.profile'), icon: UserFilled },
+    { id: 'data', label: t('menu.dataManage'), icon: DataAnalysis },
     { id: 'sessions', label: t('menu.sessions'), icon: Lock },
   ];
   if (adminStore.user?.level === 3) {
@@ -153,6 +183,7 @@ const menuItems = computed(() => {
       { id: 'users', label: t('menu.users'), icon: User },
       { id: 'stats', label: t('menu.stats'), icon: TrendCharts },
       { id: 'audit', label: t('menu.audit'), icon: List },
+      { id: 'recycle', label: t('menu.recycle'), icon: Delete },
       { id: 'settings', label: t('menu.settings'), icon: Setting }
     );
   }
@@ -163,14 +194,144 @@ const currentViewLabel = computed(() => {
   return menuItems.value.find(m => m.id === currentView.value)?.label || t('admin.dashboard');
 });
 
-const {
-  loading, saving, activeTab, categories, items, filterCategory,
-  searchKeyword, categoryDialogVisible, itemDialogVisible, isEdit,
-  categoryForm, itemForm, filteredItems, loadData, handleSave,
-  handleAddCategory, handleEditCategory, handleDeleteCategory, saveCategory,
-  handleAddItem, handleEditItem, handleDeleteItem, saveItem,
-  handleBatchDelete, handleBatchMove, saveDataSync
-} = useAdminDashboard();
+const dataStore = useDataStore();
+const { categories, items, loading, saving } = storeToRefs(dataStore);
+
+// 兼容 DataManager @save 事件
+const handleSave = async () => {
+    await dataStore.loadData();
+};
+
+// Local State for Dialogs
+const categoryDialogVisible = ref(false);
+const itemDialogVisible = ref(false);
+const isEdit = ref(false);
+const categoryForm = ref<Partial<Category>>({});
+const itemForm = ref<Partial<Item>>({});
+
+// Filter State
+const searchKeyword = ref('');
+const activeTab = ref('categories');
+const filterCategory = ref<number>(0);
+
+// Computed
+const filteredItems = computed(() => {
+  let result = items.value;
+  if (filterCategory.value) {
+    result = result.filter(i => i.categoryId === filterCategory.value);
+  }
+  if (searchKeyword.value) {
+    const k = searchKeyword.value.toLowerCase();
+    result = result.filter(i => i.name.toLowerCase().includes(k) || i.url.toLowerCase().includes(k));
+  }
+  return result;
+});
+
+// Actions Wrappers
+const loadData = () => dataStore.loadData();
+
+const handleAddCategory = () => {
+  isEdit.value = false;
+  categoryForm.value = { name: '', level: 0 };
+  categoryDialogVisible.value = true;
+};
+
+const handleEditCategory = (row: Category) => {
+  isEdit.value = true;
+  categoryForm.value = { ...row };
+  categoryDialogVisible.value = true;
+};
+
+const saveCategory = async (/* categoryForm is v-model bound */) => {
+  if (!categoryForm.value.name) return ElMessage.warning(t('category.placeholderName'));
+  try {
+    if (isEdit.value) {
+      await dataStore.updateCategory(categoryForm.value);
+      ElMessage.success(t('category.updateSuccess'));
+    } else {
+      await dataStore.addCategory(categoryForm.value);
+      ElMessage.success(t('category.addSuccess'));
+    }
+    categoryDialogVisible.value = false;
+  } catch (e) {
+    // Error handled in store
+  }
+};
+
+const handleDeleteCategory = async (row: Category) => {
+  try {
+    await ElMessageBox.confirm(t('category.deleteConfirm'), t('common.delete'), { type: 'warning' });
+    await dataStore.deleteCategory(row.id);
+    ElMessage.success(t('category.deleteSuccess'));
+  } catch (e) { /* cancel */ }
+};
+
+const moveCategory = async (index: number, direction: 'up' | 'down') => {
+    const target = direction === 'up' ? index - 1 : index + 1;
+    await dataStore.moveCategory(index, target);
+};
+
+const handleAddItem = () => {
+  isEdit.value = false;
+  itemForm.value = {
+    name: '', url: '', description: '',
+    categoryId: categories.value[0]?.id || 0,
+    pinned: false, level: 0, tags: []
+  };
+  itemDialogVisible.value = true;
+};
+
+const handleEditItem = (row: Item) => {
+  isEdit.value = true;
+  // Deep copy to break reference
+  itemForm.value = JSON.parse(JSON.stringify(row));
+  itemDialogVisible.value = true;
+};
+
+const saveItem = async (incomingData?: Partial<Item>) => {
+    // 兼容旧的事件传参方式，优先使用传入数据
+    const payload = incomingData && incomingData.name ? incomingData : itemForm.value;
+    
+    if (!payload.name || !payload.url) return ElMessage.warning(t('common.tips'));
+
+    try {
+        if (isEdit.value) {
+            await dataStore.updateItem(payload);
+            ElMessage.success(t('admin.updateSuccess'));
+        } else {
+            await dataStore.addItem(payload);
+            ElMessage.success(t('admin.addSuccess'));
+        }
+        itemDialogVisible.value = false;
+    } catch (e) {
+        // Error handled in store
+    }
+};
+
+const handleDeleteItem = async (row: Item) => {
+  try {
+    await ElMessageBox.confirm(t('table.deleteConfirm'), t('common.delete'), { type: 'warning' });
+    await dataStore.deleteItem(row.id);
+    ElMessage.success(t('table.deleteSuccess'));
+  } catch (e) { /* cancel */ }
+};
+
+const handleBatchDelete = async (ids: number[]) => {
+    await dataStore.batchDeleteItems(ids);
+    ElMessage.success(t('table.deleteSuccess'));
+};
+
+const handleBatchMove = async (ids: number[], categoryId: number) => {
+    await dataStore.batchMoveItems(ids, categoryId);
+    ElMessage.success(t('table.moveSuccess'));
+};
+
+// 兼容导入逻辑中对 reload 的需求
+const saveDataSync = async () => {
+    // Store 的 action 每一步都会 sync，这里可以调用 loadData 确保一致，或者直接不做
+    // 为了兼容旧逻辑（导入后刷新），我们重新 load
+    await dataStore.loadData();
+};
 
 // Sidebar logic
 const handleMenuClick = (id: string) => {
@@ -244,14 +405,24 @@ const handleSaveSettings = async (newSettings: any) => {
 };
 
 const handleUpdateProfile = async (profileData: any) => {
-  const res = await adminStore.updateProfile(profileData);
-  if (res.success) ElMessage.success(t('admin.updateSuccess'));
+  try {
+    const res = await adminStore.updateProfile(profileData);
+    if (res.success) {
+      ElMessage.success(t('admin.updateSuccess'));
+    } else {
+      const errorMsg = res.error === 'ERR_PASSWORD_WEAK' ? t('auth.passwordWeak') : (res.error || t('common.operationFailed'));
+      ElMessage.error(errorMsg);
+    }
+  } catch (e: any) {
+    ElMessage.error(e.message || t('common.operationFailed'));
+  }
 };
 
 // Responsive
 const isMobile = ref(false);
 const checkMobile = () => { isMobile.value = window.innerWidth <= 992; };
 onMounted(() => {
+
   checkMobile();
   window.addEventListener('resize', checkMobile);
   if (!adminStore.isAuthenticated) { router.push('/'); return; }
@@ -265,12 +436,12 @@ const handleJsonImport = (content: any) => {
     return;
   }
   
-  let maxCatId = categories.value.reduce((max, cat) => Math.max(max, cat.id), 0);
-  let maxItemId = items.value.reduce((max, item) => Math.max(max, item.id), 0);
+  let maxCatId = categories.value.reduce((max: number, cat: any) => Math.max(max, cat.id), 0);
+  let maxItemId = items.value.reduce((max: number, item: any) => Math.max(max, item.id), 0);
   
   const catMapping: Record<number, number> = {};
   const currentCatNames: Record<string, number> = {};
-  categories.value.forEach(cat => { currentCatNames[cat.name] = cat.id; });
+  categories.value.forEach((cat: any) => { currentCatNames[cat.name] = cat.id; });
   
   // 1. 合并分类
   content.categories.forEach((cat: any) => {
@@ -288,7 +459,7 @@ const handleJsonImport = (content: any) => {
   // 2. 合并网站 (按 URL 去重)
   let addedCount = 0;
   content.items.forEach((item: any) => {
-    const exists = items.value.some(i => i.url === item.url);
+    const exists = items.value.some((i: any) => i.url === item.url);
     if (!exists) {
       maxItemId++;
       const newItem = { 
@@ -307,11 +478,11 @@ const handleJsonImport = (content: any) => {
 
 // 浏览器书签导入处理
 const handleBookmarkImport = (data: { categories: string[]; items: any[] }) => {
-  let maxCatId = categories.value.reduce((max, cat) => Math.max(max, cat.id), 0);
-  let maxItemId = items.value.reduce((max, item) => Math.max(max, item.id), 0);
+  let maxCatId = categories.value.reduce((max: number, cat: any) => Math.max(max, cat.id), 0);
+  let maxItemId = items.value.reduce((max: number, item: any) => Math.max(max, item.id), 0);
   
   const catNameToId: Record<string, number> = {};
-  categories.value.forEach(cat => { catNameToId[cat.name] = cat.id; });
+  categories.value.forEach((cat: any) => { catNameToId[cat.name] = cat.id; });
   
   data.categories.forEach(catName => {
     if (!catNameToId[catName]) {
@@ -322,7 +493,7 @@ const handleBookmarkImport = (data: { categories: string[]; items: any[] }) => {
   });
   
   data.items.forEach((item: any) => {
-    const exists = items.value.some(i => i.url === item.url);
+    const exists = items.value.some((i: any) => i.url === item.url);
     if (!exists) {
       maxItemId++;
       items.value.push({
@@ -331,7 +502,6 @@ const handleBookmarkImport = (data: { categories: string[]; items: any[] }) => {
         url: item.url,
         description: item.description || '',
         categoryId: catNameToId[item.categoryName] || categories.value[0]?.id || 1,
-        private: false,
         pinned: false,
         level: 0,
         tags: []
@@ -340,6 +510,71 @@ const handleBookmarkImport = (data: { categories: string[]; items: any[] }) => {
   });
   ElMessage.success(`导入成功，现已自动同步并生效`);
   saveDataSync(); // 导入后自动静默同步
+};
+const normalizeUrl = (url: string) => {
+  try {
+    const u = new URL(url);
+    // Remove trailing slash
+    let p = u.pathname;
+    if (p.endsWith('/') && p.length > 1) p = p.slice(0, -1);
+    return u.origin + p + u.search;
+  } catch (e) {
+    // Fallback for invalid URLs: just trim and lowercase
+    let s = url.trim().toLowerCase();
+    if (s.endsWith('/')) s = s.slice(0, -1);
+    return s;
+  }
+};
+
+const handleCleanDuplicates = async () => {
+    // 1. Group items by normalized URL
+    const groups: Record<string, Item[]> = {};
+    items.value.forEach(item => {
+        const key = normalizeUrl(item.url);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+    });
+
+    // 2. Identify duplicates
+    const duplicates: Item[] = [];
+    Object.values(groups).forEach(group => {
+        if (group.length > 1) {
+            // Sort by clickCount desc, then ID asc (older first if clicks same)
+            group.sort((a, b) => {
+                const clicksA = a.clickCount || 0;
+                const clicksB = b.clickCount || 0;
+                if (clicksA !== clicksB) return clicksB - clicksA;
+                return a.id - b.id;
+            });
+            // Keep the first one, mark others for deletion
+            for (let i = 1; i < group.length; i++) {
+                duplicates.push(group[i]);
+            }
+        }
+    });
+
+    if (duplicates.length === 0) {
+        ElMessage.info(t('manage.noDuplicates'));
+        return;
+    }
+
+    try {
+        await ElMessageBox.confirm(
+            t('manage.cleanConfirm'), 
+            t('manage.cleanDuplicates'), 
+            { 
+                confirmButtonText: t('common.confirm'),
+                cancelButtonText: t('common.cancel'),
+                type: 'warning' 
+            }
+        );
+
+        await dataStore.batchDeleteItems(duplicates.map(i => i.id));
+        ElMessage.success(t('manage.cleanSuccess', { count: duplicates.length }));
+        saveDataSync();
+    } catch (e) {
+        // Cancelled
+    }
 };
 </script>
 

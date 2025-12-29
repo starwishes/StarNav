@@ -1,8 +1,9 @@
 import bcrypt from 'bcryptjs';
 import { db } from './db.js';
 import { ACCOUNTS_PATH, SETTINGS_PATH, getUserDataPath } from '../config/index.js';
-import { logger } from './db.js'; // 之前 db.js 里整合了 logger
+import { logger } from './db.js';
 import fs from 'fs';
+import { USER_LEVEL } from '../../common/constants.js';
 
 /**
  * 账户管理服务
@@ -35,7 +36,7 @@ class AccountService {
         const newUser = {
             username,
             password: hashedPassword,
-            level: level || settings.defaultUserLevel || 1,
+            level: level || settings.defaultUserLevel || USER_LEVEL.USER,
             createdAt: new Date().toISOString()
         };
         this.accounts.push(newUser);

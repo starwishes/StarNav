@@ -22,6 +22,9 @@
     </nav>
 
     <div class="sidebar-footer">
+      <el-button class="extension-btn" type="primary" plain @click="downloadExtension">
+        <el-icon><Download /></el-icon> {{ t('menu.extension') }}
+      </el-button>
       <div class="user-block glass-card">
         <el-avatar :size="32" :src="adminStore.user?.avatar_url">{{ adminStore.user?.login?.charAt(0).toUpperCase() }}</el-avatar>
         <div class="user-info">
@@ -39,8 +42,9 @@
 <script setup lang="ts">
 import { useAdminStore } from '@/store/admin';
 import { useMainStore } from '@/store';
-import { Close, SwitchButton } from '@element-plus/icons-vue';
+import { Close, SwitchButton, Download } from '@element-plus/icons-vue';
 import { useI18n } from 'vue-i18n';
+import { ElMessage } from 'element-plus';
 
 const { t } = useI18n();
 
@@ -66,6 +70,44 @@ const getMenuKey = (id: string) => {
   // Map 'data' to 'dataManage' because key in locale is dataManage
   if (id === 'data') return 'dataManage';
   return id;
+}
+
+// 下载预配置的浏览器插件
+const downloadExtension = async () => {
+  try {
+    const token = adminStore.token;
+    if (!token) {
+      ElMessage.error(t('notification.loginRequired'));
+      return;
+    }
+    
+    // 创建隐藏的 a 标签触发下载
+    const link = document.createElement('a');
+    link.href = `/api/extension/download`;
+    link.setAttribute('download', 'starnav-extension.zip');
+    
+    // 需要通过 fetch 带上 Authorization header
+    const response = await fetch('/api/extension/download', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Download failed');
+    }
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    ElMessage.success(t('notification.downloadSuccess'));
+  } catch (error) {
+    console.error('Download extension error:', error);
+    ElMessage.error(t('notification.downloadFailed'));
+  }
 }
 </script>
 
@@ -151,6 +193,10 @@ const getMenuKey = (id: string) => {
     flex-direction: column;
     gap: 16px;
     
+    .extension-btn { 
+      width: 100%; 
+      border-radius: 10px; 
+    }
     .user-block {
       display: flex;
       align-items: center;

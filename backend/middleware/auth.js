@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config/index.js';
 import { logger } from '../services/db.js';
+import { USER_LEVEL } from '../../common/constants.js';
 
 export const authenticate = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -19,4 +20,11 @@ export const authenticate = (req, res, next) => {
         logger.error('无效令牌', { error: err.message });
         res.status(401).json({ error: '无效令牌' });
     }
+};
+
+export const requireAdmin = (req, res, next) => {
+    if (!req.user || req.user.level < USER_LEVEL.ADMIN) {
+        return res.status(403).json({ error: '权限不足' });
+    }
+    next();
 };

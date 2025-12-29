@@ -8,7 +8,9 @@ import Anchor from '@/components/index/Anchor.vue'
 import Site from '@/components/index/Site.vue'
 import Sidebar from '@/components/index/Sidebar.vue'
 import Footer from '@/components/index/Footer.vue'
+import LeftDrawer from '@/components/index/LeftDrawer.vue'
 
+const siteRef = ref<InstanceType<typeof Site> | null>(null)
 const store = useMainStore()
 const isReady = ref(false)
 const siteLoaded = ref(false)
@@ -53,11 +55,12 @@ onMounted(async () => {
       <main ref="homeContent" class="home-content">
         <Search></Search>
         <Anchor></Anchor>
-        <Site @loaded="onSiteLoaded"></Site>
+        <Site ref="siteRef" @loaded="onSiteLoaded"></Site>
         <Footer></Footer>
-        <Sidebar></Sidebar>
         <!-- 空内容展示 -->
       </main>
+      <Sidebar @add="() => siteRef?.handleAddItem()"></Sidebar>
+      <LeftDrawer></LeftDrawer>
     </section>
   </div>
 </template>

@@ -17,6 +17,8 @@
         "noData": "暂无数据",
         "time": "时间",
         "action": "操作",
+        "deleteSuccess": "删除成功",
+        "batchDeleteSuccess": "批量删除成功",
         "username": "用户名",
         "ip": "IP 地址",
         "status": "状态",
@@ -38,7 +40,9 @@
         "users": "用户管理",
         "stats": "访问统计",
         "audit": "审计日志",
-        "settings": "系统设置"
+        "recycle": "回收站",
+        "settings": "系统设置",
+        "extension": "下载浏览器插件"
     },
     "auth": {
         "username": "用户名",
@@ -46,6 +50,7 @@
         "loginTitle": "登录",
         "registerSuccess": "注册成功",
         "passwordTip": "密码需至少8位，包含大小写字母、数字和符号",
+        "passwordWeak": "密码必须至少8位，包含大小写字母、数字和特殊符号",
         "loginNotice": "请输入账号密码访问",
         "registerNotice": "创建一个新账户以保存自己的导航数据",
         "loginSuccess": "登录成功",
@@ -96,6 +101,8 @@
         "siteNameTip": "自定义网站名称，留空显示“星语导航”"
     },
     "stats": {
+        "accessOverview": "访问概览",
+        "contentOverview": "内容概览",
         "totalClicks": "总点击量",
         "totalBookmarks": "书签总数",
         "totalCategories": "分类数量",
@@ -107,7 +114,14 @@
         "name": "名称",
         "clickCount": "点击量",
         "category": "分类",
-        "lastVisited": "最后访问"
+        "lastVisited": "最后访问",
+        "todayPV": "今日访问 (PV)",
+        "todayUV": "今日访客 (UV)",
+        "totalPV": "总访问量",
+        "totalUV": "总访客数",
+        "visitTrend": "访问趋势 (近7日)",
+        "osDistribution": "操作系统分布",
+        "browserDistribution": "浏览器分布"
     },
     "users": {
         "addUser": "添加新用户",
@@ -150,6 +164,10 @@
         "exportJson": "导出 JSON",
         "importJson": "导入 JSON",
         "importBookmark": "导入浏览器书签",
+        "cleanDuplicates": "清理重复",
+        "cleanSuccess": "成功清理 {count} 个重复书签",
+        "noDuplicates": "未发现重复书签",
+        "cleanConfirm": "确定要清理重复书签吗？这将保留访问量最高的一个，删除其余重复项。",
         "addCategory": "添加分类",
         "addSite": "添加网站",
         "searchPlaceholder": "搜索...",
@@ -166,8 +184,6 @@
         "visibility": "可见性",
         "siteCount": "网站数量",
         "action": "操作",
-        "public": "公开",
-        "private": "私有",
         "siteName": "网站名称",
         "siteUrl": "网站地址",
         "category": "所属分类",
@@ -248,9 +264,6 @@
         "deleteConfirm": "确定要删除这个分类吗？",
         "id": "分类 ID",
         "placeholderName": "请输入分类名称",
-        "hide": "隐藏分类",
-        "private": "仅登录可见",
-        "public": "公开",
         "permission": "通过权限",
         "permissionPlaceholder": "请选择最小可见等级",
         "updateSuccess": "更新成功",
@@ -265,7 +278,6 @@
         "url": "网站地址",
         "description": "网站描述",
         "category": "所属分类",
-        "private": "私有书签",
         "permission": "访问权限",
         "tags": "标签",
         "pinned": "置顶显示",
@@ -281,15 +293,27 @@
     },
     "notification": {
         "dataLoaded": "数据加载成功",
-        "siteName": "星语导航"
+        "siteName": "星语导航",
+        "downloadSuccess": "插件下载成功",
+        "downloadFailed": "插件下载失败",
+        "loginRequired": "请先登录"
     },
     "context": {
         "pin": "置顶",
         "unpin": "取消置顶",
         "move": "移动位置",
         "moveUp": "上移分类",
-        "moveDown": "下移分类",
-        "hide": "隐藏分类 (仅登录可见)",
-        "show": "取消隐藏 (设为公开)"
+        "moveDown": "下移分类"
+    },
+    "recycle": {
+        "title": "回收站",
+        "empty": "回收站为空",
+        "emptyTrash": "清空回收站",
+        "restore": "恢复",
+        "restoreSuccess": "恢复成功",
+        "deletedAt": "删除时间",
+        "permanentDeleteConfirm": "永久删除后无法恢复，确定吗？",
+        "emptyConfirm": "确定要清空回收站吗？此操作不可撤销！",
+        "emptySuccess": "回收站已清空"
     }
 }
