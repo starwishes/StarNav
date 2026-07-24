@@ -1,0 +1,54 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+coverage/
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.jwt_secret
+.env
+.env.local
+.env.development
+.env.production
+
+# Runtime data (keep data/data.json as example)
+data/*
+!data/data.json
+
+# Debug files
+server_dump.txt
+.codex
+*.bak
+*.backup
+*.orig
+
+# Runtime config data (not source code)
+frontend/config/*.json
+frontend/config/.jwt_secret
+
+# Playwright E2E tests
+/test-results/
+/playwright-report/
+/playwright/.cache/
+test-data/
+.ai_memory/
+browser-extension/config.js
+browser-extension/dist/

@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: true
+      HUSKY: 0
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || github.event.workflow_run.head_sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Resolve release version
+        id: version
+        run: |
+          VERSION="$(node --input-type=module -e "import fs from 'node:fs'; const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); const version = pkg.version; if (!/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) { console.error(\`Invalid package.json version: ${version}\`); process.exit(1); } process.stdout.write(version);")"
+          TAG="v${VERSION}"
+          TARGET_SHA="$(git rev-parse HEAD)"
+          SOURCE_REF="${TAG}"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            WORKFLOW_REF="${{ github.ref_name }}"
+          else
+            WORKFLOW_REF="${{ github.event.workflow_run.head_branch }}"
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "target_sha=${TARGET_SHA}" >> "$GITHUB_OUTPUT"
+          echo "source_ref=${SOURCE_REF}" >> "$GITHUB_OUTPUT"
+          echo "workflow_ref=${WORKFLOW_REF}" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether release already exists
+        id: existing
+        run: |
+          if gh release view "${{ steps.version.outputs.tag }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check whether Docker publish already succeeded
+        id: publish
+        run: |
+          RUN_NAME="Docker Publish ${{ steps.version.outputs.tag }}"
+          SUCCESS_COUNT="$(gh run list \
+            --repo "${{ github.repository }}" \
+            --workflow "docker-publish.yml" \
+            --limit 100 \
+            --json displayTitle,conclusion \
+            --jq '[.[] | select(.displayTitle == "'"${RUN_NAME}"'" and .conclusion == "success")] | length')"
+
+          if [ "${SUCCESS_COUNT}" -gt 0 ]; then
+            echo "needs_publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub release from package version
+        if: steps.existing.outputs.exists != 'true'
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --target "${{ steps.version.outputs.target_sha }}" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --generate-notes
+
+      - name: Trigger Docker publish workflow
+        if: steps.existing.outputs.exists != 'true' || steps.publish.outputs.needs_publish == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          gh workflow run docker-publish.yml \
+            --repo "${{ github.repository }}" \
+            --ref "${{ steps.version.outputs.workflow_ref }}" \
+            -f version="${{ steps.version.outputs.version }}" \
+            -f source_ref="${{ steps.version.outputs.source_ref }}"

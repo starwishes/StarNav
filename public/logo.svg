@@ -1,0 +1,20 @@
+<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logo_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <!-- 主星形 -->
+  <path d="M50 10 L58 42 L90 50 L58 58 L50 90 L42 58 L10 50 L42 42 Z" fill="url(#logo_grad)" filter="url(#glow)" />
+  <!-- 中心核心 -->
+  <circle cx="50" cy="50" r="8" fill="white" opacity="0.9" />
+  <!-- 装饰光点 -->
+  <circle cx="25" cy="25" r="2" fill="white" opacity="0.6" />
+  <circle cx="75" cy="75" r="2" fill="white" opacity="0.6" />
+  <circle cx="75" cy="25" r="1.5" fill="white" opacity="0.4" />
+</svg>

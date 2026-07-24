@@ -1,0 +1,103 @@
+.audit-log {
+  --audit-button-bg: rgba(255, 255, 255, 0.92);
+  --audit-button-border: rgba(148, 163, 184, 0.22);
+  --audit-button-text: var(--gray-700);
+  --audit-danger-bg: rgba(239, 68, 68, 0.12);
+  --audit-danger-border: rgba(239, 68, 68, 0.2);
+  --audit-danger-text: #b91c1c;
+  --audit-loading-bg: rgba(255, 255, 255, 0.62);
+  color: var(--ui-text-primary, #0f172a);
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+  }
+}
+
+:global(:root[theme-mode='dark'] .audit-log) {
+  --audit-button-bg: rgba(15, 23, 42, 0.92);
+  --audit-button-border: rgba(148, 163, 184, 0.24);
+  --audit-button-text: rgba(226, 232, 240, 0.88);
+  --audit-danger-bg: rgba(239, 68, 68, 0.18);
+  --audit-danger-border: rgba(248, 113, 113, 0.22);
+  --audit-danger-text: #fca5a5;
+  --audit-loading-bg: rgba(2, 6, 23, 0.56);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.table-button {
+  border: 1px solid var(--audit-button-border);
+  border-radius: 999px;
+  background: var(--audit-button-bg);
+  color: var(--audit-button-text);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+.table-button.danger {
+  background: var(--audit-danger-bg);
+  border-color: var(--audit-danger-border);
+  color: var(--audit-danger-text);
+}
+
+.sn-table-shell {
+  position: relative;
+}
+
+.table-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--audit-loading-bg);
+  backdrop-filter: blur(2px);
+}
+
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(var(--ui-theme-rgb), 0.15);
+  border-top-color: rgb(var(--ui-theme-rgb));
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

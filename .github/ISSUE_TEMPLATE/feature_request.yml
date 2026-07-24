@@ -1,0 +1,71 @@
+name: Feature request
+description: Propose a product, engineering, or operational improvement.
+title: '[Feature] '
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Target area
+      options:
+        - Backend API / service
+        - Frontend UI / state
+        - Browser extension
+        - Database / migration / runtime init
+        - Auth / session / permission
+        - Ops / Docker / deploy / release
+        - Documentation / developer experience
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What concrete problem, limitation, or repeated pain does this solve?
+      placeholder: Describe the current gap first.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the behavior, UX, API, or workflow you want.
+      placeholder: Describe the desired change.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: List rejected approaches or current workarounds if any.
+      placeholder: Optional but useful for tradeoff discussion.
+    validations:
+      required: false
+  - type: textarea
+    id: impact
+    attributes:
+      label: Contract / ops impact
+      description: Note any API, data, auth, deployment, or release implications.
+      placeholder: |
+        - API:
+        - Data / migration:
+        - Auth / permission:
+        - Ops / release:
+    validations:
+      required: false
+  - type: textarea
+    id: validation
+    attributes:
+      label: Acceptance / validation
+      description: How should maintainers verify this is complete?
+      placeholder: Tests, smoke checks, docs updates, or observable outcomes.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submit checklist
+      options:
+        - label: I searched existing issues and did not find a duplicate request.
+          required: true
+        - label: This request describes a concrete problem, not only a vague preference.
+          required: true

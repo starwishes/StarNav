@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=400, initial-scale=1.0" />
+  <title>StarNav</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+
+<body>
+  <div class="popup-container">
+    <header class="popup-header">
+      <div class="logo">
+        <span class="logo-icon">✦</span>
+        <div class="logo-copy">
+          <span class="logo-text">StarNav</span>
+          <span class="logo-meta">Quick capture</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="openSite" class="icon-btn" title="Open StarNav">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+          </svg>
+        </button>
+        <button id="openSettings" class="icon-btn" data-open-settings title="Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z">
+            </path>
+          </svg>
+        </button>
+        <button id="i18nToggle" class="icon-btn lang-toggle-btn" title="Switch Language">
+          <span class="main-char">A</span>
+          <span class="badge-char">文</span>
+        </button>
+      </div>
+    </header>
+
+    <section id="notConnected" class="not-connected" style="display: none">
+      <div class="not-connected-card">
+        <div class="not-connected-eyebrow">StarNav</div>
+        <h1 class="not-connected-title">StarNav</h1>
+        <p class="not-connected-copy" data-i18n="notConnectedTip">Please configure the server URL first</p>
+        <button class="primary-btn" type="button" data-open-settings data-i18n="goToSettings">Go to Settings</button>
+      </div>
+    </section>
+
+    <main id="mainContent" class="popup-main">
+      <section class="add-section" id="addSection">
+        <button id="addCurrentBtn" class="add-btn" data-i18n="addCurrent">➕ Add Current Page</button>
+      </section>
+
+      <div class="search-container">
+        <input type="text" id="searchInput" class="search-input" />
+        <button id="clearSearch" class="clear-btn" style="display: none">×</button>
+      </div>
+
+      <div id="searchResults" class="bookmark-list" style="display: none"></div>
+
+      <section id="bookmarkList" class="bookmark-list">
+        <div class="section-title" data-i18n="recentVisit">Recent visits</div>
+        <div id="recentBookmarks" class="bookmark-items"></div>
+      </section>
+
+      <section id="addForm" class="add-form" style="display: none">
+        <div class="form-header">
+          <span data-i18n="addBookmark">Add Bookmark</span>
+          <button id="cancelAdd" class="icon-btn">×</button>
+        </div>
+        <div id="duplicateWarning" class="warning-alert" style="display: none">
+          ⚠️ <span data-i18n="urlStored">URL already stored:</span><span id="duplicateName"></span>
+        </div>
+        <div class="form-group">
+          <label data-i18n="name">Name</label>
+          <input type="text" id="bookmarkName" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label data-i18n="url">URL</label>
+          <input type="text" id="bookmarkUrl" class="form-input" readonly />
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label data-i18n="category">Category</label>
+            <div class="select-with-add">
+              <select id="bookmarkCategory" class="form-select"></select>
+              <button id="addCategoryBtn" class="add-category-btn" title="New Category">+</button>
+            </div>
+          </div>
+          <div class="form-group flex-1">
+            <label data-i18n="level">Visibility</label>
+            <select id="bookmarkLevel" class="form-select">
+              <option value="0" data-i18n="level0">Guest</option>
+              <option value="1" data-i18n="level1">User</option>
+              <option value="2" data-i18n="level2">VIP</option>
+              <option value="3" data-i18n="level3">Admin Only</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label data-i18n="description">Description (Optional)</label>
+          <input type="text" id="bookmarkDesc" class="form-input" />
+        </div>
+        <div class="form-actions">
+          <button id="submitBookmark" class="primary-btn" data-i18n="save">Save</button>
+        </div>
+      </section>
+
+      <div id="categoryModal" class="modal" style="display: none">
+        <div class="modal-content">
+          <div class="form-header">
+            <span data-i18n="newCategory">New Category</span>
+            <button id="closeCategoryModal" class="icon-btn">×</button>
+          </div>
+          <div class="form-group">
+            <label data-i18n="parentCategory">Parent Category</label>
+            <select id="newCategoryParent" class="form-select">
+              <option value="" data-i18n="rootCategory">None (Root)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label data-i18n="categoryName">Category Name</label>
+            <input type="text" id="newCategoryName" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label data-i18n="level">Visibility</label>
+            <select id="newCategoryLevel" class="form-select">
+              <option value="0" data-i18n="level0">Guest</option>
+              <option value="1" data-i18n="level1">User</option>
+              <option value="2" data-i18n="level2">VIP</option>
+              <option value="3" data-i18n="level3">Admin Only</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button id="submitCategory" class="primary-btn" data-i18n="create">Create</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div id="loading" class="loading-overlay" style="display: none">
+      <div class="spinner"></div>
+    </div>
+    <div id="toast" class="toast" style="display: none"></div>
+  </div>
+  <script type="module" src="popup.js"></script>
+</body>
+
+</html>

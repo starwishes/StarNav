@@ -1,0 +1,3 @@
+# Keep shell scripts executable on Windows checkouts (Git Bash / WSL / CI).
+*.sh text eol=lf
+docker-entrypoint.sh text eol=lf

@@ -1,0 +1,40 @@
+services:
+  nav:
+    image: ${STARNAV_IMAGE:-ghcr.io/starwishes/starnav}:${STARNAV_TAG:-latest}
+    container_name: starnav
+    env_file:
+      - .env
+    ports:
+      - '${STARNAV_PORT:-8080}:8080'
+    volumes:
+      - ./data:/app/data
+    environment:
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      # 下列为仓库示例默认值，仅便本地首启；部署前请更换（在 .env 覆盖）
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-UkTm7hXOUp27pbRFsY88GoS8}
+      JWT_SECRET: ${JWT_SECRET:-rucL6_4F8NDlKvQ0WBUPhbvos9xjIOoYQd65i-4HJcs83FsM6Ufr1RqeImf9NzAn}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      LOG_LEVEL: ${LOG_LEVEL:-3}
+      NODE_ENV: production
+      PORT: 8080
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:8080/api/health').then((res)=>process.exit(res.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: always

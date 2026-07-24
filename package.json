@@ -1,0 +1,173 @@
+{
+  "name": "starnav",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=10"
+  },
+  "overrides": {
+    "body-parser": "^2.3.0",
+    "qs": "6.15.3",
+    "glob": {
+      "minimatch": "9.0.9"
+    },
+    "js-beautify": {
+      "editorconfig": "1.0.7",
+      "js-cookie": "3.0.8"
+    },
+    "minimatch@10": {
+      "brace-expansion": "5.0.7"
+    },
+    "minimatch@9": {
+      "brace-expansion": "2.1.2"
+    },
+    "minimatch@5": {
+      "brace-expansion": "2.1.2"
+    },
+    "brace-expansion@2": "2.1.2",
+    "brace-expansion@5": "5.0.7",
+    "readdir-glob": {
+      "minimatch": "5.1.9"
+    },
+    "@rollup/plugin-terser": {
+      "serialize-javascript": "7.0.5"
+    },
+    "swagger-parser": {
+      "@apidevtools/swagger-parser": "12.1.0"
+    },
+    "swagger-jsdoc": {
+      "glob": "^10.4.5",
+      "yaml": "2.8.3"
+    },
+    "@babel/preset-env": {
+      "@babel/plugin-transform-modules-systemjs": "7.29.4"
+    },
+    "@babel/core": "7.29.7",
+    "ajv": {
+      "fast-uri": "3.1.4"
+    },
+    "fast-uri": "3.1.4",
+    "form-data": "4.0.6",
+    "immutable": "5.1.9",
+    "js-cookie": "3.0.8",
+    "js-yaml": "4.3.0",
+    "undici": "7.28.0",
+    "vite-plugin-pwa": {
+      "workbox-build": "7.4.1"
+    },
+    "tar": "^7.5.4"
+  },
+  "scripts": {
+    "dev": "vite --mode dev --open",
+    "serve": "tsx server.ts",
+    "build": "vite build --mode prod && npm run openapi:generate",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "typecheck:web": "vue-tsc --noEmit",
+    "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:fast": "vitest run --exclude tests/integration/** --exclude tests/smoke/runtime.smoke.test.js",
+    "test:integration": "vitest run tests/integration",
+    "test:smoke": "vitest run tests/smoke/runtime.smoke.test.js",
+    "test:smoke:app": "vitest run tests/smoke/app.smoke.test.js",
+    "test:smoke:runtime": "vitest run tests/smoke/runtime.smoke.test.js",
+    "test:browser:web": "sh scripts/quality/browser-regression.sh",
+    "test:browser:extension": "PLAYWRIGHT_ENTRYPOINT=scripts/quality/browser-extension-e2e.mjs sh scripts/quality/browser-regression.sh",
+    "test:browser": "npm run test:browser:web",
+    "test:browser:all": "npm run test:browser:web && SKIP_BUILD=1 npm run test:browser:extension",
+    "test:full": "vitest run",
+    "test:coverage": "vitest run tests/server tests/web tests/shared tests/extension tests/integration tests/smoke/app.smoke.test.js --coverage",
+    "test:stats": "node scripts/quality/test-stats.js",
+    "test:performance:bookmarks": "tsx src/server/tools/runBookmarksPerformanceTest.ts",
+    "test:performance:bookmarks:mixed": "tsx src/server/tools/runBookmarksPerformanceTest.ts tests/performance/bookmarks-mixed-load.js",
+    "audit:prod": "npm audit --omit=dev",
+    "audit:dev": "npm audit",
+    "audit:all": "npm audit",
+    "openapi:generate": "tsx scripts/openapi/generate-openapi-spec.mjs",
+    "openapi:types": "tsx scripts/openapi/generate-openapi-types.mjs",
+    "openapi:types:check": "tsx scripts/openapi/check-openapi-types.mjs",
+    "extension:sync-common": "node scripts/extension/sync-extension-common.mjs",
+    "extension:sync-common:check": "node scripts/extension/sync-extension-common.mjs --check",
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
+    "lint:shell": "sh scripts/quality/lint-shell.sh scripts/*/*.sh",
+    "lint:dockerfile": "sh scripts/quality/lint-dockerfile.sh docker/Dockerfile docker/Dockerfile.runtime-min",
+    "lint:ops": "npm run lint:shell && npm run lint:dockerfile",
+    "format": "prettier --write .",
+    "clean": "sh scripts/quality/clean-workspace.sh",
+    "extension:export": "node scripts/extension/export-extension-bundles.mjs",
+    "extension:package": "node scripts/extension/package-extension-bundles.mjs",
+    "versions:sync": "node scripts/release/sync-version-metadata.mjs",
+    "versions:check": "node scripts/release/sync-version-metadata.mjs --check",
+    "admin:bootstrap-password": "tsx src/server/tools/consumeBootstrapPassword.ts",
+    "db:backup": "tsx src/server/tools/backupDatabase.ts",
+    "db:restore": "tsx src/server/tools/restoreDatabase.ts",
+    "deploy:compose": "sh scripts/docker/deploy-compose.sh",
+    "docker:build": "sh scripts/docker/docker-build-local.sh",
+    "docker:smoke": "sh scripts/docker/docker-smoke.sh",
+    "github:protect:main": "sh scripts/release/configure-branch-protection.sh",
+    "rollback:compose": "sh scripts/docker/rollback-compose.sh",
+    "release:dry-run": "sh scripts/release/release-dry-run.sh",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.9.0",
+    "compression": "^1.8.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.1",
+    "helmet": "^8.1.0",
+    "joi": "^18.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "node-cache": "^5.1.2",
+    "node-cron": "^4.2.1",
+    "tsx": "^4.23.1",
+    "ua-parser-js": "^2.0.10"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.0.0",
+    "@commitlint/config-conventional": "^21.0.0",
+    "@eslint/js": "^10.0.1",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/lodash": "^4.17.24",
+    "@types/node": "^25.6.2",
+    "@types/supertest": "^6.0.3",
+    "openapi-typescript": "^7.13.0",
+    "@vitejs/plugin-vue": "^6.0.6",
+    "@vitest/coverage-v8": "^4.1.5",
+    "@vue/eslint-config-prettier": "^10.2.0",
+    "@vue/eslint-config-typescript": "^14.7.0",
+    "@vue/test-utils": "^2.4.10",
+    "eslint": "^10.3.0",
+    "eslint-plugin-vue": "^10.9.1",
+    "globals": "^17.6.0",
+    "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
+    "lint-staged": "^17.0.4",
+    "pinia": "^3.0.4",
+    "pinia-plugin-persistedstate": "^4.7.1",
+    "playwright-core": "^1.59.1",
+    "prettier": "^3.8.3",
+    "sass": "^1.99.0",
+    "supertest": "^7.2.2",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.5",
+    "vite-plugin-compression": "^0.5.1",
+    "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^4.1.5",
+    "vue": "^3.5.34",
+    "vue-i18n": "^11.4.2",
+    "vue-router": "^5.0.6",
+    "vue-tsc": "^3.2.8"
+  }
+}

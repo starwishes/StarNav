@@ -1,0 +1,2 @@
+6b2ac0710b24e4bc0f24a7adb43f4f9b562204283ec2cc634e1ed327a4b40c86  starnav-extension-chrome.zip
+8aebbdcc764c34ea5ac4242ca193da3db26924f6377c5cd4bfb7e8737e4afb41  starnav-extension-firefox.zip

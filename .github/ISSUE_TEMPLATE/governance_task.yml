@@ -1,0 +1,59 @@
+name: Governance task
+description: Track changes to CI, release, testing gates, repo policy, or contributor workflow.
+title: '[Governance] '
+body:
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Governance domain
+      options:
+        - CI / required checks
+        - Release / versioning / changelog
+        - Testing policy / coverage / smoke gates
+        - Docs / contribution workflow
+        - Security / secrets / permissions
+        - Docker / deployment / rollback
+        - Repo settings / branch protection / CODEOWNERS
+    validations:
+      required: true
+  - type: textarea
+    id: gap
+    attributes:
+      label: Current gap
+      description: What governance weakness or drift are we trying to close?
+      placeholder: Describe the current failure mode or missing guardrail.
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: Proposed control
+      description: What guardrail, policy, automation, or documentation should be added?
+      placeholder: Describe the desired governance change.
+    validations:
+      required: true
+  - type: textarea
+    id: rollout
+    attributes:
+      label: Rollout plan
+      description: Include sequencing if repo settings and code changes must land together.
+      placeholder: Describe the order of operations.
+    validations:
+      required: false
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk / rollback
+      description: Call out workflow lockout, release impact, or how to back the change out.
+      placeholder: Describe the main risk and fallback.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submit checklist
+      options:
+        - label: I identified the affected docs, workflow files, or repo settings.
+          required: true
+        - label: I considered whether the change could block maintainers or contributors.
+          required: true

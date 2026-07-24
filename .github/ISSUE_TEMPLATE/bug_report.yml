@@ -1,0 +1,83 @@
+name: Bug report
+description: Report a reproducible defect in runtime behavior, contract, or tooling.
+title: '[Bug] '
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      description: Choose the closest impacted area.
+      options:
+        - Backend API / service
+        - Frontend UI / state
+        - Browser extension
+        - Database / migration / runtime init
+        - Auth / session / permission
+        - Ops / Docker / deploy / release
+        - Documentation / contract drift
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: Release version, image tag, or commit SHA where the bug was observed.
+      placeholder: e.g. 1.0.0 or 4032c3b
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the actual behavior and why it is wrong.
+      placeholder: A concise description of the defect.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest reliable path to reproduce the issue.
+      placeholder: |
+        1. Go to ...
+        2. Run ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: Describe the expected result.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Evidence
+      description: Include logs, screenshots, failing tests, API payloads, or health output.
+      placeholder: Paste the most relevant evidence here.
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include deployment mode, OS, browser, Node version, reverse proxy, or anything else relevant.
+      placeholder: |
+        - Deploy mode:
+        - OS:
+        - Browser:
+        - Node:
+        - Reverse proxy:
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submit checklist
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I included enough detail to reproduce or triage the bug.
+          required: true

@@ -1,0 +1,107 @@
+ARG NODE_IMAGE=node:24.14.1-slim
+ARG RUNTIME_IMAGE=debian:bookworm-slim
+ARG APT_DEBIAN_MIRROR=
+ARG APT_DEBIAN_SECURITY_MIRROR=
+ARG HTTP_PROXY=
+ARG HTTPS_PROXY=
+ARG NO_PROXY=
+
+FROM ${NODE_IMAGE} AS build-stage
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --legacy-peer-deps --ignore-scripts
+COPY . .
+RUN npm run build
+
+FROM ${NODE_IMAGE} AS prod-deps
+WORKDIR /app
+ARG APT_DEBIAN_MIRROR
+ARG APT_DEBIAN_SECURITY_MIRROR
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+COPY package*.json ./
+RUN if [ -n "${APT_DEBIAN_MIRROR}" ] || [ -n "${APT_DEBIAN_SECURITY_MIRROR}" ]; then \
+      DEBIAN_MIRROR="${APT_DEBIAN_MIRROR:-http://deb.debian.org/debian}"; \
+      SECURITY_MIRROR="${APT_DEBIAN_SECURITY_MIRROR:-http://deb.debian.org/debian-security}"; \
+      if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+        sed -i \
+          -e "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
+          -e "s|http://deb.debian.org/debian-security|${SECURITY_MIRROR}|g" \
+          /etc/apt/sources.list.d/debian.sources; \
+      fi; \
+      if [ -f /etc/apt/sources.list ]; then \
+        sed -i \
+          -e "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
+          -e "s|http://deb.debian.org/debian-security|${SECURITY_MIRROR}|g" \
+          /etc/apt/sources.list; \
+      fi; \
+    fi
+# hadolint ignore=DL3008
+RUN apt-get -o Acquire::Retries=3 update && \
+    apt-get -o Acquire::Retries=3 install -y --no-install-recommends python3 make g++ && \
+    npm ci --omit=dev --legacy-peer-deps --ignore-scripts && \
+    npm rebuild better-sqlite3 && \
+    apt-get purge -y --auto-remove python3 make g++ && \
+    rm -rf /var/lib/apt/lists/* && \
+    npm cache clean --force && \
+    rm -rf /root/.npm /usr/local/share/.cache && \
+    find node_modules -type f \( -name "*.md" -o -name "*.markdown" -o -name "LICENSE*" -o -name "CHANGELOG*" -o -name "*.map" -o \( -name "*.ts" -a ! -name "*.d.ts" \) \) -delete && \
+    find node_modules -type d \( -name "test" -o -name "tests" -o -name "__tests__" -o -name "example" -o -name "examples" -o -name "demo" -o -name "docs" -o -name "coverage" \) -exec rm -rf {} +
+
+FROM ${RUNTIME_IMAGE} AS runtime
+WORKDIR /app
+ARG APT_DEBIAN_MIRROR
+ARG APT_DEBIAN_SECURITY_MIRROR
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+
+RUN if [ -n "${APT_DEBIAN_MIRROR}" ] || [ -n "${APT_DEBIAN_SECURITY_MIRROR}" ]; then \
+      DEBIAN_MIRROR="${APT_DEBIAN_MIRROR:-http://deb.debian.org/debian}"; \
+      SECURITY_MIRROR="${APT_DEBIAN_SECURITY_MIRROR:-http://deb.debian.org/debian-security}"; \
+      if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+        sed -i \
+          -e "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
+          -e "s|http://deb.debian.org/debian-security|${SECURITY_MIRROR}|g" \
+          /etc/apt/sources.list.d/debian.sources; \
+      fi; \
+      if [ -f /etc/apt/sources.list ]; then \
+        sed -i \
+          -e "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
+          -e "s|http://deb.debian.org/debian-security|${SECURITY_MIRROR}|g" \
+          /etc/apt/sources.list; \
+      fi; \
+    fi
+# hadolint ignore=DL3008
+RUN apt-get -o Acquire::Retries=3 update && \
+    apt-get -o Acquire::Retries=3 install -y --no-install-recommends ca-certificates dumb-init gosu libstdc++6 && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --gid 1000 node && \
+    useradd --uid 1000 --gid 1000 --shell /usr/sbin/nologin --create-home node && \
+    mkdir -p /app/data && \
+    chown -R node:node /app
+
+COPY --from=build-stage /usr/local/bin/node /usr/local/bin/node
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=build-stage /app/dist ./dist
+COPY package*.json ./
+COPY server.ts ./
+COPY tsconfig.server.json ./
+COPY docker/docker-entrypoint.sh /usr/local/bin/
+COPY src ./src
+
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENV NODE_ENV=production \
+    PORT=8080 \
+    DATA_PATH=/app/data
+
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "/usr/local/bin/docker-entrypoint.sh"]
+CMD ["./node_modules/.bin/tsx", "server.ts"]

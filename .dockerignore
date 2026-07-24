@@ -1,0 +1,50 @@
+node_modules
+dist
+.git
+.env
+.DS_Store
+coverage
+.nyc_output
+test-results
+data
+logs
+tmp
+.agents
+.codex
+.env.example
+.node-version
+.nvmrc
+.releaserc.json
+AGENTS.md
+LICENSE
+browser-extension/
+	
+# 测试相关文件
+tests/
+playwright-report/
+test-data/
+*.test.js
+*.spec.ts
+*.spec.js
+	
+# 文档文件
+docs/
+TROUBLESHOOTING.md
+CHANGELOG.md
+config/
+
+# CI/CD 配置
+.github/
+.husky/
+
+# 开发工具配置
+.vscode/
+.prettierrc.json
+.lintstagedrc.json
+eslint.config.js
+commitlint.config.js
+vitest.config.ts
+playwright.config.ts
+
+# Extension config
+browser-extension/config.js
