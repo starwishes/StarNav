@@ -207,7 +207,7 @@ describe('Bookmarks API Integration Tests', () => {
       const saveRes = await api.post('/api/data').set('Authorization', `Bearer ${token}`).send({
         categories: data.categories,
         items: data.items,
-        action: 'round-trip uncategorized root delete'
+        action: 'replace'
       })
 
       expect(data.categories.find((category) => category.id === rootId)).toBeUndefined()

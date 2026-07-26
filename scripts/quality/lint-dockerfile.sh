@@ -1,24 +1,24 @@
 #!/bin/sh
 set -eu
 
-normalize_container_path() {
-  file_path="$1"
-
-  case "${file_path}" in
-    "${PWD}"/*)
-      printf '/workdir/%s\n' "${file_path#"${PWD}/"}"
-      ;;
-    /*)
-      printf '%s\n' "${file_path}"
-      ;;
-    *)
-      printf '/workdir/%s\n' "${file_path}"
-      ;;
-  esac
+resolve_docker() {
+  if command -v docker >/dev/null 2>&1; then
+    command -v docker
+    return 0
+  fi
+  if [ -x /usr/bin/docker ]; then
+    printf '%s\n' /usr/bin/docker
+    return 0
+  fi
+  if [ -x '/mnt/c/Program Files/Docker/Docker/resources/bin/docker.exe' ]; then
+    printf '%s\n' '/mnt/c/Program Files/Docker/Docker/resources/bin/docker.exe'
+    return 0
+  fi
+  return 1
 }
 
-if [ "$#" -eq 0 ]; then
-  set -- Dockerfile
+if [ "$#" -eq 0 ] || [ "$1" = 'Dockerfile' ]; then
+  set -- docker/Dockerfile docker/Dockerfile.runtime-min
 fi
 
 if command -v hadolint >/dev/null 2>&1; then
@@ -26,10 +26,9 @@ if command -v hadolint >/dev/null 2>&1; then
   exit 0
 fi
 
-if command -v docker >/dev/null 2>&1; then
+if DOCKER_BIN="$(resolve_docker)"; then
   for dockerfile in "$@"; do
-    docker run --rm -v "$PWD:/workdir" -w /workdir hadolint/hadolint \
-      hadolint "$(normalize_container_path "${dockerfile}")"
+    "${DOCKER_BIN}" run --rm -i hadolint/hadolint <"${dockerfile}"
   done
   exit 0
 fi

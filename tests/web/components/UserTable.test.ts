@@ -158,7 +158,7 @@ describe('UserTable', () => {
       [
         'bob',
         {
-          username: 'bob-renamed',
+          newUsername: 'bob-renamed',
           password: 'reset-secret'
         }
       ]
