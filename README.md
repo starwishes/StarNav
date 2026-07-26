@@ -37,7 +37,7 @@ npm run build && npm run serve
 | `npm run typecheck` | 前后端类型检查 |
 | `npm run lint:check` | ESLint |
 | `npm run docker:smoke` | 镜像冒烟 |
-| `npm run extension:package` | 打包浏览器扩展 |
+| `npm run extension:package` | 打包浏览器扩展（改扩展源码提交时自动跑） |
 | `npm run db:backup` / `db:restore` | 数据库备份恢复 |
 
 更多：`docs/README.md` · 协作约束 `AGENTS.md`

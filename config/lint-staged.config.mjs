@@ -33,6 +33,21 @@ const mapChunks = (files, build) => {
   return chunk(present).map((group) => build(group.map(quote).join(' ')))
 }
 
+const isExtensionSourceFile = (file) => {
+  const normalized = String(file).replace(/\\/g, '/')
+  if (!normalized.includes('clients/extension/')) {
+    return false
+  }
+  // Generated artifacts — packaging updates these; do not re-trigger on themselves.
+  if (normalized.includes('clients/extension/packages/')) {
+    return false
+  }
+  if (normalized.includes('clients/extension/dist/')) {
+    return false
+  }
+  return true
+}
+
 export default {
   concurrent: false,
   '*.{js,jsx,ts,tsx,vue}': (files) => [
@@ -41,5 +56,15 @@ export default {
   ],
   // Ops linters (shfmt/hadolint) stay in CI `lint:ops`, not local hooks
   '*.{css,scss,md,json,yml,yaml}': (files) =>
-    mapChunks(files, (list) => `prettier --write ${list}`)
+    mapChunks(files, (list) => `prettier --write ${list}`),
+  // Auto-refresh downloadable zips when extension source changes.
+  'clients/extension/**/*': (files) => {
+    if (!files.some(isExtensionSourceFile)) {
+      return []
+    }
+    return [
+      'npm run extension:package',
+      'git add clients/extension/packages/SHA256SUMS.txt clients/extension/packages/starnav-extension-chrome.zip clients/extension/packages/starnav-extension-firefox.zip'
+    ]
+  }
 }

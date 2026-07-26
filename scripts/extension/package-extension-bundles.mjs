@@ -208,7 +208,7 @@ export const packageExtensionBundles = async ({
       syncMetadata
     })
 
-    await fs.rm(packagePaths.packageRoot, { recursive: true, force: true })
+    // Overwrite package artifacts in place (avoid rmdir of packages/ — Windows file locks).
     await fs.mkdir(packagePaths.packageRoot, { recursive: true })
 
     const packagedBundles = await Promise.all(
