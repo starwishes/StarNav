@@ -4,7 +4,7 @@ import { getDb } from '../../../src/server/services/database/database.js'
 import { settingsService } from '../../../src/server/services/system/settingsService.js'
 import { logger } from '../../../src/server/utils/logger.js'
 import { cleanupTestDataDir, createTestDataDir } from '../../setup/testDataDir.js'
-import { DEFAULT_THEME_PRESET } from '../../../src/shared/theme.js'
+
 
 describe('settingsService', () => {
   let testDataDir
@@ -66,8 +66,6 @@ describe('settingsService', () => {
     expect(settingsService.getPublic()).toEqual({
       registrationEnabled: true,
       backgroundUrl: '/bg.jpg',
-      themePreset: DEFAULT_THEME_PRESET,
-      themeColor: '',
       timezone: 'Asia/Shanghai',
       homeUrl: 'https://home.test',
       footerHtml: '<p>footer</p>',
@@ -89,8 +87,6 @@ describe('settingsService', () => {
     expect(settingsService.getPublic()).toEqual({
       registrationEnabled: false,
       backgroundUrl: '',
-      themePreset: DEFAULT_THEME_PRESET,
-      themeColor: '',
       timezone: '',
       homeUrl: '',
       footerHtml: 'bad<strong>safe</strong>',

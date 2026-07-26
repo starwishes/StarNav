@@ -38,7 +38,6 @@
           <div class="site-desc text">{{ item.description }}</div>
         </div>
 
-        <div class="hover-glow"></div>
         <div v-if="item.pinned" class="pin-badge">📌</div>
 
         <div v-if="selectionMode" class="selection-checkbox">
@@ -117,6 +116,6 @@ watch(
 </script>
 
 <style scoped lang="scss">
-@import './SiteCard.scss';
+@use './SiteCard.scss';
 </style>
 

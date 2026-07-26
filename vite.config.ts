@@ -17,12 +17,15 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.svg', 'pwa-icon.svg'],
         workbox: {
+          // Drop previous precaches after deploy so old AdminDashboard-*.js hashes die quickly.
+          cleanupOutdatedCaches: true,
           // 首页是核心离线场景，后台和反馈弹层属于按需能力，不必在安装阶段全部预缓存。
           globIgnores: [
             'assets/js/AdminDashboard-*.js',
             'assets/js/AuditLog-*.js',
             'assets/js/BookmarkImport-*.js',
             'assets/js/DataManager-*.js',
+            'assets/js/MonitoringDashboard-*.js',
             'assets/js/ProfileSettings-*.js',
             'assets/js/RecycleBin-*.js',
             'assets/js/SessionManager-*.js',
@@ -34,6 +37,7 @@ export default defineConfig(() => {
             'assets/css/AuditLog-*.css',
             'assets/css/BookmarkImport-*.css',
             'assets/css/DataManager-*.css',
+            'assets/css/MonitoringDashboard-*.css',
             'assets/css/ProfileSettings-*.css',
             'assets/css/RecycleBin-*.css',
             'assets/css/SessionManager-*.css',
@@ -44,6 +48,22 @@ export default defineConfig(() => {
             'assets/js/feedback-core-*.js'
           ],
           runtimeCaching: [
+            {
+              // Hashed build assets: network first so image rebuilds do not stick to deleted chunk URLs.
+              urlPattern: ({ url }) => url.pathname.startsWith('/assets/'),
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'starnav-build-assets',
+                networkTimeoutSeconds: 5,
+                expiration: {
+                  maxEntries: 120,
+                  maxAgeSeconds: 60 * 60 * 24
+                },
+                cacheableResponse: {
+                  statuses: [0, 200]
+                }
+              }
+            },
             {
               urlPattern: /\/api\/favicon\?url=/,
               handler: 'CacheFirst',

@@ -2,6 +2,7 @@ import { getDb, forceCheckpoint, backupDatabase } from '../database/database.js'
 import { logger } from '../../utils/logger.js'
 import { bookmarkWriteService } from './bookmarkWriteService.js'
 import { categoryWriteService } from './categoryWriteService.js'
+import { patchItemClickInCache } from './cache.js'
 import { invalidateBookmarkCaches } from '../cache/cacheInvalidationService.js'
 import type {
   BookmarkPayload,
@@ -47,7 +48,17 @@ export const bookmarkMutationService = {
   trackClick(itemId: IdLike) {
     const result = bookmarkWriteService.trackClick(itemId)
     if (result) {
-      invalidateBookmarkCaches()
+      // Hot path: keep snapshot when possible; still drop data TTL so /api/data is fresh.
+      // Search TTL can lag on clickCount without user-visible harm.
+      const patched = patchItemClickInCache(
+        result.id as IdLike,
+        Number(result.clickCount || 0),
+        (result.lastVisited as string | null | undefined) ?? null
+      )
+      invalidateBookmarkCaches(undefined, {
+        includeSnapshot: !patched,
+        includeSearch: false
+      })
     }
     return result
   },

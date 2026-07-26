@@ -23,6 +23,25 @@ describe('validation schemas', () => {
     expect(result.error?.details[0]?.message).toBe('ERR_PASSWORD_WEAK')
   })
 
+  it('accepts passwords with upper, lower, and digit without requiring symbols', () => {
+    const ok = strongPasswordSchema.validate({
+      username: 'alice1',
+      password: 'Password1'
+    })
+    const withSymbol = strongPasswordSchema.validate({
+      username: 'alice1',
+      password: 'Password1!'
+    })
+    const noDigit = strongPasswordSchema.validate({
+      username: 'alice1',
+      password: 'Password'
+    })
+
+    expect(ok.error).toBeUndefined()
+    expect(withSymbol.error).toBeUndefined()
+    expect(noDigit.error?.details[0]?.message).toBe('ERR_PASSWORD_WEAK')
+  })
+
   it('accepts direct and wrapped data payloads and normalizes empty parent ids', () => {
     const direct = dataSchema.validate({
       action: '',

@@ -61,8 +61,8 @@ describe('router bootstrap', () => {
     localStorage.setItem('admin_user', JSON.stringify({ username: 'admin', level: 3 }))
     await loadRouterModule()
 
-    expect(state.routes.map((route) => route.path)).toEqual(['/', '/admin/dashboard'])
-    expect(state.routes[1].meta).toEqual(
+    expect(state.routes.map((route) => route.path)).toEqual(['/', '/admin', '/admin/dashboard'])
+    expect(state.routes[2].meta).toEqual(
       expect.objectContaining({ titleKey: 'nav.admin', requiresAdmin: true })
     )
 
@@ -82,8 +82,15 @@ describe('router bootstrap', () => {
     await loadRouterModule()
 
     const next = vi.fn()
-    state.beforeHook({ meta: { titleKey: 'nav.admin', requiresAdmin: true } }, {}, next)
+    state.beforeHook(
+      { fullPath: '/admin/dashboard', meta: { titleKey: 'nav.admin', requiresAdmin: true } },
+      {},
+      next
+    )
 
-    expect(next).toHaveBeenCalledWith('/')
+    expect(next).toHaveBeenCalledWith({
+      path: '/',
+      query: { login: '1', redirect: '/admin/dashboard' }
+    })
   })
 })

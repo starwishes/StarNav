@@ -7,7 +7,9 @@ const mocks = vi.hoisted(() => ({
   register: vi.fn(),
   messageSuccess: vi.fn(),
   messageError: vi.fn(),
-  messageWarning: vi.fn()
+  messageWarning: vi.fn(),
+  routerPush: vi.fn(),
+  routerReplace: vi.fn()
 }))
 
 let adminStoreMock: any
@@ -36,6 +38,17 @@ vi.mock('vue-i18n', () => ({
   })
 }))
 
+vi.mock('vue-router', () => ({
+  useRouter: () => ({
+    push: mocks.routerPush,
+    replace: mocks.routerReplace
+  }),
+  useRoute: () => ({
+    path: '/',
+    query: {}
+  })
+}))
+
 const LoginDialog = (await import('@/components/admin/LoginDialog.vue')).default
 
 const createWrapper = (modelValue = true) => {
@@ -60,7 +73,8 @@ describe('LoginDialog', () => {
     vi.clearAllMocks()
     adminStoreMock = {
       login: mocks.login,
-      register: mocks.register
+      register: mocks.register,
+      user: { login: 'alice', name: 'alice', level: 1 }
     }
     configStoreMock = {
       siteConfig: reactive({
@@ -116,6 +130,7 @@ describe('LoginDialog', () => {
     expect(mocks.login).toHaveBeenCalledWith('alice', 'secret')
     expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:auth.loginSuccess')
     expect(wrapper.emitted('update:modelValue')).toContainEqual([false])
+    expect(mocks.routerPush).not.toHaveBeenCalled()
   })
 
   it('supports registration when enabled and resets to login after success', async () => {

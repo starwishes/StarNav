@@ -7,10 +7,11 @@ import { createUiHelpers, openOptionsPage } from '../../clients/extension/popup/
 
 const i18n = {
   zh: {
-    addCurrent: '➕ 添加当前页面',
+    addCurrent: '添加当前页面',
     openSite: '打开导航站',
     settings: '设置',
     toggleLang: '切换语言',
+    toggleTheme: '切换日/夜模式',
     newCatTip: '新建分类',
     searchPlaceholder: '搜索书签...',
     descPlaceholder: '描述...',
@@ -53,8 +54,8 @@ const renderDom = () => {
     <button id="openSettings"></button>
     <button id="addCategoryBtn"></button>
     <button id="i18nToggle"><span class="main-char"></span><span class="badge-char"></span></button>
-    <button id="addCurrentBtn" data-i18n="addCurrent">➕ Add Current</button>
-    <button id="searchBtn" data-i18n="searchPlaceholder">🔍 Search</button>
+    <button id="addCurrentBtn" data-i18n="addCurrent">Add Current</button>
+    <button id="searchBtn" data-i18n="searchPlaceholder">Search</button>
     <div id="listTarget"></div>
   `
 }
@@ -128,8 +129,8 @@ describe('browser extension ui helpers', () => {
   it('updates localized UI text, placeholders, and language toggle badges', () => {
     ui.updateUI()
 
-    expect(document.getElementById('addCurrentBtn').textContent).toBe('➕ 添加当前页面')
-    expect(document.getElementById('searchBtn').textContent).toBe('🔍 搜索书签...')
+    expect(document.getElementById('addCurrentBtn').textContent).toBe('添加当前页面')
+    expect(document.getElementById('searchBtn').textContent).toBe('搜索书签...')
     expect(elements.openSite.title).toBe('打开导航站')
     expect(elements.openSettings.title).toBe('设置')
     expect(elements.addCategoryBtn.title).toBe('新建分类')

@@ -1,3 +1,12 @@
+const visitTimestamp = (item) => {
+  const raw = item?.lastVisited || item?.last_visited || item?.updatedAt || item?.createdAt || ''
+  const parsed = Date.parse(raw)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const sortByRecentVisit = (items) =>
+  [...items].sort((left, right) => visitTimestamp(right) - visitTimestamp(left))
+
 export function createSearchController({ apiRequest, elements, state, i18n, ui }) {
   const getTexts = () => i18n[state.currentLang]
 
@@ -5,22 +14,30 @@ export function createSearchController({ apiRequest, elements, state, i18n, ui }
     try {
       ui.showLoading()
 
-      const result = await apiRequest('/bookmark/search?limit=10')
-      const items = Array.isArray(result.items) ? result.items : []
+      const result = await apiRequest('/bookmark/search?limit=20')
+      const items = sortByRecentVisit(Array.isArray(result.items) ? result.items : []).slice(0, 10)
 
       if (!elements.recentBookmarks) {
         return
       }
 
       if (items.length === 0) {
-        elements.recentBookmarks.innerHTML = `<div class="no-results">${getTexts().noResults}</div>`
+        elements.recentBookmarks.textContent = ''
+        const empty = document.createElement('div')
+        empty.className = 'no-results'
+        empty.textContent = getTexts().noResults
+        elements.recentBookmarks.appendChild(empty)
         return
       }
 
       ui.renderBookmarkList(elements.recentBookmarks, items)
     } catch {
       if (elements.recentBookmarks) {
-        elements.recentBookmarks.innerHTML = `<div class="no-results">${getTexts().loadFailed}</div>`
+        elements.recentBookmarks.textContent = ''
+        const failed = document.createElement('div')
+        failed.className = 'no-results'
+        failed.textContent = getTexts().loadFailed
+        elements.recentBookmarks.appendChild(failed)
       }
     } finally {
       ui.hideLoading()
@@ -39,17 +56,30 @@ export function createSearchController({ apiRequest, elements, state, i18n, ui }
       elements.bookmarkList.style.display = 'none'
       elements.addSection.style.display = 'none'
       elements.searchResults.style.display = 'block'
+      elements.searchResults.textContent = ''
 
       if (items.length === 0) {
-        elements.searchResults.innerHTML = `<div class="no-results">${getTexts().noMatch}</div>`
+        const empty = document.createElement('div')
+        empty.className = 'no-results'
+        empty.textContent = getTexts().noMatch
+        elements.searchResults.appendChild(empty)
         return
       }
 
-      elements.searchResults.innerHTML = `<div class="section-title">${getTexts().searchResult}</div><div class="bookmark-items"></div>`
-      ui.renderBookmarkList(elements.searchResults.querySelector('.bookmark-items'), items)
+      const title = document.createElement('div')
+      title.className = 'section-title'
+      title.textContent = getTexts().searchResult
+      const list = document.createElement('div')
+      list.className = 'bookmark-items'
+      elements.searchResults.append(title, list)
+      ui.renderBookmarkList(list, items)
     } catch {
       if (elements.searchResults) {
-        elements.searchResults.innerHTML = `<div class="no-results">${getTexts().loadFailed}</div>`
+        elements.searchResults.textContent = ''
+        const failed = document.createElement('div')
+        failed.className = 'no-results'
+        failed.textContent = getTexts().loadFailed
+        elements.searchResults.appendChild(failed)
       }
     }
   }

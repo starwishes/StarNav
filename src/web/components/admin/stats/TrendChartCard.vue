@@ -81,6 +81,6 @@ defineProps<{
 </script>
 
 <style scoped lang="scss">
-@import './TrendChartCard.scss';
+@use './TrendChartCard.scss';
 </style>
 

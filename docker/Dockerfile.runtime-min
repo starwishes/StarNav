@@ -78,7 +78,7 @@ RUN if [ -n "${APT_DEBIAN_MIRROR}" ] || [ -n "${APT_DEBIAN_SECURITY_MIRROR}" ]; 
     fi
 # hadolint ignore=DL3008
 RUN apt-get -o Acquire::Retries=3 update && \
-    apt-get -o Acquire::Retries=3 install -y --no-install-recommends ca-certificates dumb-init gosu libstdc++6 && \
+    apt-get -o Acquire::Retries=3 install -y --no-install-recommends ca-certificates dumb-init gosu libstdc++6 tzdata && \
     rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --gid 1000 node && \
@@ -99,7 +99,8 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 ENV NODE_ENV=production \
     PORT=8080 \
-    DATA_PATH=/app/data
+    DATA_PATH=/app/data \
+    TZ=Asia/Shanghai
 
 EXPOSE 8080
 

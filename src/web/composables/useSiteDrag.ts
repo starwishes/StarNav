@@ -11,11 +11,11 @@ interface MoveState {
   item: Item | null
   fromCatIndex: number
   fromItemIndex: number
-  fromCategoryId?: number // 增加原始分类ID记录
+  fromCategoryId?: number
   x: number
   y: number
   hoverCatIndex: number
-  hoverCategoryId: number // 增加目标分类ID记录
+  hoverCategoryId: number
   hoverItemIndex: number
 }
 
@@ -43,7 +43,10 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
     hoverItemIndex: -1
   })
 
-  // --- Mouse Drag ---
+  // Prevent stacked commits while a previous move request is still in flight.
+  let isCommitting = false
+
+  // --- Mouse placement (click-to-drop; do NOT commit on mouseup) ---
 
   const handleGlobalMouseMove = (e: MouseEvent) => {
     if (!moveState.active) return
@@ -51,11 +54,44 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
     moveState.y = e.clientY + 10
   }
 
-  const handleMouseUp = async () => {
-    if (!moveState.active) return
-    const { item, hoverCatIndex, hoverCategoryId, hoverItemIndex } = moveState
+  /**
+   * Commit the in-progress placement.
+   * Interaction mode ends immediately so the UI does not stay "stuck" while the API runs.
+   * Mouse placement is click-driven (see Site.vue item click); touch uses touchend.
+   */
+  const restoreScrollY = (scrollY: number) => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    // Double-rAF waits for layout after Vue patches the reordered grid.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollY, left: 0, behavior: 'instant' as ScrollBehavior })
+      })
+    })
+  }
 
-    // 优先使用 ID 进行定位，如果 ID 无效则退回到索引（用于兼容无子分类的旧逻辑）
+  const commitMove = async () => {
+    if (!moveState.active || isCommitting) {
+      return
+    }
+
+    const {
+      item,
+      hoverCatIndex,
+      hoverCategoryId,
+      hoverItemIndex,
+      fromCategoryId,
+      fromItemIndex
+    } = moveState
+    const scrollY = typeof window !== 'undefined' ? window.scrollY : 0
+
+    // End placement mode first so further clicks do not re-enter commit.
+    isCommitting = true
+    resetState()
+    cleanupListeners()
+    cleanupTouchListeners()
+
     const finalTargetId =
       hoverCategoryId > 0
         ? hoverCategoryId
@@ -63,17 +99,28 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
           ? getData()[hoverCatIndex]?.id
           : 0
 
-    if (finalTargetId > 0 && item) {
-      try {
-        await dataStore.moveItem(item.id, finalTargetId, hoverItemIndex)
-        ElMessage.success(t('table.moveSuccess'))
-      } catch (error) {
-        ElMessage.error(getErrorMessage(error, t('table.moveFail')))
-      }
+    const hasValidDropTarget = Boolean(finalTargetId > 0 && item && hoverItemIndex >= 0)
+    const isNoOpSameSlot =
+      hasValidDropTarget &&
+      Number(fromCategoryId) === Number(finalTargetId) &&
+      fromItemIndex === hoverItemIndex
+
+    if (!hasValidDropTarget || isNoOpSameSlot || !item) {
+      isCommitting = false
+      restoreScrollY(scrollY)
+      return
     }
 
-    resetState()
-    cleanupListeners()
+    try {
+      await dataStore.moveItem(item.id, finalTargetId, hoverItemIndex)
+      ElMessage.closeAll()
+      ElMessage.success(t('table.moveSuccess'))
+    } catch (error) {
+      ElMessage.error(getErrorMessage(error, t('table.moveFail')))
+    } finally {
+      isCommitting = false
+      restoreScrollY(scrollY)
+    }
   }
 
   const startMove = (
@@ -84,26 +131,40 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
     initialY: number,
     closeMenuCallback?: () => void
   ) => {
-    if (!adminStore.isAuthenticated) return
+    if (!adminStore.isAuthenticated || isCommitting) return
+
+    const scrollY = typeof window !== 'undefined' ? window.scrollY : 0
 
     moveState.item = JSON.parse(JSON.stringify(item))
     moveState.fromCatIndex = catIndex
     moveState.fromItemIndex = itemIndex
+    moveState.fromCategoryId = Number(item.categoryId) || 0
     moveState.active = true
     moveState.x = initialX
     moveState.y = initialY
+    // Seed hover with origin so same-category drops still have a valid target index.
+    moveState.hoverCategoryId = moveState.fromCategoryId
+    moveState.hoverItemIndex = itemIndex
 
     if (closeMenuCallback) closeMenuCallback()
 
+    // Ghost follows the cursor; placement is committed by click (not mouseup).
     document.addEventListener('mousemove', handleGlobalMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
     ElMessage.info(t('context.dragDropClickHint'))
+    // Guard against any layout thrash from menu close / ghost mount.
+    restoreScrollY(scrollY)
   }
 
   // --- Touch Drag ---
 
   let touchTimer: ReturnType<typeof setTimeout> | null = null
   const LONG_PRESS_DURATION = 500
+
+  const cleanupTouchListeners = () => {
+    document.removeEventListener('touchmove', handleTouchMove)
+    document.removeEventListener('touchend', handleTouchEnd)
+    document.removeEventListener('touchcancel', handleTouchEnd)
+  }
 
   const handleTouchMove = (e: TouchEvent) => {
     if (!moveState.active) return
@@ -116,8 +177,8 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
     if (elem) {
       const siteWrapper = elem.closest('.site-wrapper')
       if (siteWrapper) {
-        // Use explicit data attributes parsing logic
         requestAnimationFrame(() => {
+          if (!moveState.active) return
           const catIndex = parseInt(siteWrapper.getAttribute('data-cat-index') || '-1')
           const catId = parseInt(siteWrapper.getAttribute('data-cat-id') || '0')
           const itemIndex = parseInt(siteWrapper.getAttribute('data-item-index') || '-1')
@@ -135,14 +196,11 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
       touchTimer = null
     }
     if (!moveState.active) return
-    await handleMouseUp() // Reuse logic
-    document.removeEventListener('touchmove', handleTouchMove)
-    document.removeEventListener('touchend', handleTouchEnd)
-    document.removeEventListener('touchcancel', handleTouchEnd)
+    await commitMove()
   }
 
   const handleTouchStart = (e: TouchEvent, item: Item, catIdx: number, itemIdx: number) => {
-    if (!adminStore.isAuthenticated) return
+    if (!adminStore.isAuthenticated || isCommitting) return
     const touch = e.touches[0]
     const startX = touch.clientX
     const startY = touch.clientY
@@ -152,9 +210,12 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
       moveState.item = JSON.parse(JSON.stringify(item))
       moveState.fromCatIndex = catIdx
       moveState.fromItemIndex = itemIdx
+      moveState.fromCategoryId = Number(item.categoryId) || 0
       moveState.active = true
       moveState.x = startX + 10
       moveState.y = startY + 10
+      moveState.hoverCategoryId = moveState.fromCategoryId
+      moveState.hoverItemIndex = itemIdx
 
       ElMessage.info(t('context.dragDropReleaseHint'))
       document.addEventListener('touchmove', handleTouchMove, { passive: false })
@@ -181,11 +242,20 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
 
   const cleanupListeners = () => {
     document.removeEventListener('mousemove', handleGlobalMouseMove)
-    document.removeEventListener('mouseup', handleMouseUp)
+  }
+
+  const cancelMove = () => {
+    if (touchTimer) {
+      clearTimeout(touchTimer)
+      touchTimer = null
+    }
+    resetState()
+    cleanupListeners()
+    cleanupTouchListeners()
   }
 
   onUnmounted(() => {
-    cleanupListeners()
+    cancelMove()
   })
 
   return {
@@ -193,6 +263,7 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
     startMove,
     handleMouseEnter,
     handleTouchStart,
-    handleMouseDragUp: handleMouseUp // Export for Click interruption check
+    handleMouseDragUp: commitMove,
+    cancelMove
   }
 }

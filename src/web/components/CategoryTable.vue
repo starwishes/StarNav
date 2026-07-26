@@ -9,32 +9,32 @@
         <table class="sn-table">
           <thead>
             <tr>
-              <th v-if="!isMobile" class="is-center" style="width: 64px">#</th>
-              <th v-if="!isMobile" class="is-center" style="width: 88px">{{ t('table.id') }}</th>
-              <th>{{ t('table.name') }}</th>
-              <th v-if="!isMobile" class="is-center" style="width: 140px">
+              <th class="is-center col-meta col-index" style="width: 64px">#</th>
+              <th class="is-center col-meta col-id" style="width: 88px">{{ t('table.id') }}</th>
+              <th class="col-name">{{ t('table.name') }}</th>
+              <th class="is-center col-meta col-visibility" style="width: 140px">
                 {{ t('table.visibility') }}
               </th>
-              <th v-if="!isMobile" class="is-center" style="width: 140px">
+              <th class="is-center col-meta col-count" style="width: 140px">
                 {{ t('table.siteCount') }}
               </th>
-              <th class="is-center" style="width: 280px">{{ t('table.action') }}</th>
+              <th class="is-center col-actions" style="width: 320px">{{ t('table.action') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(category, index) in categories" :key="category.id">
-              <td v-if="!isMobile" class="is-center">{{ index + 1 }}</td>
-              <td v-if="!isMobile" class="is-center">{{ category.id }}</td>
-              <td>{{ category.name }}</td>
-              <td v-if="!isMobile" class="is-center">
+              <td class="is-center col-meta col-index">{{ index + 1 }}</td>
+              <td class="is-center col-meta col-id">{{ category.id }}</td>
+              <td class="col-name">{{ category.name }}</td>
+              <td class="is-center col-meta col-visibility">
                 <span class="sn-badge" :class="getLevelClass(category.level ?? 0)">
                   {{ getLevelLabel(category.level ?? 0) }}
                 </span>
               </td>
-              <td v-if="!isMobile" class="is-center">
+              <td class="is-center col-meta col-count">
                 <span class="sn-badge is-primary">{{ getItemCount(category.id) }}</span>
               </td>
-              <td class="is-center">
+              <td class="is-center col-actions">
                 <div class="sn-table-actions">
                   <button
                     type="button"
@@ -79,7 +79,6 @@
 <script setup lang="ts">
 import type { Category, Item } from '@/types'
 import { useI18n } from 'vue-i18n'
-import { useMobile } from '@/composables/useMobile'
 import {
   countItemsInCategory,
   getCategoryLevelClass,
@@ -87,7 +86,6 @@ import {
 } from './categoryTableHelpers'
 
 const { t } = useI18n()
-const { isMobile } = useMobile()
 
 const props = defineProps<{
   categories: Category[]
@@ -106,5 +104,5 @@ const getLevelLabel = (level: number) => t(getCategoryLevelLabelKey(level))
 </script>
 
 <style scoped lang="scss">
-@import './CategoryTable.scss';
+@use './CategoryTable.scss';
 </style>

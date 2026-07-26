@@ -30,16 +30,36 @@ describe('SystemSettingsService', () => {
     expect(
       systemSettingsService.updateAdminSettings({
         siteName: 'StarNav',
-        themePreset: 'gallery',
-        themeColor: '#0071E3',
         footerHtml: '<strong>Hello</strong><script>alert(1)</script>'
       })
     ).toEqual(undefined)
     expect(settingsService.updateAll).toHaveBeenCalledWith({
       siteName: 'StarNav',
-      themePreset: 'gallery',
-      themeColor: '#0071e3',
       footerHtml: '<strong>Hello</strong>'
+    })
+  })
+
+  it('strips legacy theme fields from admin settings output and payloads', () => {
+    settingsService.getAll.mockReturnValue({
+      siteName: 'StarNav',
+      themePreset: 'gallery',
+      themeColor: '#0071e3'
+    })
+    settingsService.updateAll.mockReturnValue(true)
+
+    expect(systemSettingsService.getAdminSettings()).toEqual({
+      siteName: 'StarNav'
+    })
+
+    expect(
+      systemSettingsService.updateAdminSettings({
+        siteName: 'StarNav',
+        themePreset: 'gallery',
+        themeColor: '#0071E3'
+      })
+    ).toEqual(undefined)
+    expect(settingsService.updateAll).toHaveBeenCalledWith({
+      siteName: 'StarNav'
     })
   })
 

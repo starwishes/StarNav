@@ -95,6 +95,7 @@
 <script setup lang="ts">
 import AppIcon from '@/components/AppIcon.vue'
 import { computed, onMounted, onUnmounted, reactive, ref, watch, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore } from '@/store/admin'
 import { useConfigStore } from '@/store/config'
 import { ElMessage } from '@/utils/feedback'
@@ -102,6 +103,8 @@ import { getErrorMessage } from '@/utils/errors'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 
 const props = defineProps<{
   modelValue: boolean
@@ -180,6 +183,14 @@ const handleSubmit = async () => {
       if (result.success) {
         ElMessage.success(t('auth.loginSuccess'))
         closeDialog()
+        // Stay on the current frontend page after login. Admin is entered only
+        // when the user clicks the admin entry (or opens /admin/dashboard).
+        if (route.query.login || route.query.redirect) {
+          const nextQuery = { ...route.query }
+          delete nextQuery.login
+          delete nextQuery.redirect
+          void router.replace({ path: route.path, query: nextQuery }).catch(() => {})
+        }
       } else {
         ElMessage.error(result.error || t('auth.loginFailed'))
       }
@@ -201,5 +212,5 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped lang="scss">
-@import './LoginDialog.scss';
+@use './LoginDialog.scss';
 </style>

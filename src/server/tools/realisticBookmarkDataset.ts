@@ -458,7 +458,31 @@ const buildSiteIconUrl = (targetUrl: string) => {
   }
 }
 
-export const buildRealisticBookmarkDataset = () => {
+const buildExpandedSite = (index: number) => {
+  const base = SITE_DEFINITIONS[index % SITE_DEFINITIONS.length]
+  const cycle = Math.floor(index / SITE_DEFINITIONS.length)
+  const url =
+    cycle === 0
+      ? base.url
+      : `${base.url}${base.url.includes('?') ? '&' : '?'}navSeed=${cycle + 1}`
+
+  return {
+    name: cycle === 0 ? base.name : `${base.name} #${cycle + 1}`,
+    url,
+    description:
+      cycle === 0 ? base.description : `${base.description}（仿真扩展 #${cycle + 1}）`,
+    categoryId: base.categoryId,
+    icon: buildSiteIconUrl(base.url)
+  }
+}
+
+/**
+ * Build a realistic-ish bookmark dataset.
+ * @param itemCount default 100 (one pass of SITE_DEFINITIONS); use 1000+ for load tests
+ */
+export const buildRealisticBookmarkDataset = (itemCount = SITE_DEFINITIONS.length) => {
+  const count = Math.max(1, Math.floor(Number(itemCount) || SITE_DEFINITIONS.length))
+
   const categories = CATEGORY_DEFINITIONS.map((category, index) => ({
     ...category,
     level: 0,
@@ -466,18 +490,21 @@ export const buildRealisticBookmarkDataset = () => {
     sortOrder: index
   }))
 
-  const items = SITE_DEFINITIONS.map((site, index) => ({
-    id: index + 1,
-    name: site.name,
-    url: site.url,
-    description: site.description,
-    categoryId: site.categoryId,
-    icon: buildSiteIconUrl(site.url),
-    pinned: index % 10 === 0,
-    level: 0,
-    clickCount: 320 - index * 2,
-    lastVisited: buildLastVisited(index)
-  }))
+  const items = Array.from({ length: count }, (_, index) => {
+    const site = buildExpandedSite(index)
+    return {
+      id: index + 1,
+      name: site.name,
+      url: site.url,
+      description: site.description,
+      categoryId: site.categoryId,
+      icon: site.icon,
+      pinned: index % 10 === 0,
+      level: 0,
+      clickCount: Math.max(0, 3200 - index * 2),
+      lastVisited: buildLastVisited(index)
+    }
+  })
 
   return {
     categories,
@@ -485,8 +512,8 @@ export const buildRealisticBookmarkDataset = () => {
   }
 }
 
-export const buildRealisticJsonBackupPayload = () => {
-  const content = buildRealisticBookmarkDataset()
+export const buildRealisticJsonBackupPayload = (itemCount = SITE_DEFINITIONS.length) => {
+  const content = buildRealisticBookmarkDataset(itemCount)
 
   return {
     meta: {
@@ -497,4 +524,28 @@ export const buildRealisticJsonBackupPayload = () => {
     },
     content
   }
+}
+
+// CLI: tsx src/server/tools/realisticBookmarkDataset.ts [count] [outPath]
+const isMain =
+  typeof process !== 'undefined' &&
+  Boolean(process.argv[1]) &&
+  /realisticBookmarkDataset\.(ts|js|mjs)$/.test(String(process.argv[1]).replace(/\\/g, '/'))
+
+if (isMain) {
+  void (async () => {
+    const count = Number(process.argv[2] || 1000)
+    const outPath = process.argv[3]
+    const payload = buildRealisticJsonBackupPayload(count)
+    const text = `${JSON.stringify(payload, null, 2)}\n`
+    if (outPath) {
+      const fs = await import('node:fs')
+      const path = await import('node:path')
+      fs.mkdirSync(path.dirname(outPath), { recursive: true })
+      fs.writeFileSync(outPath, text, 'utf8')
+      console.log(`wrote ${payload.meta.itemCount} items -> ${outPath}`)
+    } else {
+      process.stdout.write(text)
+    }
+  })()
 }

@@ -151,5 +151,5 @@ onMounted(fetchLogs)
 </script>
 
 <style scoped lang="scss">
-@import './AuditLog.scss';
+@use './AuditLog.scss';
 </style>

@@ -120,5 +120,5 @@ onMounted(fetchSessions)
 </script>
 
 <style scoped lang="scss">
-@import './SessionManager.scss';
+@use './SessionManager.scss';
 </style>

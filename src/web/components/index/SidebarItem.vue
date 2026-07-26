@@ -79,6 +79,6 @@ const handleHeaderClick = () => {
 </script>
 
 <style scoped lang="scss">
-@import './SidebarItem.scss';
+@use './SidebarItem.scss';
 </style>
 

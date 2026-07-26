@@ -66,8 +66,9 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { ref, toRef } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFocusOnOpen } from '@/composables/useFocusOnOpen'
 
 type EditForm = {
   newUsername: string
@@ -88,15 +89,13 @@ const { t } = useI18n()
 const dialogRef = ref<HTMLElement | null>(null)
 const usernameInputRef = ref<HTMLInputElement | null>(null)
 
-watch(
-  () => props.modelValue,
-  (isOpen) => {
-    if (isOpen) {
-      nextTick(() => {
-        dialogRef.value?.focus()
-        usernameInputRef.value?.focus()
-      })
-    }
-  }
+useFocusOnOpen(
+  toRef(props, 'modelValue'),
+  () => dialogRef.value,
+  () => usernameInputRef.value
 )
 </script>
+
+<style scoped lang="scss">
+@use './UserDialog.scss';
+</style>

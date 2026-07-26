@@ -1,19 +1,10 @@
 import { mount } from '@vue/test-utils'
-import { ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Category, Item } from '@/types'
-
-const isMobileRef = ref(false)
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: (key: string) => `translated:${key}`
-  })
-}))
-
-vi.mock('@/composables/useMobile', () => ({
-  useMobile: () => ({
-    isMobile: isMobileRef
   })
 }))
 
@@ -61,7 +52,6 @@ const createWrapper = (props: Partial<{ categories: Category[]; items: Item[] }>
 describe('CategoryTable', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    isMobileRef.value = false
   })
 
   it('renders an empty state when there are no categories', () => {
@@ -101,14 +91,16 @@ describe('CategoryTable', () => {
     expect(wrapper.emitted('delete')).toEqual([[categories[1]]])
   })
 
-  it('hides desktop-only columns on mobile', () => {
-    isMobileRef.value = true
-
+  it('marks secondary columns for CSS-driven responsive hiding', () => {
     const wrapper = createWrapper()
 
-    expect(wrapper.findAll('thead th')).toHaveLength(2)
-    expect(wrapper.text()).not.toContain('translated:table.id')
-    expect(wrapper.text()).not.toContain('translated:table.visibility')
-    expect(wrapper.text()).not.toContain('translated:table.siteCount')
+    // Content-pane tables keep all columns in the DOM; layout uses shared
+    // col-meta / col-* classes (container queries / CSS) instead of JS v-if.
+    expect(wrapper.findAll('thead th')).toHaveLength(6)
+    expect(wrapper.find('th.col-id').classes()).toContain('col-meta')
+    expect(wrapper.find('th.col-visibility').classes()).toContain('col-meta')
+    expect(wrapper.find('th.col-count').classes()).toContain('col-meta')
+    expect(wrapper.find('th.col-name').classes()).not.toContain('col-meta')
+    expect(wrapper.find('th.col-actions').classes()).not.toContain('col-meta')
   })
 })

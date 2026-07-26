@@ -8,6 +8,21 @@
 - **npm**: 10.x 或更高版本
 - **Git**: 用于版本控制
 
+### Windows 与 WSL 工具链隔离
+
+仓库在 Windows 盘（如 `D:\...`）上开发时，**默认使用 Windows 工具链**，不要和 WSL 混用同一套二进制 / `node_modules`：
+
+| 环境 | Node | 用途 |
+|------|------|------|
+| Windows | Scoop / 本机 Node 24（见 `.nvmrc`） | 日常 `npm run serve|dev|test:*|build` |
+| WSL | 发行版内 fnm/nvm 的 Node 24 | 仅 Linux 侧脚本或需要 Linux 原生绑定的工作 |
+
+硬性约定：
+
+1. 不要用 WSL 改写 Windows 安装目录下的 `node.exe`（例如 `/mnt/d/Programs/Scoop/...`）
+2. 不要用 WSL Node 去跑 Windows 检出目录里的 `node_modules`（原生绑定平台不匹配）
+3. 文本行尾以仓库 `.gitattributes` 为准（默认 **LF**）；shell 脚本必须是 LF
+
 ### 本地开发环境设置
 
 #### 1. 克隆代码库
@@ -245,7 +260,7 @@ node --import tsx --inspect server.ts
 
 #### 方法三：启用详细日志
 
-在 `src/server/utils/logger.js` 中调整日志级别（默认为 INFO）：
+在 `src/server/utils/logger.ts` 中调整日志级别（默认为 INFO）：
 
 ```bash
 # 启用 DEBUG 级别日志

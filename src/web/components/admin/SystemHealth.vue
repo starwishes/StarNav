@@ -177,5 +177,5 @@ onMounted(fetchHealth)
 </script>
 
 <style scoped lang="scss">
-@import './SystemHealth.scss';
+@use './SystemHealth.scss';
 </style>

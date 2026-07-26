@@ -168,8 +168,8 @@ export const bookmarkWriteService = {
     const normalizedTargetCategoryId = normalizeDbCategoryId(targetCategoryId)
 
     try {
-      backupDatabase()
-
+      // Skip full-file backup on reorder — it blocks for seconds and the UI
+      // already optimistically updates. Scheduled backups cover durability.
       const currentItem = db.prepare<BookmarkItemRow>('SELECT * FROM items WHERE id = ?').get(id)
       if (!currentItem) {
         return null
@@ -179,11 +179,23 @@ export const bookmarkWriteService = {
 
       const transaction = db.transaction(() => {
         if (currentCategoryId === normalizedTargetCategoryId) {
-          const itemIds = selectCategoryItems(db, normalizedTargetCategoryId)
-            .map((item) => Number(item.id))
-            .filter((existingId) => existingId !== id)
+          const orderedIds = selectCategoryItems(db, normalizedTargetCategoryId).map((item) =>
+            Number(item.id)
+          )
+          const sourceIndexInCategory = orderedIds.indexOf(id)
+          const itemIds = orderedIds.filter((existingId) => existingId !== id)
 
-          itemIds.splice(clampIndex(targetIndex, itemIds.length), 0, id)
+          let insertAt = Number(targetIndex)
+          if (!Number.isFinite(insertAt) || insertAt < 0) {
+            insertAt = 0
+          }
+
+          // Keep "insert before hovered item" semantics after removing the source.
+          if (sourceIndexInCategory >= 0 && sourceIndexInCategory < insertAt) {
+            insertAt -= 1
+          }
+
+          itemIds.splice(clampIndex(insertAt, itemIds.length), 0, id)
           resequenceCategoryItems(db, normalizedTargetCategoryId, itemIds)
           return
         }
@@ -202,7 +214,6 @@ export const bookmarkWriteService = {
       })
 
       transaction()
-      forceCheckpoint()
       logger.info(`书签移动成功: ID ${id}`)
 
       const updatedItem = db.prepare<BookmarkItemRow>('SELECT * FROM items WHERE id = ?').get(id)

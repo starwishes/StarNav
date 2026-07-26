@@ -207,6 +207,6 @@ const handleDeleteSubCategory = async (sub: Category) => {
 </script>
 
 <style scoped lang="scss">
-@import './CategoryForm.scss';
+@use './CategoryForm.scss';
 </style>
 

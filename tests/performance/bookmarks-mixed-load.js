@@ -8,7 +8,9 @@ import { check, sleep } from 'k6'
  * k6 run tests/performance/bookmarks-mixed-load.js
  */
 
-export const options = {
+const PROFILE = (__ENV.K6_PROFILE || 'full').toLowerCase()
+
+const FULL_OPTIONS = {
   stages: [
     { duration: '20s', target: 10 },
     { duration: '40s', target: 20 },
@@ -20,6 +22,20 @@ export const options = {
     http_req_failed: ['rate<0.01']
   }
 }
+
+const SMOKE_OPTIONS = {
+  stages: [
+    { duration: '15s', target: 8 },
+    { duration: '25s', target: 15 },
+    { duration: '10s', target: 0 }
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<1200'],
+    http_req_failed: ['rate<0.03']
+  }
+}
+
+export const options = PROFILE === 'smoke' ? SMOKE_OPTIONS : FULL_OPTIONS
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080'
 

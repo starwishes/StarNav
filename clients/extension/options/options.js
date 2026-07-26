@@ -1,10 +1,12 @@
 import { checkHealth, loginToServer, normalizeServerUrl, validateSession } from '../utils/api.js'
+import { ensureHostPermission } from '../utils/permissions.js'
 import {
   applyDocumentLanguage,
   applyThemeMode,
   resolveExtensionLanguage,
   resolveExtensionThemeMode
 } from '../utils/preferences.js'
+import { getMergedStorage, removeStorage, setStorage } from '../utils/storage.js'
 
 const elements = {
   serverUrl: document.getElementById('serverUrl'),
@@ -12,48 +14,19 @@ const elements = {
   password: document.getElementById('password'),
   saveBtn: document.getElementById('saveBtn'),
   testBtn: document.getElementById('testBtn'),
+  themeToggle: document.getElementById('themeToggle'),
   statusBox: document.getElementById('statusBox'),
   statusIcon: document.getElementById('statusIcon'),
   statusText: document.getElementById('statusText'),
   toast: document.getElementById('toast')
 }
 
-const themePresets = {
-  classic: {
-    primary: '#409eff',
-    primaryHover: '#337ecc',
-    bg: '#f5f7fb',
-    cardBg: '#ffffff',
-    border: 'rgba(29, 29, 31, 0.08)',
-    text: '#1d1d1f',
-    textSecondary: 'rgba(29, 29, 31, 0.68)'
-  },
-  gallery: {
-    primary: '#0071e3',
-    primaryHover: '#0066cc',
-    bg: '#f5f5f7',
-    cardBg: '#ffffff',
-    border: 'rgba(29, 29, 31, 0.08)',
-    text: '#1d1d1f',
-    textSecondary: 'rgba(29, 29, 31, 0.68)'
-  },
-  cinema: {
-    primary: '#2997ff',
-    primaryHover: '#0077ed',
-    bg: '#0b0b0d',
-    cardBg: '#18181b',
-    border: 'rgba(255, 255, 255, 0.08)',
-    text: '#f5f5f7',
-    textSecondary: 'rgba(255, 255, 255, 0.68)'
-  }
-}
-
 const i18n = {
   zh: {
     pageTitle: 'StarNav 插件设置',
-    heroTitle: '把主站主题带进浏览器。',
+    heroTitle: '把 StarNav 装进浏览器。',
     heroCopy:
-      '连接你的 StarNav 实例后，扩展会记住站点地址、登录信息，并自行根据保存的偏好决定显示语言和主题。',
+      '连接你的 StarNav 实例后，扩展会记住站点地址与登录信息；显示语言跟随偏好，外观仅支持日/夜模式。',
     connectionTitle: '连接状态',
     statusDisconnected: '未连接',
     statusDisconnectedHint: '建议使用 HTTPS 部署主站，这样扩展和后台登录都更稳定。',
@@ -76,25 +49,27 @@ const i18n = {
     guideStep2Title: '登录管理员账户',
     guideStep2Copy: '连接成功后可以直接在 popup 里搜索、收藏当前页面，并写回 StarNav 后端。',
     guideStep3Title: '从工具栏快速使用',
-    guideStep3Copy: '点击扩展图标即可快速添加书签、搜索已有内容或打开主站。',
+    guideStep3Copy: '工具栏图标可搜索/添加书签；也可使用右键菜单或 Alt+Shift+A 添加当前页。',
     connectedAs: '已连接 ({username})',
     disconnectStatus: '已断开',
-    sessionExpiredStatus: '登录已失效，请重新连接',
+    sessionExpiredStatus: '登录已失效。用户名已保留，请重新输入密码后连接。',
     disconnectToast: '已断开连接',
     missingServerUrl: '请输入服务器地址',
     missingCredentials: '请输入用户名和密码',
+    permissionDenied: '需要允许访问该站点地址后才能连接',
     insecureWarning: '警告：非 HTTPS 连接可能存在安全风险',
     connectSuccess: '连接成功！现在可以在 popup 中使用插件功能了。',
     connectionFailedStatus: '连接失败',
     connectionFailed: '连接失败',
     healthSuccess: '服务器正常 (v{version})',
-    healthFailed: '无法连接到服务器'
+    healthFailed: '无法连接到服务器',
+    toggleTheme: '切换日/夜模式'
   },
   en: {
     pageTitle: 'StarNav Extension Settings',
-    heroTitle: 'Bring your StarNav theme into the browser.',
+    heroTitle: 'Bring StarNav into your browser.',
     heroCopy:
-      'After connecting to your StarNav instance, the extension remembers the site URL and login state, then decides language and theme from its own saved preferences.',
+      'After connecting to your StarNav instance, the extension remembers the site URL and login state. Language follows your preference; appearance is light/dark only.',
     connectionTitle: 'Connection',
     statusDisconnected: 'Not connected',
     statusDisconnectedHint:
@@ -122,19 +97,21 @@ const i18n = {
       'Once connected, you can search, save the current page, and write changes back to the StarNav backend from the popup.',
     guideStep3Title: 'Use it from the toolbar',
     guideStep3Copy:
-      'Click the extension icon to quickly add bookmarks, search existing ones, or open the main site.',
+      'Use the toolbar popup to search/add bookmarks, or add the current page via the context menu / Alt+Shift+A.',
     connectedAs: 'Connected ({username})',
     disconnectStatus: 'Disconnected',
-    sessionExpiredStatus: 'Session expired. Please reconnect.',
+    sessionExpiredStatus: 'Session expired. Username kept — re-enter password to reconnect.',
     disconnectToast: 'Disconnected',
     missingServerUrl: 'Please enter the server URL',
     missingCredentials: 'Please enter both username and password',
+    permissionDenied: 'Host access for this site is required before connecting',
     insecureWarning: 'Warning: non-HTTPS connections may be insecure',
     connectSuccess: 'Connected successfully. You can now use the popup features.',
     connectionFailedStatus: 'Connection failed',
     connectionFailed: 'Connection failed',
     healthSuccess: 'Server is healthy (v{version})',
-    healthFailed: 'Unable to reach the server'
+    healthFailed: 'Unable to reach the server',
+    toggleTheme: 'Toggle light/dark mode'
   }
 }
 
@@ -154,22 +131,26 @@ const formatText = (key, variables = {}) =>
   (getTexts()[key] || key).replace(/\{(\w+)\}/g, (_, name) => String(variables[name] ?? ''))
 
 async function init() {
-  const stored = await getFullStorage([
+  const stored = await getMergedStorage([
     'serverUrl',
     'token',
     'user',
     'savedUsername',
-    'themePreset',
-    'themeColor',
     'lang',
-    'locale'
+    'locale',
+    'themeMode',
+    'theme-mode'
   ])
+
+  // Drop legacy preset/accent keys from older extension installs.
+  await removeStorage(['themePreset', 'themeColor'], 'sync')
+  await removeStorage(['themePreset', 'themeColor'], 'local')
 
   state.currentLang = resolveExtensionLanguage(stored)
   state.currentThemeMode = resolveExtensionThemeMode(stored)
 
   applyDocumentLanguage(state.currentLang)
-  applyTheme(stored.themePreset, stored.themeColor, state.currentThemeMode)
+  applyThemeMode(state.currentThemeMode)
   updateStaticText()
 
   if (stored.serverUrl) {
@@ -202,14 +183,19 @@ async function validateStoredConnection(serverUrl, token) {
   }
 
   try {
+    const granted = await ensureHostPermission(serverUrl)
+    if (!granted) {
+      return
+    }
     await validateSession(serverUrl, token)
   } catch (error) {
     if (error?.status !== 401) {
       return
     }
 
-    await clearStorage(['token', 'user'], 'local')
-    await clearStorage(['token', 'user'], 'sync')
+    await removeStorage(['token', 'user'], 'local')
+    await removeStorage(['token', 'user'], 'sync')
+    isConnected = false
     updateStatus(false, formatText('sessionExpiredStatus'))
     showToast(error.message || formatText('sessionExpiredStatus'), 'error')
   }
@@ -218,47 +204,14 @@ async function validateStoredConnection(serverUrl, token) {
 function setupEventListeners() {
   elements.saveBtn.addEventListener('click', handleSaveClick)
   elements.testBtn.addEventListener('click', testConnection)
+  elements.themeToggle?.addEventListener('click', toggleTheme)
 }
 
-function getStorage(keys, area = 'sync') {
-  return new Promise((resolve) => {
-    chrome.storage[area].get(keys, resolve)
-  })
-}
-
-async function getFullStorage(keys) {
-  const syncData = await getStorage(keys, 'sync')
-  const localData = await getStorage(keys, 'local')
-  return { ...syncData, ...localData }
-}
-
-function setStorage(data, area = 'sync') {
-  return new Promise((resolve) => {
-    chrome.storage[area].set(data, resolve)
-  })
-}
-
-function clearStorage(keys, area = 'sync') {
-  return new Promise((resolve) => {
-    chrome.storage[area].remove(keys, resolve)
-  })
-}
-
-function applyTheme(preset = 'gallery', color = '', mode = 'light') {
-  const resolvedPreset = themePresets[preset] ? preset : 'gallery'
-  const baseTheme = themePresets[resolvedPreset]
-  const root = document.documentElement
-  const primary = typeof color === 'string' && color.trim() ? color.trim() : baseTheme.primary
-
-  root.setAttribute('data-theme-preset', resolvedPreset)
-  applyThemeMode(mode, root)
-  root.style.setProperty('--primary', primary)
-  root.style.setProperty('--primary-hover', baseTheme.primaryHover)
-  root.style.setProperty('--bg', baseTheme.bg)
-  root.style.setProperty('--card-bg', baseTheme.cardBg)
-  root.style.setProperty('--border', baseTheme.border)
-  root.style.setProperty('--text', baseTheme.text)
-  root.style.setProperty('--text-secondary', baseTheme.textSecondary)
+async function toggleTheme() {
+  state.currentThemeMode = state.currentThemeMode === 'dark' ? 'light' : 'dark'
+  applyThemeMode(state.currentThemeMode)
+  await setStorage({ themeMode: state.currentThemeMode })
+  updateStaticText()
 }
 
 function updateStaticText() {
@@ -272,6 +225,10 @@ function updateStaticText() {
 
     element.textContent = formatText(key)
   })
+
+  if (elements.themeToggle) {
+    elements.themeToggle.title = formatText('toggleTheme')
+  }
 
   document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
     const key = element.getAttribute('data-i18n-placeholder')
@@ -332,9 +289,10 @@ function setLoading(loading) {
 
 async function handleSaveClick() {
   if (isConnected) {
-    await clearStorage(['token', 'user'], 'local')
-    await clearStorage(['token', 'user'], 'sync')
+    await removeStorage(['token', 'user'], 'local')
+    await removeStorage(['token', 'user'], 'sync')
     elements.password.value = ''
+    isConnected = false
 
     updateStatus(false, formatText('disconnectStatus'))
     showToast(formatText('disconnectToast'), 'success')
@@ -362,6 +320,12 @@ async function saveAndConnect() {
   try {
     setLoading(true)
 
+    const granted = await ensureHostPermission(serverUrl)
+    if (!granted) {
+      showToast(formatText('permissionDenied'), 'error')
+      return
+    }
+
     const result = await loginToServer(serverUrl, username, password)
 
     if (
@@ -388,10 +352,12 @@ async function saveAndConnect() {
       'local'
     )
 
+    isConnected = true
     updateStatus(true, formatText('connectedAs', { username: result.user?.login || username }))
     showToast(formatText('connectSuccess'), 'success')
     elements.password.value = ''
   } catch (error) {
+    isConnected = false
     updateStatus(false, formatText('connectionFailedStatus'))
     showToast(error.message || formatText('connectionFailed'), 'error')
   } finally {
@@ -410,6 +376,12 @@ async function testConnection() {
   try {
     elements.testBtn.disabled = true
     elements.testBtn.textContent = formatText('testingConnection')
+
+    const granted = await ensureHostPermission(serverUrl)
+    if (!granted) {
+      showToast(formatText('permissionDenied'), 'error')
+      return
+    }
 
     const health = await checkHealth(serverUrl)
     showToast(formatText('healthSuccess', { version: health.version || '?' }), 'success')

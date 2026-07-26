@@ -189,6 +189,6 @@ watch(
 </script>
 
 <style scoped lang="scss">
-@import './Search.scss';
+@use './Search.scss';
 </style>
 

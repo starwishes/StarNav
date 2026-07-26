@@ -51,4 +51,18 @@ describe('realisticBookmarkDataset', () => {
     expect(payload.content.categories).toHaveLength(10)
     expect(payload.content.items).toHaveLength(100)
   })
+
+  it('expands to 1000 unique bookmarks when requested', () => {
+    const dataset = buildRealisticBookmarkDataset(1000)
+
+    expect(dataset.categories).toHaveLength(10)
+    expect(dataset.items).toHaveLength(1000)
+    expect(new Set(dataset.items.map((item) => item.id)).size).toBe(1000)
+    expect(new Set(dataset.items.map((item) => item.url)).size).toBe(1000)
+    expect(dataset.items[100]).toMatchObject({
+      name: 'GitHub #2',
+      categoryId: 1
+    })
+    expect(String(dataset.items[100].url)).toContain('navSeed=2')
+  })
 })

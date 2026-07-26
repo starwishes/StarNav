@@ -212,47 +212,6 @@
         </div>
       </section>
 
-      <section class="settings-section">
-        <div class="section-head">
-          <h3 class="section-title">{{ t('settings.themeSettings') }}</h3>
-          <p class="section-copy">{{ t('settings.themeTip') }}</p>
-        </div>
-
-        <div class="section-fields">
-          <label class="setting-block" data-setting-field="themePreset">
-            <span class="setting-label">{{ t('settings.themePreset') }}</span>
-            <span class="form-tip">{{ t('settings.themePresetTip') }}</span>
-            <AppSelect v-model="settings.themePreset" class="settings-select">
-              <option
-                v-for="option in themePresetOptions"
-                :key="String(option.value)"
-                :value="option.value"
-              >
-                {{ option.label }}
-              </option>
-            </AppSelect>
-          </label>
-
-          <label class="setting-block" data-setting-field="themeColor">
-            <span class="setting-label">{{ t('settings.themeColor') }}</span>
-            <span class="form-tip">{{ t('settings.themeColorTip') }}</span>
-            <input
-              v-model="settings.themeColor"
-              class="settings-input"
-              :placeholder="t('settings.themeColorPlaceholder')"
-              autocomplete="off"
-              spellcheck="false"
-            />
-            <div class="theme-preview">
-              <span class="theme-swatch" :style="{ backgroundColor: previewAccentColor }"></span>
-              <span class="theme-preview-copy">
-                {{ settings.themeColor || t('settings.themeColorAuto') }}
-              </span>
-            </div>
-          </label>
-        </div>
-      </section>
-
       <div class="form-actions">
         <button type="submit" class="settings-button primary save-settings-btn">
           {{ t('settings.saveSettings') }}
@@ -292,8 +251,6 @@ const {
   applyUploadedFile,
   defaultLevelOptions,
   timezoneOptions,
-  themePresetOptions,
-  previewAccentColor,
   fillDefaultFooter,
   saveSettings
 } = useSystemSettingsForm(() => props.initialSettings, emit, t)
@@ -307,5 +264,5 @@ void uploadInputRef
 </script>
 
 <style scoped lang="scss">
-@import './SystemSettings.scss';
+@use './SystemSettings.scss';
 </style>

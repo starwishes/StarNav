@@ -9,21 +9,21 @@
         <table class="sn-table">
           <thead>
             <tr>
-              <th v-if="!isMobile" class="is-center" style="width: 56px">
+              <th class="is-center col-meta col-check" style="width: 56px">
                 <label class="sn-check-cell">
                   <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
                 </label>
               </th>
-              <th v-if="!isMobile" class="is-center" style="width: 72px">{{ t('table.id') }}</th>
-              <th style="width: 160px">{{ t('table.siteName') }}</th>
-              <th>{{ t('table.siteUrl') }}</th>
-              <th v-if="!isMobile" class="is-center" style="width: 140px">
+              <th class="is-center col-meta col-id" style="width: 72px">{{ t('table.id') }}</th>
+              <th class="col-name" style="width: 160px">{{ t('table.siteName') }}</th>
+              <th class="col-url">{{ t('table.siteUrl') }}</th>
+              <th class="is-center col-meta col-category" style="width: 140px">
                 {{ t('table.category') }}
               </th>
-              <th v-if="!isMobile" class="is-center" style="width: 120px">
+              <th class="is-center col-meta col-visibility" style="width: 120px">
                 {{ t('table.visibility') }}
               </th>
-              <th v-if="!isMobile" class="is-center" style="width: 120px">
+              <th class="is-center col-meta col-clicks" style="width: 120px">
                 <button type="button" class="sort-button" @click="toggleClickCountSort">
                   <span>{{ t('table.clickCount') }}</span>
                   <span class="sort-indicator">
@@ -31,15 +31,15 @@
                   </span>
                 </button>
               </th>
-              <th v-if="!isMobile" class="is-center" style="width: 140px">
+              <th class="is-center col-meta col-visited" style="width: 140px">
                 {{ t('table.lastVisited') }}
               </th>
-              <th class="is-center" style="width: 168px">{{ t('table.action') }}</th>
+              <th class="is-center col-actions" style="width: 220px">{{ t('table.action') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in paginatedData" :key="row.id">
-              <td v-if="!isMobile" class="is-center">
+              <td class="is-center col-meta col-check">
                 <label class="sn-check-cell">
                   <input
                     type="checkbox"
@@ -48,9 +48,9 @@
                   />
                 </label>
               </td>
-              <td v-if="!isMobile" class="is-center">{{ row.id }}</td>
-              <td>{{ row.name }}</td>
-              <td>
+              <td class="is-center col-meta col-id">{{ row.id }}</td>
+              <td class="col-name">{{ row.name }}</td>
+              <td class="col-url">
                 <div class="url-cell">
                   <a
                     class="sn-table-link site-link"
@@ -81,24 +81,24 @@
                   ></span>
                 </div>
               </td>
-              <td v-if="!isMobile" class="is-center">
+              <td class="is-center col-meta col-category">
                 <span class="sn-badge is-primary">{{ getCategoryName(row.categoryId) }}</span>
               </td>
-              <td v-if="!isMobile" class="is-center">
+              <td class="is-center col-meta col-visibility">
                 <span class="sn-badge" :class="getVisibilityClass(row.level ?? 0)">
                   {{ getVisibilityLabel(row.level ?? 0) }}
                 </span>
               </td>
-              <td v-if="!isMobile" class="is-center">
+              <td class="is-center col-meta col-clicks">
                 <span class="sn-table-cell-muted">{{ row.clickCount || 0 }}</span>
               </td>
-              <td v-if="!isMobile" class="is-center">
+              <td class="is-center col-meta col-visited">
                 <span v-if="row.lastVisited" class="sn-table-cell-muted">
                   {{ formatDate(row.lastVisited) }}
                 </span>
                 <span v-else class="sn-table-cell-muted">-</span>
               </td>
-              <td class="is-center">
+              <td class="is-center col-actions">
                 <div class="sn-table-actions">
                   <button
                     type="button"
@@ -152,7 +152,7 @@
       </div>
     </div>
 
-    <div v-if="selectedPageItems.length > 0 && !isMobile" class="batch-actions-footer glass-effect">
+    <div v-if="selectedPageItems.length > 0" class="batch-actions-footer glass-effect">
       <span class="selected-count">{{
         t('table.selectedCount', { count: selectedPageItems.length })
       }}</span>
@@ -198,7 +198,6 @@
 import AppSelect from '@/components/AppSelect.vue'
 import type { Category, Item } from '@/types'
 import { useI18n } from 'vue-i18n'
-import { useMobile } from '@/composables/useMobile'
 import { useSiteTableState } from '@/composables/useSiteTableState'
 import {
   formatRelativeDate,
@@ -208,7 +207,6 @@ import {
 } from '@/components/siteTableHelpers'
 
 const { t } = useI18n()
-const { isMobile } = useMobile()
 
 const props = defineProps<{
   items: Item[]
@@ -259,5 +257,5 @@ const formatDate = (dateString: string) => formatRelativeDate(dateString, t)
 </script>
 
 <style scoped lang="scss">
-@import './SiteTable.scss';
+@use './SiteTable.scss';
 </style>

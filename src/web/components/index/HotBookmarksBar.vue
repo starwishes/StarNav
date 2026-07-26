@@ -32,5 +32,5 @@ defineEmits<{
 </script>
 
 <style scoped lang="scss">
-@import './HotBookmarksBar.scss';
+@use './HotBookmarksBar.scss';
 </style>

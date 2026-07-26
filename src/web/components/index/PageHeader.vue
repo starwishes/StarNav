@@ -55,8 +55,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, inject } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted, computed, inject, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getLocale, setLocale } from '@/plugins/i18n'
 import Clock from './Clock.vue'
@@ -83,10 +83,22 @@ const toggleSidebar = inject<() => void>('toggleSidebar', () => {})
 const change = ref(false)
 const configStore = useConfigStore()
 const router = useRouter()
+const route = useRoute()
 const adminStore = useAdminStore()
 const scrollHeight = ref(0)
 const showLoginDialog = ref(false)
 const themeMode = ref<ThemeMode>('light')
+
+// Open login when guard bounced unauthenticated users from /admin/*
+watch(
+  () => route.query.login,
+  (loginFlag) => {
+    if (loginFlag === '1' && !adminStore.isAuthenticated) {
+      showLoginDialog.value = true
+    }
+  },
+  { immediate: true }
+)
 
 const langIcon = computed(() => {
   return getLocale() === 'zh-CN' ? '文<sub>A</sub>' : 'A<sub>文</sub>'
@@ -99,9 +111,7 @@ const toggleLang = () => {
 }
 
 const syncThemeTokens = (mode: ThemeMode) => {
-  applyThemeTokens(
-    resolveThemeTokens(configStore.siteConfig.themePreset, configStore.siteConfig.themeColor, mode)
-  )
+  applyThemeTokens(resolveThemeTokens(mode))
 }
 
 const toggleTheme = () => {
@@ -158,6 +168,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
-@import './PageHeader.scss';
+@use './PageHeader.scss';
 </style>
 

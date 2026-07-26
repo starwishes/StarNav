@@ -148,6 +148,17 @@ describe('dataStoreHelpers', () => {
     expect(moveItemLocally(items, 1, 2, 1).map((item) => item.id)).toEqual([2, 1, 3, 4])
     expect(moveItemLocally(items, 4, 9, 0).map((item) => item.id)).toEqual([1, 2, 3, 4])
     expect(moveItemLocally(items, 99, 2, 0)).toBe(items)
+
+    // Same-category reorder: insert before hovered index (with down-move adjustment).
+    const sameCategory = [
+      { id: 1, name: 'A', url: 'https://a.test', description: '', categoryId: 1 },
+      { id: 2, name: 'B', url: 'https://b.test', description: '', categoryId: 1 },
+      { id: 3, name: 'C', url: 'https://c.test', description: '', categoryId: 1 },
+      { id: 4, name: 'D', url: 'https://d.test', description: '', categoryId: 1 }
+    ]
+    expect(moveItemLocally(sameCategory, 1, 1, 2).map((item) => item.id)).toEqual([2, 1, 3, 4])
+    expect(moveItemLocally(sameCategory, 4, 1, 1).map((item) => item.id)).toEqual([1, 4, 2, 3])
+    expect(moveItemLocally(sameCategory, 2, 1, 1)).toBe(sameCategory)
   })
 
   it('finds duplicate urls case-insensitively and respects excluded ids', () => {

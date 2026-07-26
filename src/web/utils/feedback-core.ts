@@ -1,3 +1,6 @@
+/**
+ * Internal toast/dialog adapters. Prefer `@/utils/feedback` from application code.
+ */
 import { closeActiveDialog, openDialog } from './feedback/dialog'
 import { closeAllToasts, createToast } from './feedback/toast'
 

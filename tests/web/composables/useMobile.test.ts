@@ -3,12 +3,41 @@ import { defineComponent, nextTick } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMobile } from '@/composables/useMobile'
 
-const setInnerWidth = (value: number) => {
-  Object.defineProperty(window, 'innerWidth', {
-    configurable: true,
-    writable: true,
-    value
-  })
+type MediaQueryListener = (event: MediaQueryListEvent) => void
+
+const createMatchMedia = (initialMatches: boolean) => {
+  const listeners = new Set<MediaQueryListener>()
+  let matches = initialMatches
+
+  const mediaQuery = {
+    get matches() {
+      return matches
+    },
+    media: '',
+    onchange: null,
+    addEventListener: vi.fn((type: string, listener: EventListener) => {
+      if (type === 'change') {
+        listeners.add(listener as MediaQueryListener)
+      }
+    }),
+    removeEventListener: vi.fn((type: string, listener: EventListener) => {
+      if (type === 'change') {
+        listeners.delete(listener as MediaQueryListener)
+      }
+    }),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+    setMatches(next: boolean) {
+      matches = next
+      const event = { matches: next } as MediaQueryListEvent
+      for (const listener of listeners) {
+        listener(event)
+      }
+    }
+  }
+
+  return mediaQuery
 }
 
 const Harness = defineComponent({
@@ -25,16 +54,26 @@ const Harness = defineComponent({
 })
 
 describe('useMobile', () => {
+  let mediaQuery: ReturnType<typeof createMatchMedia>
+
   beforeEach(() => {
-    setInnerWidth(640)
+    mediaQuery = createMatchMedia(true)
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => {
+        mediaQuery.media = query
+        return mediaQuery
+      })
+    )
   })
 
   afterEach(() => {
     document.body.innerHTML = ''
+    vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
 
-  it('evaluates the initial viewport and updates on resize', async () => {
+  it('evaluates the initial viewport and updates on media change', async () => {
     const wrapper = mount(Harness, {
       props: {
         breakpoint: 768
@@ -43,30 +82,26 @@ describe('useMobile', () => {
     await nextTick()
 
     expect(wrapper.text()).toBe('true')
+    expect(window.matchMedia).toHaveBeenCalledWith('(max-width: 768px)')
 
-    setInnerWidth(1024)
-    window.dispatchEvent(new Event('resize'))
+    mediaQuery.setMatches(false)
     await nextTick()
     expect(wrapper.text()).toBe('false')
 
-    setInnerWidth(768)
-    window.dispatchEvent(new Event('resize'))
+    mediaQuery.setMatches(true)
     await nextTick()
     expect(wrapper.text()).toBe('true')
 
     wrapper.unmount()
   })
 
-  it('registers and cleans up the resize listener', () => {
-    const addSpy = vi.spyOn(window, 'addEventListener')
-    const removeSpy = vi.spyOn(window, 'removeEventListener')
-
+  it('registers and cleans up the media change listener', () => {
     const wrapper = mount(Harness)
 
-    expect(addSpy).toHaveBeenCalledWith('resize', expect.any(Function))
+    expect(mediaQuery.addEventListener).toHaveBeenCalledWith('change', expect.any(Function))
 
     wrapper.unmount()
 
-    expect(removeSpy).toHaveBeenCalledWith('resize', expect.any(Function))
+    expect(mediaQuery.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function))
   })
 })

@@ -27,7 +27,49 @@ npm run test:performance:bookmarks:mixed
 1. 本机已安装 `k6`：直接执行 `k6 run`
 2. 本机未安装 `k6` 且当前环境是 Linux / WSL：自动回退到 `grafana/k6` Docker 镜像
 
-当前 npm script 入口由 [package.json](../package.json) 中的 `src/server/tools/runBookmarksPerformanceTest.js` 统一承接；默认运行只读基线，也支持通过脚本参数切换到混合读写场景，不再要求每次手拼 `docker run`。
+当前 npm script 入口由 [package.json](../package.json) 中的 `src/server/tools/runBookmarksPerformanceTest.ts`（`tsx`）统一承接；默认运行只读基线，也支持通过脚本参数切换到混合读写场景，不再要求每次手拼 `docker run`。
+
+读路径优化验收建议：
+
+1. 冷启动后跑 `npm run test:performance:bookmarks`，关注 `GET /api/data` / search / categories
+2. 对比点击风暴：首页多次打开书签后，`GET /api/health` → `checks.queries` 与 cache hitRate 是否异常变差
+3. 结构写（增删改）后 search 结果应立即一致；纯点击统计允许 search 缓存中 clickCount 短暂滞后
+
+### 本地 smoke 基线（`K6_PROFILE=smoke`）
+
+对 demo 容器（100 书签）可先跑短档，不必每次 full：
+
+```bash
+# 只读读路径（约 1 分钟）
+K6_PROFILE=smoke BASE_URL=http://127.0.0.1:8080 \
+  TEST_USERNAME=admin TEST_PASSWORD='…' SEARCH_KEYWORD=Git \
+  npm run test:performance:bookmarks
+
+# 混合读写（约 1 分钟）
+K6_PROFILE=smoke BASE_URL=http://127.0.0.1:8080 \
+  TEST_USERNAME=admin TEST_PASSWORD='…' SEARCH_KEYWORD=Git \
+  npm run test:performance:bookmarks:mixed
+```
+
+WSL + Docker 无本机 k6 时：
+
+```bash
+docker run --rm --network host \
+  -v "$PWD":/work -w /work \
+  -e BASE_URL=http://127.0.0.1:8080 \
+  -e TEST_USERNAME=admin -e TEST_PASSWORD='…' \
+  -e SEARCH_KEYWORD=Git -e K6_PROFILE=smoke \
+  grafana/k6:latest run tests/performance/bookmarks-load.js
+```
+
+**参考基线（2026-07-26，demo 100 书签，`starnav-manual-demo`）：**
+
+| 场景 | checks | 失败率 | p(95) 延迟 | 备注 |
+|------|--------|--------|------------|------|
+| read smoke | 3702/3702 | 0% | **6.7ms** | 阈值 800ms |
+| mixed smoke | 4669/4669 | 0% | **67ms** | 含 CRUD 写流；阈值 1200ms |
+
+结论：当前读路径与混合写在 demo 规模下远低于阈值；写路径已用 `trackClick` 窄失效，结构写仍全量 `invalidateBookmarkCaches()`。full 档（50–100 VU）留给发布前/容量评估。
 
 ## 安装 k6
 

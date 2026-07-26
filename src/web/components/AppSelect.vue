@@ -332,5 +332,5 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-@import './AppSelect.scss';
+@use './AppSelect.scss';
 </style>

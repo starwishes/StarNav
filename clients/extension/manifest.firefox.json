@@ -3,7 +3,12 @@
   "name": "StarNav",
   "version": "1.0.0",
   "description": "Quickly add bookmarks and search your StarNav navigation site",
-  "permissions": ["activeTab", "storage", "tabs", "<all_urls>"],
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs",
+    "contextMenus"
+  ],
   "browser_action": {
     "default_popup": "popup/popup.html",
     "default_title": "StarNav",
@@ -23,7 +28,9 @@
     "open_in_tab": true
   },
   "background": {
-    "scripts": ["background/service-worker.js"],
+    "scripts": [
+      "background/service-worker.js"
+    ],
     "persistent": false
   },
   "content_security_policy": "script-src 'self'; object-src 'self';",
@@ -34,6 +41,13 @@
         "mac": "Alt+Shift+S"
       },
       "description": "Open StarNav"
+    },
+    "add-current-page": {
+      "suggested_key": {
+        "default": "Alt+Shift+A",
+        "mac": "Alt+Shift+A"
+      },
+      "description": "Add current page to StarNav"
     }
   },
   "browser_specific_settings": {

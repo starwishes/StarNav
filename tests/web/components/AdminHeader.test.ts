@@ -52,10 +52,7 @@ describe('AdminHeader', () => {
     vi.clearAllMocks()
     locale = 'zh-CN'
     configStoreMock = {
-      siteConfig: {
-        themePreset: 'classic',
-        themeColor: ''
-      }
+      siteConfig: {}
     }
     localStorage.clear()
     document.documentElement.className = ''

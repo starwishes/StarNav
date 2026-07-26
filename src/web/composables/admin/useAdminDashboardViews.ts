@@ -18,12 +18,8 @@ export interface AdminDashboardViewConfig {
   menuKey: string
   icon: string
   onEnter?: () => void | Promise<void>
-  panelClass?: string
-  panelTitle?: string
   props?: Record<string, unknown>
   requiresAdmin?: boolean
-  usePanel?: boolean
-  wrapperClass?: string
 }
 
 type MaybePromise<T = void> = T | Promise<T>
@@ -77,16 +73,13 @@ export function useAdminDashboardViews(options: UseAdminDashboardViewsOptions) {
           menuKey: 'settings',
           icon: 'icon-md-settings',
           onEnter: options.fetchSettings,
-          panelClass: 'narrow-panel',
           props: {
             initialSettings: options.systemSettings.value
           },
           events: {
             save: options.handleSaveSettings
           },
-          requiresAdmin: true,
-          usePanel: true,
-          wrapperClass: 'settings-view'
+          requiresAdmin: true
         },
         users: {
           component: UserTable,
@@ -102,9 +95,7 @@ export function useAdminDashboardViews(options: UseAdminDashboardViewsOptions) {
             delete: options.handleDeleteUser,
             update: options.handleUpdateUser
           },
-          requiresAdmin: true,
-          usePanel: true,
-          wrapperClass: 'users-view'
+          requiresAdmin: true
         },
         data: {
           component: DataManager,
@@ -140,15 +131,13 @@ export function useAdminDashboardViews(options: UseAdminDashboardViewsOptions) {
             'json-import': options.handleJsonImport,
             'move-category': options.moveCategory,
             'clean-duplicates': options.handleCleanDuplicates
-          },
-          wrapperClass: 'data-view'
+          }
         },
         monitor: {
           component: MonitoringDashboard,
           menuKey: 'monitor',
           icon: 'icon-md-stats',
-          requiresAdmin: true,
-          wrapperClass: 'monitor-view'
+          requiresAdmin: true
         }
       }) as Record<AdminDashboardViewId, AdminDashboardViewConfig>
   )

@@ -78,6 +78,48 @@ npm run admin:bootstrap-password
 
 ## 4. 健康检查与最小冒烟
 
+### 最小验收路径（推荐顺序）
+
+交付或升级后，按从轻到重选择：
+
+| 顺序 | 命令 | 覆盖 |
+|------|------|------|
+| 1 | `npm run docker:smoke` | 镜像构建 + 容器内健康/基本可用性 |
+| 2 | `curl http://127.0.0.1:8080/api/health` | 运行中实例存活 |
+| 3 | `npm run admin:bootstrap-password`（仅首登且未设 `ADMIN_PASSWORD`） | 取出并销毁一次性管理员密码 |
+| 4 | `npm run test:smoke` | 隔离进程 API 冒烟（登录/会话/书签/上传） |
+| 5 | `npm run db:backup` / `npm run db:restore -- --input <path>` | 备份恢复演练（变更前建议先 4） |
+| 6 | `npm run test:browser`（可选） | 主站 Playwright 回归 |
+
+CI 已覆盖 typecheck、audit:prod、coverage、runtime smoke、build、docker:smoke；本地改动优先 `npm run typecheck` + `npm run test:fast`。
+
+### WSL 手动仿真（100 书签）
+
+本机 Windows 若无 Docker CLI，可在 **WSL** 使用已构建镜像做本地验收（与 Windows Node 工具链隔离）：
+
+```bash
+# 1) 需要镜像 starnav:smoke（可先 npm run docker:smoke 或 docker build -f docker/Dockerfile -t starnav:smoke .）
+# 2) 启动容器并灌入 tests/fixtures/realistic-bookmarks-100.json
+cd /mnt/d/Project/CodeProject/StarNav   # 按实际挂载路径调整
+sh scripts/docker/run-manual-demo.sh
+```
+
+默认：
+
+- URL：`http://127.0.0.1:8080`
+- 账号：`admin` / 脚本内 `ADMIN_PASSWORD`（与 `.env.example` 示例一致，仅本地）
+- 数据目录：`data/manual-demo`（挂载到容器 `/app/data`）
+- 种子：10 分类 + 100 书签
+
+停止：`docker stop starnav-manual-demo`；删除容器：`docker rm -f starnav-manual-demo`（数据目录可保留）。
+
+**重建镜像后后台转圈：** 常见原因是浏览器仍挂着旧 Service Worker，首页壳子旧、懒加载的 `AdminDashboard-*.js` 哈希已变。应用会在 `vite:preloadError` 时自动注销 SW 并清理 Cache 后重载一次；若仍异常，在开发者工具 → Application → 注销 Service Workers / Clear site data，再硬刷新。
+
+### 镜像变体
+
+- 默认交付：`docker/Dockerfile`（`npm run docker:build` / `docker:smoke`）
+- 精简实验：`docker/Dockerfile.runtime-min`（更小 runtime 基底；需单独 build，不作为 compose 默认镜像）
+
 ### 健康检查
 
 ```bash

@@ -1,20 +1,26 @@
 import { createScopedLogger } from '../../common/logger.js'
-
-const buildCategoryOptions = (categories) =>
-  categories.map((category) => `<option value="${category.id}">${category.name}</option>`).join('')
+import { fillSelectOptions } from '../../utils/dom.js'
 
 export function createCategoryController({ apiRequest, elements, state, i18n, ui }) {
   const logger = createScopedLogger('extension:categories')
   const getTexts = () => i18n[state.currentLang]
 
+  const applyCategoryOptions = (selectElement, { placeholder } = {}) => {
+    fillSelectOptions(
+      selectElement,
+      state.categories.map((category) => ({
+        value: category.id,
+        label: category.name
+      })),
+      { placeholder }
+    )
+  }
+
   const loadCategories = async () => {
     try {
       const result = await apiRequest('/categories/simple')
       state.categories = Array.isArray(result.categories) ? result.categories : []
-
-      if (elements.bookmarkCategory) {
-        elements.bookmarkCategory.innerHTML = buildCategoryOptions(state.categories)
-      }
+      applyCategoryOptions(elements.bookmarkCategory)
     } catch (error) {
       logger.error('Failed to load categories.', error)
     }
@@ -29,12 +35,9 @@ export function createCategoryController({ apiRequest, elements, state, i18n, ui
       elements.newCategoryName.value = ''
     }
 
-    if (elements.newCategoryParent) {
-      elements.newCategoryParent.value = ''
-      elements.newCategoryParent.innerHTML =
-        `<option value="">${getTexts().rootCategory}</option>` +
-        buildCategoryOptions(state.categories)
-    }
+    applyCategoryOptions(elements.newCategoryParent, {
+      placeholder: getTexts().rootCategory
+    })
 
     if (elements.newCategoryLevel) {
       elements.newCategoryLevel.value = '0'

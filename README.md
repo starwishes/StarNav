@@ -54,5 +54,3 @@ server.ts                 # 进程入口
 ```
 
 扩展安装包：[Chrome/Edge](clients/extension/packages/starnav-extension-chrome.zip) · [Firefox](clients/extension/packages/starnav-extension-firefox.zip)
-
-MIT

@@ -91,8 +91,6 @@ export interface Session {
 export interface SystemSettings {
   registrationEnabled?: boolean
   backgroundUrl?: string
-  themePreset?: string
-  themeColor?: string
   timezone?: string
   homeUrl?: string
   footerHtml?: string

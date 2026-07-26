@@ -27,6 +27,8 @@ export const useDataStore = defineStore('data', () => {
   const loading = ref(false)
   const saving = ref(false)
   const initialized = ref(false)
+  /** In-flight load so concurrent callers share one request (search + homepage). */
+  let loadDataPromise: Promise<void> | null = null
 
   const applyLoadedContent = (content: SiteConfig | null | undefined) => {
     const sanitized = sanitizeApiData(content)
@@ -79,16 +81,25 @@ export const useDataStore = defineStore('data', () => {
   }
 
   const loadData = async () => {
-    loading.value = true
-    try {
-      applyLoadedContent(await dataApi.getContent())
-    } catch (error) {
-      logger.error('Failed to load data.', error)
-      const message = error instanceof Error ? error.message : '加载失败'
-      ElMessage.error('加载失败: ' + message)
-    } finally {
-      loading.value = false
+    if (loadDataPromise) {
+      return loadDataPromise
     }
+
+    loadDataPromise = (async () => {
+      loading.value = true
+      try {
+        applyLoadedContent(await dataApi.getContent())
+      } catch (error) {
+        logger.error('Failed to load data.', error)
+        const message = error instanceof Error ? error.message : '加载失败'
+        ElMessage.error('加载失败: ' + message)
+      } finally {
+        loading.value = false
+        loadDataPromise = null
+      }
+    })()
+
+    return loadDataPromise
   }
 
   const sync = async (action?: string) => {

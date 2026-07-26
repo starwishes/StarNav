@@ -19,7 +19,8 @@ const mocks = vi.hoisted(() => ({
   categoryReorder: vi.fn(),
   categoryDelete: vi.fn(),
   categoryBulkInsert: vi.fn(),
-  invalidateBookmarkCaches: vi.fn()
+  invalidateBookmarkCaches: vi.fn(),
+  patchItemClickInCache: vi.fn()
 }))
 
 vi.mock('../../../src/server/services/database/database.js', () => ({
@@ -60,6 +61,10 @@ vi.mock('../../../src/server/services/bookmark/categoryWriteService.js', () => (
 
 vi.mock('../../../src/server/services/cache/cacheInvalidationService.js', () => ({
   invalidateBookmarkCaches: mocks.invalidateBookmarkCaches
+}))
+
+vi.mock('../../../src/server/services/bookmark/cache.js', () => ({
+  patchItemClickInCache: mocks.patchItemClickInCache
 }))
 
 const { bookmarkMutationService } =
@@ -118,14 +123,23 @@ describe('BookmarkMutationService', () => {
     expect(mocks.loggerError).toHaveBeenCalledWith('数据保存失败', error)
   })
 
-  it('should invalidate caches after successful click tracking', () => {
-    const item = { id: 3, clickCount: 1 }
+  it('should narrow-invalidate caches after successful click tracking', () => {
+    const item = { id: 3, clickCount: 2, lastVisited: '2026-07-26T00:00:00.000Z' }
     mocks.bookmarkTrackClick.mockReturnValue(item)
+    mocks.patchItemClickInCache.mockReturnValue(true)
 
     const result = bookmarkMutationService.trackClick('3')
 
     expect(mocks.bookmarkTrackClick).toHaveBeenCalledWith('3')
-    expect(mocks.invalidateBookmarkCaches).toHaveBeenCalled()
+    expect(mocks.patchItemClickInCache).toHaveBeenCalledWith(
+      3,
+      2,
+      '2026-07-26T00:00:00.000Z'
+    )
+    expect(mocks.invalidateBookmarkCaches).toHaveBeenCalledWith(undefined, {
+      includeSnapshot: false,
+      includeSearch: false
+    })
     expect(result).toBe(item)
   })
 

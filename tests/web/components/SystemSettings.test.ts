@@ -106,9 +106,7 @@ describe('SystemSettings', () => {
       homeUrl: 'https://start.test',
       logoUrl: '/uploads/logo-old.png',
       faviconUrl: '/uploads/favicon.ico',
-      backgroundUrl: '/uploads/bg.jpg',
-      themePreset: 'gallery',
-      themeColor: '#0071e3'
+      backgroundUrl: '/uploads/bg.jpg'
     })
     await flushAsync()
 
@@ -123,9 +121,9 @@ describe('SystemSettings', () => {
       (wrapper.find('[data-setting-field="homeUrl"] .settings-input').element as HTMLInputElement)
         .value
     ).toBe('https://start.test')
-    expect(getAppSelectValue(wrapper, '[data-setting-field="themePreset"] .settings-select')).toBe(
-      'gallery'
-    )
+    // Theme preset/color settings removed; day/night toggle lives in the header.
+    expect(wrapper.find('[data-setting-field="themePreset"]').exists()).toBe(false)
+    expect(wrapper.find('[data-setting-field="themeColor"]').exists()).toBe(false)
     expect(wrapper.find('[data-current-asset="logoUrl"] .logo-preview').attributes('src')).toBe(
       '/uploads/logo-old.png'
     )
@@ -142,8 +140,7 @@ describe('SystemSettings', () => {
         siteName: 'Renamed',
         timezone: 'Europe/London',
         homeUrl: 'https://renamed.test',
-        backgroundUrl: '/uploads/next.jpg',
-        themePreset: 'cinema'
+        backgroundUrl: '/uploads/next.jpg'
       }
     })
     await flushAsync()
@@ -159,9 +156,6 @@ describe('SystemSettings', () => {
       (wrapper.find('[data-setting-field="homeUrl"] .settings-input').element as HTMLInputElement)
         .value
     ).toBe('https://renamed.test')
-    expect(getAppSelectValue(wrapper, '[data-setting-field="themePreset"] .settings-select')).toBe(
-      'cinema'
-    )
     expect(
       wrapper.find('[data-current-asset="backgroundUrl"] .bg-preview').attributes('style')
     ).toContain('/uploads/next.jpg')
@@ -173,9 +167,7 @@ describe('SystemSettings', () => {
 
     const wrapper = createWrapper({
       siteName: 'StarNav',
-      footerHtml: '',
-      themePreset: 'gallery',
-      themeColor: '#0071e3'
+      footerHtml: ''
     })
     await flushAsync()
 
@@ -203,16 +195,13 @@ describe('SystemSettings', () => {
 
     await wrapper.find('form').trigger('submit')
 
-    expect(wrapper.emitted('save')).toEqual([
-      [
-        expect.objectContaining({
-          siteName: 'StarNav',
-          logoUrl: '/uploads/logo.png',
-          themePreset: 'gallery',
-          themeColor: '#0071e3'
-        })
-      ]
-    ])
+    const savePayload = wrapper.emitted('save')?.[0]?.[0] as Record<string, unknown>
+    expect(savePayload).toMatchObject({
+      siteName: 'StarNav',
+      logoUrl: '/uploads/logo.png'
+    })
+    expect(savePayload).not.toHaveProperty('themePreset')
+    expect(savePayload).not.toHaveProperty('themeColor')
   })
 
   it('triggers upload and refresh actions through the embedded asset management flow', async () => {

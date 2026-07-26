@@ -1,28 +1,16 @@
 import type { SystemSettings as SystemSettingsModel } from '@/api'
-import { DEFAULT_THEME_PRESET, normalizeThemeColor, normalizeThemePreset } from '@/utils/theme'
 
 type Translate = (key: string) => string
 
-export const createSystemSettingsDraft = (initialSettings: Partial<SystemSettingsModel>) => {
-  const themePreset = normalizeThemePreset(initialSettings.themePreset)
-  const themeColor = normalizeThemeColor(initialSettings.themeColor || '')
-
-  return {
-    ...initialSettings,
-    themePreset,
-    themeColor
-  }
-}
+export const createSystemSettingsDraft = (initialSettings: Partial<SystemSettingsModel>) => ({
+  ...initialSettings
+})
 
 export const syncSystemSettingsDraft = (
   target: Partial<SystemSettingsModel>,
   nextSettings: Partial<SystemSettingsModel>
 ) => {
-  Object.assign(target, {
-    ...nextSettings,
-    themePreset: normalizeThemePreset(nextSettings.themePreset),
-    themeColor: normalizeThemeColor(nextSettings.themeColor || '')
-  })
+  Object.assign(target, nextSettings)
   return target
 }
 
@@ -41,12 +29,6 @@ export const buildTimezoneOptions = (t: Translate) => [
   { label: t('timezone.moscow'), value: 'Europe/Moscow' },
   { label: t('timezone.paris'), value: 'Europe/Paris' },
   { label: t('timezone.sydney'), value: 'Australia/Sydney' }
-]
-
-export const buildThemePresetOptions = (t: Translate) => [
-  { label: t('settings.themePresetClassic'), value: DEFAULT_THEME_PRESET },
-  { label: t('settings.themePresetGallery'), value: 'gallery' },
-  { label: t('settings.themePresetCinema'), value: 'cinema' }
 ]
 
 export const buildDefaultFooterHtml = (

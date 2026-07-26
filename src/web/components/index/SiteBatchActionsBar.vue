@@ -62,3 +62,7 @@ const onTargetChange = (value: string | number | null | undefined) => {
   emit('update:batchMoveTarget', value ?? '')
 }
 </script>
+
+<style scoped lang="scss">
+@use './SiteBatchActionsBar.scss';
+</style>

@@ -184,6 +184,6 @@ Content-Type: application/json
 如果文档和代码冲突，以这些文件为准：
 
 - `server.ts`
-- `src/server/routes/*.js`
-- `src/server/controllers/*.js`
-- `src/server/services/*.js`
+- `src/server/routes/*.ts`
+- `src/server/controllers/*.ts`
+- `src/server/services/**/*.ts`

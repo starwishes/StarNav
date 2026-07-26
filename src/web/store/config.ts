@@ -5,11 +5,8 @@ import { sanitizeFooterHtml } from '../../shared/security/footerHtml.js'
 import { isAllowedTimezone, normalizeOptionalUrl } from '../../shared/security/urlSafety.js'
 import { createScopedLogger } from '../../shared/logger.js'
 import {
-  DEFAULT_THEME_PRESET,
   applyThemeTokens,
   getStoredThemeMode,
-  normalizeThemeColor,
-  normalizeThemePreset,
   resolveThemeTokens
 } from '@/utils/theme'
 
@@ -18,8 +15,6 @@ export interface PublicSiteConfig {
   logoUrl: string
   faviconUrl: string
   backgroundUrl: string
-  themePreset: string
-  themeColor: string
   footerHtml: string
   homeUrl: string
   registrationEnabled: boolean
@@ -35,8 +30,6 @@ const DEFAULT_CONFIG: PublicSiteConfig = {
   logoUrl: '',
   faviconUrl: '',
   backgroundUrl: '',
-  themePreset: DEFAULT_THEME_PRESET,
-  themeColor: '',
   footerHtml: '',
   homeUrl: '',
   registrationEnabled: false,
@@ -48,8 +41,6 @@ const sanitizePublicSiteConfig = (config: Partial<PublicSiteConfig> = {}): Publi
   logoUrl: normalizeOptionalUrl(config.logoUrl || '', { allowRelative: true }),
   faviconUrl: normalizeOptionalUrl(config.faviconUrl || '', { allowRelative: true }),
   backgroundUrl: normalizeOptionalUrl(config.backgroundUrl || '', { allowRelative: true }),
-  themePreset: normalizeThemePreset(config.themePreset),
-  themeColor: normalizeThemeColor(config.themeColor || ''),
   footerHtml: sanitizeFooterHtml(config.footerHtml || ''),
   homeUrl: normalizeOptionalUrl(config.homeUrl || '', { allowRelative: true }),
   registrationEnabled: Boolean(config.registrationEnabled),
@@ -83,8 +74,8 @@ export const useConfigStore = defineStore('config', () => {
   const displaySiteName = computed(() => siteConfig.value.siteName || DEFAULT_SITE_NAME)
 
   const applyConfig = () => {
-    const { siteName, faviconUrl, backgroundUrl, themePreset, themeColor } = siteConfig.value
-    applyThemeTokens(resolveThemeTokens(themePreset, themeColor, getStoredThemeMode()))
+    const { siteName, faviconUrl, backgroundUrl } = siteConfig.value
+    applyThemeTokens(resolveThemeTokens(getStoredThemeMode()))
 
     document.title = siteName || DEFAULT_SITE_NAME
 

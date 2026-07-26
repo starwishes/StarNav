@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { ElMessage } from '@/utils/feedback'
+import { getErrorMessage } from '@/utils/errors'
 import { useI18n } from 'vue-i18n'
 import { useAdminStore } from '@/store/admin'
 import type { User as ApiUser } from '@/api'
@@ -14,69 +15,67 @@ export function useUserManagement() {
 
   const users = ref<ApiUser[]>([])
 
-  /**
-   * 获取用户列表
-   */
   const fetchUserList = async () => {
     users.value = await adminStore.fetchUsers()
   }
 
-  /**
-   * 更新用户权限级别
-   */
-  const handleUpdateUserLevel = async (username: string, level: number) => {
-    const res = await adminStore.updateUser(username, { level })
-    if (res.success) {
-      ElMessage.success(t('admin.updateSuccess'))
-      fetchUserList()
-    } else {
-      ElMessage.error(res.error || t('admin.operationFailed'))
+  const runUserAction = async (action: () => Promise<unknown>, successKey: string) => {
+    try {
+      const res = (await action()) as { success?: boolean; error?: string } | undefined
+      // api client throws on HTTP errors; 2xx bodies usually include success:true
+      if (res && res.success === false) {
+        ElMessage.error(res.error || t('admin.operationFailed'))
+        return false
+      }
+      ElMessage.success(t(successKey))
+      await fetchUserList()
+      return true
+    } catch (error) {
+      ElMessage.error(getErrorMessage(error, t('admin.operationFailed')))
+      return false
     }
   }
 
-  /**
-   * 添加用户
-   */
+  const handleUpdateUserLevel = async (username: string, level: number) => {
+    await runUserAction(() => adminStore.updateUser(username, { level }), 'admin.updateSuccess')
+  }
+
   const handleAddUser = async (userData: {
     username: string
     password: string
     level?: number
   }) => {
-    const res = await adminStore.addUser(userData)
-    if (res.success) {
-      ElMessage.success(t('admin.addSuccess'))
-      fetchUserList()
-    } else {
-      ElMessage.error(res.error || t('admin.operationFailed'))
-    }
+    await runUserAction(() => adminStore.addUser(userData), 'admin.addSuccess')
   }
 
-  /**
-   * 删除用户
-   */
   const handleDeleteUser = async (username: string) => {
-    const res = await adminStore.deleteUser(username)
-    if (res.success) {
-      ElMessage.success(t('admin.deleteSuccess'))
-      fetchUserList()
-    } else {
-      ElMessage.error(res.error || t('admin.operationFailed'))
-    }
+    await runUserAction(() => adminStore.deleteUser(username), 'admin.deleteSuccess')
   }
 
-  /**
-   * 更新用户信息
-   */
   const handleUpdateUser = async (
     oldUsername: string,
     updateData: Partial<ApiUser & { password?: string; newUsername?: string }>
   ) => {
-    const res = await adminStore.updateUser(oldUsername, updateData)
-    if (res.success) {
-      ElMessage.success(t('admin.updateSuccess'))
-      fetchUserList()
-    } else {
-      ElMessage.error(res.error || t('admin.operationFailed'))
+    const ok = await runUserAction(
+      () => adminStore.updateUser(oldUsername, updateData),
+      'admin.updateSuccess'
+    )
+
+    // If the signed-in admin renamed themselves, keep local session label in sync.
+    if (
+      ok &&
+      updateData.newUsername &&
+      updateData.newUsername !== oldUsername &&
+      adminStore.user?.login === oldUsername
+    ) {
+      adminStore.setAuth(
+        adminStore.token || '',
+        {
+          login: updateData.newUsername,
+          name: updateData.newUsername,
+          level: adminStore.user.level
+        }
+      )
     }
   }
 

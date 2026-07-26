@@ -1,3 +1,8 @@
+/**
+ * Public feedback entry for the SPA.
+ * Implementation lives in `feedback-core` + `feedback/*`; import only this module
+ * from app code (`@/utils/feedback`), not feedback-core.
+ */
 import { ElMessage as coreElMessage, ElMessageBox as coreElMessageBox } from './feedback-core'
 
 type FeedbackMessage = typeof coreElMessage

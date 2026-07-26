@@ -25,6 +25,9 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  // Respond to the admin content pane width (not full browser chrome + sidebar)
+  container-type: inline-size;
+  container-name: data-manager;
 }
 
 :global(:root[theme-mode='dark'] .data-manager) {
@@ -68,22 +71,26 @@
 
 .content-tabs {
   display: inline-flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 6px;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: 100%;
+  gap: 4px;
+  padding: 4px;
   border-radius: 999px;
   background: var(--data-tabs-bg);
 }
 
 .tab-button {
-  min-width: 120px;
+  min-width: 0;
   border: none;
   border-radius: 999px;
   background: transparent;
   color: var(--gray-600);
-  padding: 10px 16px;
-  font-size: 14px;
+  padding: 8px 14px;
+  font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     transform 0.18s ease,
@@ -125,9 +132,11 @@
 
 .card-header {
   display: flex;
+  flex-direction: row;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 16px;
   margin-bottom: 18px;
 }
 
@@ -138,6 +147,13 @@
   color: var(--gray-800);
   font-size: 16px;
   font-weight: 700;
+  flex: 0 1 auto;
+}
+
+.card-header > .action-button {
+  flex: 0 0 auto;
+  width: auto;
+  margin-left: auto;
 }
 
 .header-filters {
@@ -146,12 +162,18 @@
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
+  margin-left: auto;
+}
+
+.header-filters .action-button {
+  flex: 0 0 auto;
+  width: auto;
 }
 
 .search-field {
   position: relative;
-  min-width: 220px;
-  flex: 1 1 220px;
+  min-width: 180px;
+  flex: 1 1 180px;
 }
 
 .filter-input {
@@ -213,7 +235,7 @@
 }
 
 .filter-select {
-  min-width: 180px;
+  min-width: 160px;
 }
 
 .action-button {
@@ -224,6 +246,9 @@
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  flex: 0 0 auto;
   cursor: pointer;
   transition:
     transform 0.18s ease,
@@ -291,26 +316,128 @@
   }
 }
 
-@media (max-width: 960px) {
-  .toolbar-card,
-  .card-header {
+// ---- Content-width breakpoints (sidebar-aware) ----
+
+// Compact content pane: stack toolbar, keep list add-buttons compact
+@container data-manager (max-width: 860px) {
+  .toolbar-card {
     flex-direction: column;
+    align-items: stretch;
   }
 
-  .content-tabs,
-  .global-actions,
+  .global-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .content-tabs {
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .global-actions .action-button {
+    flex: 1 1 140px;
+    min-height: 42px;
+  }
+
   .header-filters {
     width: 100%;
-  }
-
-  .tab-button,
-  .action-button {
-    flex: 1 1 160px;
+    margin-left: 0;
+    justify-content: flex-start;
   }
 
   .search-field,
   .filter-select {
+    flex: 1 1 160px;
     min-width: 0;
-    width: 100%;
+  }
+
+  // Never stretch primary add actions into a full-width slab
+  .card-header > .action-button,
+  .header-filters .action-button {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 40px;
+    margin-left: auto;
+  }
+}
+
+// Phone-narrow content: wrap more tightly, still keep add button pill-sized
+@container data-manager (max-width: 520px) {
+  .content-tabs {
+    width: max-content;
+  }
+
+  .tab-button {
+    min-width: 0;
+    flex: 0 0 auto;
+    padding: 7px 12px;
+  }
+
+  .global-actions .action-button {
+    flex: 1 1 calc(50% - 10px);
+  }
+
+  .card-header {
+    gap: 10px;
+  }
+
+  .header-filters {
+    gap: 8px;
+  }
+
+  .search-field,
+  .filter-select {
+    flex: 1 1 100%;
+  }
+
+  .card-header > .action-button,
+  .header-filters .action-button {
+    margin-left: auto;
+    width: auto;
+    max-width: 100%;
+  }
+}
+
+// Fallback when container queries unsupported: viewport media
+@supports not (container-type: inline-size) {
+  @media (max-width: 1100px) {
+    .toolbar-card {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .global-actions {
+      width: 100%;
+    }
+
+    .content-tabs {
+      width: max-content;
+      max-width: 100%;
+    }
+
+    .global-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .global-actions .action-button {
+      flex: 1 1 140px;
+    }
+
+    .header-filters {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .card-header > .action-button,
+    .header-filters .action-button {
+      flex: 0 0 auto;
+      width: auto;
+      margin-left: auto;
+    }
   }
 }

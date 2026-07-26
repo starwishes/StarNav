@@ -50,4 +50,19 @@ describe('bookmark cache module', () => {
       items: [{ id: 20 }]
     })
   })
+
+  it('patches click stats in place when the snapshot exists', async () => {
+    const cache = await loadCacheModule()
+    cache.rebuildCache([{ id: 1 }], [{ id: 7, clickCount: 1, lastVisited: null }])
+
+    const patched = cache.patchItemClickInCache(7, 2, '2026-07-26T00:00:00.000Z')
+
+    expect(patched).toBe(true)
+    expect(cache.getCache().items[0]).toMatchObject({
+      id: 7,
+      clickCount: 2,
+      lastVisited: '2026-07-26T00:00:00.000Z'
+    })
+    expect(cache.patchItemClickInCache(999, 1, null)).toBe(false)
+  })
 })

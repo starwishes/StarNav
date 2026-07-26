@@ -74,6 +74,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
-@import './Clock.scss';
+@use './Clock.scss';
 </style>
 

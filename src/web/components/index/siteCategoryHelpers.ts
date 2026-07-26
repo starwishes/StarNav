@@ -79,6 +79,31 @@ export const resolveItemCategoryId = (
   fallbackCategoryId: number
 ) => item.realCategoryId || fallbackCategoryId
 
+/**
+ * Index of `item` among displayed rows that share the same real category.
+ * Used for drag-reorder so "综合" mixed grids still map to category-local order.
+ */
+export const resolveCategoryLocalIndex = (
+  items: Array<Pick<DisplayedSiteItem, 'id' | 'realCategoryId'>>,
+  item: Pick<DisplayedSiteItem, 'id' | 'realCategoryId'>,
+  fallbackCategoryId: number
+) => {
+  const categoryId = resolveItemCategoryId(item, fallbackCategoryId)
+  let localIndex = 0
+
+  for (const entry of items) {
+    if (resolveItemCategoryId(entry, fallbackCategoryId) !== categoryId) {
+      continue
+    }
+    if (entry.id === item.id) {
+      return localIndex
+    }
+    localIndex += 1
+  }
+
+  return -1
+}
+
 export const isHoveringMoveTarget = (
   moveState: SiteMoveState,
   itemIndex: number,

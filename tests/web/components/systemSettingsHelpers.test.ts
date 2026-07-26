@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import {
   buildDefaultFooterHtml,
   buildDefaultLevelOptions,
-  buildThemePresetOptions,
   buildTimezoneOptions,
   createSystemSettingsDraft,
   syncSystemSettingsDraft
@@ -20,24 +19,18 @@ describe('systemSettingsHelpers', () => {
 
     expect(draft).toEqual({
       siteName: 'StarNav',
-      registrationEnabled: true,
-      themePreset: 'classic',
-      themeColor: ''
+      registrationEnabled: true
     })
 
     expect(
       syncSystemSettingsDraft(draft, {
         siteName: 'New Name',
-        timezone: 'Asia/Shanghai',
-        themePreset: 'gallery',
-        themeColor: '#0071E3'
+        timezone: 'Asia/Shanghai'
       })
     ).toEqual({
       siteName: 'New Name',
       registrationEnabled: true,
-      timezone: 'Asia/Shanghai',
-      themePreset: 'gallery',
-      themeColor: '#0071e3'
+      timezone: 'Asia/Shanghai'
     })
   })
 
@@ -57,12 +50,6 @@ describe('systemSettingsHelpers', () => {
       { label: 'translated:timezone.moscow', value: 'Europe/Moscow' },
       { label: 'translated:timezone.paris', value: 'Europe/Paris' },
       { label: 'translated:timezone.sydney', value: 'Australia/Sydney' }
-    ])
-
-    expect(buildThemePresetOptions(t)).toEqual([
-      { label: 'translated:settings.themePresetClassic', value: 'classic' },
-      { label: 'translated:settings.themePresetGallery', value: 'gallery' },
-      { label: 'translated:settings.themePresetCinema', value: 'cinema' }
     ])
   })
 

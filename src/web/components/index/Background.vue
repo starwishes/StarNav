@@ -47,6 +47,6 @@ const showDefaultArt = computed(() => !hasCustomBackground.value && props.visibl
 </script>
 
 <style scoped lang="scss">
-@import './Background.scss';
+@use './Background.scss';
 </style>
 

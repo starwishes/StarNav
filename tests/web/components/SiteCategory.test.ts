@@ -178,13 +178,15 @@ describe('SiteCategory', () => {
         active: true,
         item: { id: 999 },
         hoverCategoryId: 13,
-        hoverItemIndex: 2
+        // Category-local index (API is the only item in cat 13), not display index.
+        hoverItemIndex: 0
       }
     )
 
     const rows = wrapper.findAll('.site-wrapper')
     expect(rows).toHaveLength(4)
     expect(rows[2].attributes('data-cat-id')).toBe('13')
+    expect(rows[2].attributes('data-item-index')).toBe('0')
     expect(rows[2].classes()).toContain('moving-target')
 
     await wrapper.findAll('.tab-item')[2].trigger('click')

@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   handleMouseEnter: vi.fn(),
   handleTouchStart: vi.fn(),
   handleMouseDragUp: vi.fn(),
+  startMove: vi.fn(),
   togglePin: vi.fn(),
   moveCategory: vi.fn(),
   handleDelete: vi.fn(),
@@ -78,6 +79,7 @@ vi.mock('@/composables', () => ({
   }),
   useSiteDrag: () => ({
     moveState,
+    startMove: mocks.startMove,
     handleMouseEnter: mocks.handleMouseEnter,
     handleTouchStart: mocks.handleTouchStart,
     handleMouseDragUp: mocks.handleMouseDragUp
@@ -324,6 +326,32 @@ describe('Site', () => {
     expect(mocks.handleMouseDragUp).toHaveBeenCalledTimes(1)
     expect(mocks.trackClick).not.toHaveBeenCalled()
     expect(mocks.openUrl).not.toHaveBeenCalled()
+  })
+
+  it('starts item move mode from the bookmark context menu', async () => {
+    const item = {
+      id: 10,
+      name: 'StarNav',
+      url: 'https://star.test',
+      description: '',
+      categoryId: 7
+    }
+    contextMenuState.visible = true
+    contextMenuState.item = item
+    contextMenuState.category = null
+    contextMenuState.catIndex = 1
+    contextMenuState.itemIndex = 3
+    contextMenuState.x = 42
+    contextMenuState.y = 84
+
+    const wrapper = createWrapper()
+    await flushAsync()
+
+    // multiSelect, move, pin, edit, delete
+    await wrapper.findAll('.context-menu .menu-item')[1].trigger('click')
+    await flushAsync()
+
+    expect(mocks.startMove).toHaveBeenCalledWith(item, 1, 3, 42, 84, mocks.closeContextMenu)
   })
 
   it('opens category edit mode from the context menu and delegates batch actions', async () => {

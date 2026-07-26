@@ -10,7 +10,8 @@ export const createEditUserForm = (username = '') => ({
 })
 
 export const buildUserUpdatePayload = (newUsername: string, password: string) => ({
-  username: newUsername,
+  // Backend accountService.update expects `newUsername`, not `username`.
+  newUsername,
   password: password || undefined
 })
 

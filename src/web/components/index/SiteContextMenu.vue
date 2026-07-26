@@ -10,6 +10,10 @@
         <AppIcon name="icon-md-clipboard" class="menu-icon" />
         {{ t('context.multiSelect') }}
       </div>
+      <div class="menu-item" @click="$emit('move-item')">
+        <AppIcon name="icon-md-arrow-round-up" class="menu-icon" />
+        {{ t('context.move') }}
+      </div>
       <div class="menu-item" @click="$emit('toggle-pin')">
         <AppIcon
           v-if="item?.pinned"
@@ -70,6 +74,7 @@ defineProps<{
 
 defineEmits<{
   (e: 'selection-mode'): void
+  (e: 'move-item'): void
   (e: 'toggle-pin'): void
   (e: 'edit-item'): void
   (e: 'delete-item'): void
@@ -80,3 +85,7 @@ defineEmits<{
 
 const { t } = useI18n()
 </script>
+
+<style scoped lang="scss">
+@use './SiteContextMenu.scss';
+</style>

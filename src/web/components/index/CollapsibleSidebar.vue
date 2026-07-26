@@ -114,6 +114,6 @@ defineExpose({ toggleSidebar })
 </script>
 
 <style scoped lang="scss">
-@import './CollapsibleSidebar.scss';
+@use './CollapsibleSidebar.scss';
 </style>
 

@@ -27,12 +27,12 @@ describe('userTableHelpers', () => {
 
   it('builds update payloads and omits empty passwords', () => {
     expect(buildUserUpdatePayload('alice', '')).toEqual({
-      username: 'alice',
+      newUsername: 'alice',
       password: undefined
     })
 
     expect(buildUserUpdatePayload('alice', 'secret')).toEqual({
-      username: 'alice',
+      newUsername: 'alice',
       password: 'secret'
     })
   })

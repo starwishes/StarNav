@@ -110,6 +110,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
-@import './Sidebar.scss';
+@use './Sidebar.scss';
 </style>
 

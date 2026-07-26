@@ -27,7 +27,7 @@ type UserTableEmit = {
     event: 'update',
     username: string,
     payload: {
-      username: string
+      newUsername: string
       password?: string
     }
   ): void

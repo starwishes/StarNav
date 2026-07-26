@@ -28,5 +28,6 @@ describe('SystemHealthService', () => {
     expect(payload).toHaveProperty('checks.database.journalMode')
     expect(payload).toHaveProperty('checks.runtime.nodeEnv')
     expect(payload).toHaveProperty('checks.runtime.authCookieSecureMode')
+    expect(payload).toHaveProperty('checks.queries')
   })
 })

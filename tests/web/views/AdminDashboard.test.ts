@@ -360,16 +360,18 @@ describe('AdminDashboard', () => {
     expect(loadDataMock).not.toHaveBeenCalled()
   })
 
-  it('loads dashboard data for authenticated users and renders the current panel view', async () => {
+  it('loads dashboard data for authenticated users and renders the current view', async () => {
     const wrapper = createWrapper()
     await flushUi()
 
     expect(loadDataMock).toHaveBeenCalledTimes(1)
     expect(fetchSettingsMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.find('.settings-view').exists()).toBe(true)
+    expect(wrapper.find('.system-settings-stub').exists()).toBe(true)
+    expect(wrapper.find('.fade-in').exists()).toBe(true)
     expect(wrapper.find('.sidebar-current-view').text()).toBe('settings')
     expect(wrapper.find('.header-current-view').text()).toBe('translated:menu.settings')
     expect(wrapper.find('.admin-overview').exists()).toBe(false)
+    expect(wrapper.find('.view-panel').exists()).toBe(false)
   })
 
   it('hides admin-only menu entries for non-admin users', async () => {
@@ -393,13 +395,13 @@ describe('AdminDashboard', () => {
     await flushUi()
 
     expect(fetchUserListMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.find('.users-view').exists()).toBe(true)
+    expect(wrapper.find('.user-table-stub').exists()).toBe(true)
     expect(wrapper.find('.header-current-view').text()).toBe('translated:menu.users')
 
     await wrapper.find('.menu-item-monitor').trigger('click')
     await flushUi()
 
-    expect(wrapper.find('.monitor-view').exists()).toBe(true)
+    expect(wrapper.find('.monitoring-dashboard-stub').exists()).toBe(true)
     expect(wrapper.find('.sidebar-current-view').text()).toBe('monitor')
     expect(wrapper.find('.header-current-view').text()).toBe('translated:menu.monitor')
   })
@@ -411,7 +413,7 @@ describe('AdminDashboard', () => {
     await wrapper.find('.menu-item-data').trigger('click')
     await flushUi()
 
-    expect(wrapper.find('.data-view').exists()).toBe(true)
+    expect(wrapper.find('.data-manager-stub').exists()).toBe(true)
     expect(wrapper.find('.header-current-view').text()).toBe('translated:menu.dataManage')
 
     await wrapper.find('.emit-go-home').trigger('click')

@@ -71,6 +71,9 @@
 .sn-table td {
   color: var(--sn-grid-body-text);
   font-size: 14px;
+  // Default: keep cell content on one line so CJK labels don't stack vertically
+  // when sibling columns use fixed widths. Override per-table when wrapping is needed.
+  white-space: nowrap;
 }
 
 .sn-table tbody tr:nth-child(even) td {
@@ -108,8 +111,8 @@
 
 .sn-table-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 10px;
   align-items: center;
   justify-content: center;
 }

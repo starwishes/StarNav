@@ -1,47 +1,85 @@
 .user-table {
-  --user-dialog-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
-  --user-dialog-border: rgba(255, 255, 255, 0.45);
-  --user-dialog-text: #0f172a;
-  --user-dialog-close-bg: rgba(148, 163, 184, 0.14);
-  --user-dialog-close-text: rgba(15, 23, 42, 0.7);
-  --user-dialog-ghost-bg: rgba(148, 163, 184, 0.14);
-  --user-dialog-ghost-text: rgba(15, 23, 42, 0.82);
-  --user-dialog-input-bg: rgba(255, 255, 255, 0.92);
-  --user-dialog-input-focus-bg: rgba(255, 255, 255, 0.98);
-  --user-dialog-input-border: rgba(148, 163, 184, 0.34);
-  --user-dialog-placeholder: rgba(100, 116, 139, 0.82);
+  --user-panel-bg: var(--ui-panel-bg, rgba(255, 255, 255, 0.9));
+  --user-panel-border: var(--ui-panel-border, rgba(148, 163, 184, 0.18));
   color: var(--ui-text-primary, #0f172a);
+  container-type: inline-size;
+  container-name: user-table;
 
-  .table-toolbar {
-    margin-bottom: 16px;
+  .panel-card {
+    padding: 18px 20px;
+    border-radius: 22px;
+    border: 1px solid var(--user-panel-border);
+    background: var(--user-panel-bg);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(14px);
+  }
+
+  .card-header {
     display: flex;
-    justify-content: flex-end;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--gray-800);
+    white-space: nowrap;
   }
 
   .sn-table {
     min-width: 760px;
   }
+
+  .sn-table th,
+  .sn-table td {
+    white-space: nowrap;
+  }
+
+  .sn-table-actions {
+    flex-wrap: nowrap;
+  }
+}
+
+@container user-table (max-width: 720px) {
+  .col-time {
+    display: none;
+  }
+
+  .sn-table {
+    min-width: 560px;
+  }
+}
+
+@container user-table (max-width: 520px) {
+  .col-level {
+    display: none;
+  }
+
+  .sn-table {
+    min-width: 0;
+  }
+
+  .card-header {
+    flex-wrap: wrap;
+  }
+
+  .toolbar-button {
+    margin-left: auto;
+  }
 }
 
 :global(:root[theme-mode='dark'] .user-table) {
-  --user-dialog-bg: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.92));
-  --user-dialog-border: rgba(148, 163, 184, 0.22);
-  --user-dialog-text: #f8fafc;
-  --user-dialog-close-bg: rgba(51, 65, 85, 0.78);
-  --user-dialog-close-text: rgba(226, 232, 240, 0.84);
-  --user-dialog-ghost-bg: rgba(51, 65, 85, 0.82);
-  --user-dialog-ghost-text: rgba(226, 232, 240, 0.88);
-  --user-dialog-input-bg: rgba(15, 23, 42, 0.88);
-  --user-dialog-input-focus-bg: rgba(15, 23, 42, 0.96);
-  --user-dialog-input-border: rgba(148, 163, 184, 0.28);
-  --user-dialog-placeholder: rgba(203, 213, 225, 0.56);
+  --user-panel-bg: rgba(15, 23, 42, 0.84);
+  --user-panel-border: rgba(148, 163, 184, 0.2);
   color-scheme: dark;
 }
 
 .toolbar-button,
-.table-link-button,
-.dialog-close,
-.dialog-button {
+.table-link-button {
   border: none;
   cursor: pointer;
   transition:
@@ -63,12 +101,14 @@
 .toolbar-button {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 0 16px;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
   border-radius: 999px;
+  flex: 0 0 auto;
+  white-space: nowrap;
   background: linear-gradient(135deg, var(--ui-theme), rgba(var(--ui-theme-rgb), 0.72));
-  box-shadow: 0 14px 26px rgba(var(--ui-theme-rgb), 0.18);
+  box-shadow: 0 10px 20px rgba(var(--ui-theme-rgb), 0.16);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -98,223 +138,6 @@
   }
 }
 
-.user-dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 240;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: rgba(15, 23, 42, 0.48);
-  backdrop-filter: blur(18px);
-}
-
-.user-dialog-shell {
-  width: min(100%, 420px);
-  border-radius: 24px;
-  border: 1px solid var(--user-dialog-border);
-  background: var(--user-dialog-bg);
-  box-shadow:
-    0 24px 60px rgba(15, 23, 42, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72);
-  color: var(--user-dialog-text);
-  outline: none;
-}
-
-.user-dialog-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 22px 22px 16px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-}
-
-.dialog-kicker {
-  margin: 0 0 6px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(var(--ui-theme-rgb), 0.82);
-}
-
-.dialog-title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.dialog-close {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--user-dialog-close-bg);
-  color: var(--user-dialog-close-text);
-  font-size: 22px;
-  line-height: 1;
-
-  &:hover {
-    background: rgba(var(--ui-theme-rgb), 0.12);
-    color: var(--ui-theme);
-    transform: rotate(90deg);
-  }
-}
-
-.dialog-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px 22px 24px;
-}
-
-.dialog-field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.dialog-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: color-mix(in srgb, var(--user-dialog-text) 84%, transparent);
-}
-
-.dialog-input {
-  width: 100%;
-  min-height: 46px;
-  padding: 0 14px;
-  border: 1px solid var(--user-dialog-input-border);
-  border-radius: 14px;
-  background: var(--user-dialog-input-bg);
-  color: var(--user-dialog-text);
-  font-size: 14px;
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    background-color 0.18s ease;
-
-  &::placeholder {
-    color: var(--user-dialog-placeholder);
-  }
-
-  &:focus {
-    outline: none;
-    border-color: rgba(var(--ui-theme-rgb), 0.62);
-    box-shadow: 0 0 0 4px rgba(var(--ui-theme-rgb), 0.12);
-    background: var(--user-dialog-input-focus-bg);
-  }
-
-  &:-webkit-autofill,
-  &:-webkit-autofill:hover,
-  &:-webkit-autofill:focus {
-    -webkit-text-fill-color: var(--user-dialog-text);
-    -webkit-box-shadow: 0 0 0 1000px var(--user-dialog-input-focus-bg) inset;
-    transition: background-color 9999s ease-in-out 0s;
-  }
-}
-
-.dialog-select {
-  width: 100%;
-  min-height: 46px;
-  border: 1px solid var(--user-dialog-input-border);
-  border-radius: 14px;
-  background: var(--user-dialog-input-bg);
-  color: var(--user-dialog-text);
-  font-size: 14px;
-  padding: 0 40px 0 14px;
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    color 0.18s ease;
-
-  &:focus {
-    outline: none;
-    border-color: rgba(var(--ui-theme-rgb), 0.62);
-    box-shadow: 0 0 0 4px rgba(var(--ui-theme-rgb), 0.12);
-  }
-}
-
-.dialog-select option,
-.dialog-select optgroup {
-  background: var(--user-dialog-input-bg);
-  color: var(--user-dialog-text);
-}
-
-.form-tip {
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--ui-text-muted, rgba(71, 85, 105, 0.82));
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.dialog-button {
-  min-width: 96px;
-  min-height: 42px;
-  padding: 0 16px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-
-  &.ghost {
-    background: var(--user-dialog-ghost-bg);
-    color: var(--user-dialog-ghost-text);
-  }
-
-  &.primary {
-    background: linear-gradient(135deg, var(--ui-theme), rgba(var(--ui-theme-rgb), 0.74));
-    box-shadow: 0 12px 24px rgba(var(--ui-theme-rgb), 0.2);
-    color: #fff;
-  }
-}
-
-:global(:root[theme-mode='dark'] .user-table .dialog-select),
 :global(:root[theme-mode='dark'] .user-table .level-select) {
   color-scheme: dark;
-}
-
-.user-dialog-enter-active,
-.user-dialog-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.user-dialog-enter-active .user-dialog-shell,
-.user-dialog-leave-active .user-dialog-shell {
-  transition:
-    opacity 0.22s ease,
-    transform 0.22s ease;
-}
-
-.user-dialog-enter-from,
-.user-dialog-leave-to {
-  opacity: 0;
-}
-
-.user-dialog-enter-from .user-dialog-shell,
-.user-dialog-leave-to .user-dialog-shell {
-  opacity: 0;
-  transform: translateY(12px) scale(0.98);
-}
-
-@media screen and (max-width: 640px) {
-  .user-dialog-backdrop {
-    padding: 16px;
-  }
-
-  .dialog-footer {
-    flex-direction: column-reverse;
-  }
-
-  .dialog-button {
-    width: 100%;
-  }
 }

@@ -233,5 +233,5 @@ void iconInputRef
 </script>
 
 <style scoped lang="scss">
-@import './BookmarkForm.scss';
+@use './BookmarkForm.scss';
 </style>

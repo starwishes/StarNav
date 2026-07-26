@@ -17,6 +17,10 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-3}
       NODE_ENV: production
       PORT: 8080
+      # Container + UI timezone (logs, session/audit display). Empty = browser local for UI.
+      # Allowed for UI: Asia/Shanghai, Asia/Tokyo, Europe/London, America/New_York, ...
+      # DB 系统设置 timezone 优先；未设置时用 TZ。镜像含 tzdata。
+      TZ: ${TZ:-Asia/Shanghai}
     healthcheck:
       test:
         [
@@ -28,7 +32,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      # first boot may compile/migrate; keep generous for cold start
+      start_period: 60s
     deploy:
       resources:
         limits:

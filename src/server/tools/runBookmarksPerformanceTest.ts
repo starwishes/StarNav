@@ -5,7 +5,13 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const ROOT_DIR = path.resolve(__dirname, '../../../')
 const scriptPath = process.argv[2] || 'tests/performance/bookmarks-load.js'
-const passthroughEnv = ['BASE_URL', 'TEST_USERNAME', 'TEST_PASSWORD', 'SEARCH_KEYWORD']
+const passthroughEnv = [
+  'BASE_URL',
+  'TEST_USERNAME',
+  'TEST_PASSWORD',
+  'SEARCH_KEYWORD',
+  'K6_PROFILE'
+]
 
 const runOrExit = (command: string, args: string[], options: Record<string, unknown> = {}) => {
   const result = spawnSync(command, args, {

@@ -5,13 +5,11 @@ import type { SystemSettings as SystemSettingsModel } from '@/api'
 import {
   buildDefaultFooterHtml,
   buildDefaultLevelOptions,
-  buildThemePresetOptions,
   buildTimezoneOptions,
   createSystemSettingsDraft,
   syncSystemSettingsDraft
 } from '@/components/admin/systemSettingsHelpers'
 import { useSystemAssetManagement } from '@/composables/admin/useSystemAssetManagement'
-import { resolveThemeTokens } from '@/utils/theme'
 
 type SystemSettingsEmit = (event: 'save', settings: Partial<SystemSettingsModel>) => void
 
@@ -39,10 +37,6 @@ export const useSystemSettingsForm = (
 
   const defaultLevelOptions = computed(() => buildDefaultLevelOptions(t))
   const timezoneOptions = computed(() => buildTimezoneOptions(t))
-  const themePresetOptions = computed(() => buildThemePresetOptions(t))
-  const previewAccentColor = computed(
-    () => resolveThemeTokens(settings.themePreset, settings.themeColor).accentColor
-  )
 
   watch(
     initialSettings,
@@ -74,8 +68,6 @@ export const useSystemSettingsForm = (
     applyUploadedFile,
     defaultLevelOptions,
     timezoneOptions,
-    themePresetOptions,
-    previewAccentColor,
     fillDefaultFooter,
     saveSettings
   }

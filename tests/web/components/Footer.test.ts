@@ -39,7 +39,8 @@ describe('Footer', () => {
     expect(wrapper.text()).toContain(String(new Date().getFullYear()))
     expect(wrapper.text()).toContain('StarNav')
     expect(wrapper.text()).toContain('沪ICP备12345678号')
-    expect(wrapper.text()).toContain('Powered by')
+    expect(wrapper.text()).not.toContain('Powered by')
+    expect(wrapper.find('.powered').exists()).toBe(false)
     expect(wrapper.find('.custom-footer').exists()).toBe(false)
   })
 

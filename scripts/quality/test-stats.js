@@ -41,15 +41,15 @@ const printSection = (title, rows) => {
 }
 
 const topLevelRows = [
-  ['backend', countByPrefix('tests/server')],
-  ['frontend', countByPrefix('tests/web')],
-  ['common', countByPrefix('tests/shared')],
-  ['clients/extension', countByPrefix('tests/extension')],
+  ['server', countByPrefix('tests/server')],
+  ['web', countByPrefix('tests/web')],
+  ['shared', countByPrefix('tests/shared')],
+  ['extension', countByPrefix('tests/extension')],
   ['integration', countByPrefix('tests/integration')],
   ['smoke', countByPrefix('tests/smoke')]
 ]
 
-const backendRows = [
+const serverRows = [
   ['services', countByPrefix('tests/server/services')],
   ['controllers', countByPrefix('tests/server/controllers')],
   ['middleware', countByPrefix('tests/server/middleware')],
@@ -62,7 +62,7 @@ const backendRows = [
   ['root', countDirectChildren('tests/server')]
 ]
 
-const frontendRows = [
+const webRows = [
   ['components', countByPrefix('tests/web/components')],
   ['composables', countByPrefix('tests/web/composables')],
   ['store', countByPrefix('tests/web/store')],
@@ -80,5 +80,5 @@ console.log(`- total test files: ${testFiles.length}`)
 console.log('')
 
 printSection('Top-level areas', topLevelRows)
-printSection('Backend layers', backendRows)
-printSection('Frontend layers', frontendRows)
+printSection('Server layers', serverRows)
+printSection('Web layers', webRows)

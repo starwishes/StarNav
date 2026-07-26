@@ -1,15 +1,9 @@
+import { escapeHtml } from '../../utils/dom.js'
+
 const setDisplay = (element, value) => {
   if (element) {
     element.style.display = value
   }
-}
-
-const escapeHtml = (value) => {
-  if (!value) return ''
-
-  const div = document.createElement('div')
-  div.textContent = value
-  return div.innerHTML
 }
 
 export function openOptionsPage() {
@@ -53,16 +47,6 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
         return
       }
 
-      if (element.tagName === 'BUTTON' && element.textContent.includes('➕')) {
-        element.innerHTML = `➕ ${texts[key].replace('➕ ', '')}`
-        return
-      }
-
-      if (element.tagName === 'BUTTON' && element.textContent.includes('🔍')) {
-        element.innerHTML = `🔍 ${texts[key].replace('🔍 ', '')}`
-        return
-      }
-
       element.textContent = texts[key]
     })
 
@@ -72,6 +56,10 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
 
     if (elements.openSettings) {
       elements.openSettings.title = texts.settings
+    }
+
+    if (elements.themeToggle) {
+      elements.themeToggle.title = texts.toggleTheme
     }
 
     if (elements.i18nToggle) {

@@ -1,16 +1,5 @@
 import { createScopedLogger } from '../../common/logger.js'
-
-const getPageDetails = () => {
-  const description =
-    document.querySelector('meta[name="description"]')?.content ||
-    document.querySelector('meta[property="og:description"]')?.content ||
-    document.querySelector('meta[name="twitter:description"]')?.content ||
-    ''
-
-  return {
-    description: description.substring(0, 200)
-  }
-}
+import { extractActiveTabDetails } from '../../utils/pageDetails.js'
 
 export function createBookmarkController({
   apiRequest,
@@ -60,6 +49,56 @@ export function createBookmarkController({
     }
   }
 
+  const openFormForUrl = async ({ url, title = '', description = '' }) => {
+    if (!url?.startsWith('http://') && !url?.startsWith('https://')) {
+      ui.showToast(getTexts().webOnly, 'error')
+      return
+    }
+
+    ui.showLoading()
+
+    try {
+      const checkResult = await apiRequest(`/bookmark/check?url=${encodeURIComponent(url)}`)
+      const existingItem = checkResult.item || null
+
+      if (checkResult.exists && existingItem) {
+        state.currentEditingId = existingItem.id
+        fillBookmarkForm(existingItem, description)
+        showDuplicateWarning(existingItem, getCategoryName(existingItem.categoryId))
+        ui.showToast(getTexts().duplicateAlert, 'error')
+      } else {
+        state.currentEditingId = null
+        clearDuplicateWarning()
+        fillBookmarkForm(
+          {
+            name: title || '',
+            url,
+            categoryId: state.categories[0]?.id || '',
+            level: 0
+          },
+          description
+        )
+      }
+    } catch (error) {
+      logger.error('Failed to check bookmark duplication before showing add form.', error)
+      state.currentEditingId = null
+      clearDuplicateWarning()
+      fillBookmarkForm(
+        {
+          name: title || '',
+          url,
+          categoryId: state.categories[0]?.id || '',
+          level: 0
+        },
+        description
+      )
+    } finally {
+      ui.hideLoading()
+    }
+
+    showAddFormPanel()
+  }
+
   const handleEdit = async (item) => {
     if (!item) {
       return
@@ -103,7 +142,7 @@ export function createBookmarkController({
     const minLevel = Number.parseInt(elements.bookmarkLevel?.value || '0', 10)
 
     if (!url) {
-      ui.showToast('URL Invalid', 'error')
+      ui.showToast(getTexts().invalidUrl, 'error')
       return
     }
 
@@ -183,61 +222,19 @@ export function createBookmarkController({
         return
       }
 
-      ui.showLoading()
-
       let extractedDesc = ''
       try {
-        if (tab.id) {
-          const updates = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: getPageDetails
-          })
-          extractedDesc = updates?.[0]?.result?.description || ''
-        }
+        const details = await extractActiveTabDetails(tab.id)
+        extractedDesc = details?.description || ''
       } catch (error) {
         logger.warn('Smart extraction failed, skipping.', error)
       }
 
-      try {
-        const checkResult = await apiRequest(`/bookmark/check?url=${encodeURIComponent(tab.url)}`)
-        const existingItem = checkResult.item || null
-
-        if (checkResult.exists && existingItem) {
-          state.currentEditingId = existingItem.id
-          fillBookmarkForm(existingItem, extractedDesc)
-          showDuplicateWarning(existingItem, getCategoryName(existingItem.categoryId))
-          ui.showToast(getTexts().duplicateAlert, 'error')
-        } else {
-          state.currentEditingId = null
-          clearDuplicateWarning()
-          fillBookmarkForm(
-            {
-              name: tab.title || '',
-              url: tab.url,
-              categoryId: state.categories[0]?.id || '',
-              level: 0
-            },
-            extractedDesc
-          )
-        }
-      } catch (error) {
-        logger.error('Failed to check bookmark duplication before showing add form.', error)
-        state.currentEditingId = null
-        clearDuplicateWarning()
-        fillBookmarkForm(
-          {
-            name: tab.title || '',
-            url: tab.url,
-            categoryId: state.categories[0]?.id || '',
-            level: 0
-          },
-          extractedDesc
-        )
-      } finally {
-        ui.hideLoading()
-      }
-
-      showAddFormPanel()
+      await openFormForUrl({
+        url: tab.url,
+        title: tab.title || '',
+        description: extractedDesc
+      })
     } catch (error) {
       logger.error('Failed to open add bookmark form.', error)
       ui.showToast(getTexts().infoFetchFailed, 'error')
@@ -245,10 +242,23 @@ export function createBookmarkController({
     }
   }
 
+  const showAddFormFromCapture = async (capture) => {
+    if (!capture?.url) {
+      return
+    }
+
+    await openFormForUrl({
+      url: capture.url,
+      title: capture.title || capture.url,
+      description: ''
+    })
+  }
+
   return {
     submitBookmark,
     handleEdit,
     handleDelete,
-    showAddForm
+    showAddForm,
+    showAddFormFromCapture
   }
 }

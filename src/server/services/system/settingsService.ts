@@ -2,7 +2,7 @@ import { getDb } from '../database/database.js'
 import { logger } from '../../utils/logger.js'
 import { sanitizeFooterHtml } from '../../../shared/security/footerHtml.js'
 import { isAllowedTimezone, normalizeOptionalUrl } from '../../../shared/security/urlSafety.js'
-import { normalizeThemeColor, normalizeThemePreset } from '../../../shared/theme.js'
+import { resolveEnvTimezone } from '../../utils/envTimezone.js'
 import type { SettingsMap } from '../../types/domain.js'
 import type { SettingsValueRow, SettingsKeyValueRow } from '../../types/sqliteRows.js'
 
@@ -87,12 +87,13 @@ export const settingsService = {
    */
   getPublic() {
     const all = this.getAll()
+    const storedTimezone = isAllowedTimezone(all.timezone) ? all.timezone || '' : ''
+
     return {
       registrationEnabled: all.registrationEnabled || false,
       backgroundUrl: normalizeOptionalUrl(all.backgroundUrl || '', { allowRelative: true }),
-      themePreset: normalizeThemePreset(all.themePreset),
-      themeColor: normalizeThemeColor(all.themeColor),
-      timezone: isAllowedTimezone(all.timezone) ? all.timezone || '' : '',
+      // Prefer DB 系统设置; fall back to compose/env TZ
+      timezone: storedTimezone || resolveEnvTimezone() || '',
       homeUrl: normalizeOptionalUrl(all.homeUrl || '', { allowRelative: true }),
       footerHtml: sanitizeFooterHtml(all.footerHtml || ''),
       siteName: all.siteName || '',

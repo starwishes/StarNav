@@ -130,12 +130,37 @@ export const moveItemLocally = (
     return items
   }
 
+  const sourceItem = items[sourceIndex]
+  const targetCategoryId = Number(targetCatId)
+  const sameCategory = Number(sourceItem.categoryId) === targetCategoryId
+
+  // Index among items in the source/target category before the move (UI hover index).
+  const sourceIndexInCategory = items
+    .filter((item) => Number(item.categoryId) === Number(sourceItem.categoryId))
+    .findIndex((item) => item.id === itemId)
+
+  let insertAt = Number(targetIndex)
+  if (!Number.isFinite(insertAt) || insertAt < 0) {
+    insertAt = 0
+  }
+
+  // Same slot → no-op (common when dropping without changing position).
+  if (sameCategory && sourceIndexInCategory === insertAt) {
+    return items
+  }
+
+  // When moving down within a category, remove the source first so the hover
+  // index must shift left by one to keep "insert before hovered item" semantics.
+  if (sameCategory && sourceIndexInCategory >= 0 && sourceIndexInCategory < insertAt) {
+    insertAt -= 1
+  }
+
   const updatedItems = [...items]
-  const [sourceItem] = updatedItems.splice(sourceIndex, 1)
-  const movedItem = { ...sourceItem, categoryId: Number(targetCatId) }
+  const [removedItem] = updatedItems.splice(sourceIndex, 1)
+  const movedItem = { ...removedItem, categoryId: targetCategoryId }
 
   const targetCategoryItems = updatedItems.filter(
-    (item) => item.categoryId === movedItem.categoryId
+    (item) => Number(item.categoryId) === targetCategoryId
   )
 
   if (targetCategoryItems.length === 0) {
@@ -143,14 +168,14 @@ export const moveItemLocally = (
     return updatedItems
   }
 
-  if (targetIndex >= targetCategoryItems.length) {
+  if (insertAt >= targetCategoryItems.length) {
     const lastItemOfCategory = targetCategoryItems[targetCategoryItems.length - 1]
     const insertIndex = updatedItems.lastIndexOf(lastItemOfCategory) + 1
     updatedItems.splice(insertIndex, 0, movedItem)
     return updatedItems
   }
 
-  const referenceItem = targetCategoryItems[targetIndex]
+  const referenceItem = targetCategoryItems[insertAt]
   const insertIndex = updatedItems.indexOf(referenceItem)
   updatedItems.splice(insertIndex, 0, movedItem)
   return updatedItems

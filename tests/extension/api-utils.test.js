@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const createStorageArea = (state) => ({
-  get: vi.fn(async (keys) => {
+  get: vi.fn((keys, callback) => {
     const requestedKeys = Array.isArray(keys) ? keys : [keys]
-    return Object.fromEntries(
+    const result = Object.fromEntries(
       requestedKeys.filter((key) => key in state).map((key) => [key, state[key]])
     )
+    callback(result)
   })
 })
 

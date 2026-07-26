@@ -1,14 +1,13 @@
 import Joi, { type CustomHelpers } from 'joi'
 import { isAllowedTimezone, normalizeOptionalUrl } from '../../shared/security/urlSafety.js'
-import { THEME_PRESET_KEYS, normalizeThemeColor } from '../../shared/theme.js'
 
 /**
  * 密码强度规则：
  * - 至少 8 个字符
- * - 必须包含大写字母、小写字母、数字、特殊符号
+ * - 必须包含大写字母、小写字母、数字
+ * - 特殊符号可选
  */
-const passwordPattern =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
 
 export const loginSchema = Joi.object({
   username: Joi.string().alphanum().min(3).max(30).required(),
@@ -61,18 +60,6 @@ const safeTimezoneSchema = Joi.string()
   .custom((value, helpers) => {
     if (isAllowedTimezone(value)) {
       return value || ''
-    }
-
-    return helpers.error('any.invalid')
-  })
-
-const safeThemeColorSchema = Joi.string()
-  .trim()
-  .allow('')
-  .custom((value, helpers) => {
-    const normalized = normalizeThemeColor(value)
-    if (!value || normalized) {
-      return normalized
     }
 
     return helpers.error('any.invalid')
@@ -186,11 +173,6 @@ export const adminSettingsSchema = Joi.object({
   homeUrl: safeHomeUrlSchema.optional(),
   timezone: safeTimezoneSchema.optional(),
   backgroundUrl: safeAssetUrlSchema.optional(),
-  themePreset: Joi.string()
-    .trim()
-    .valid(...THEME_PRESET_KEYS)
-    .optional(),
-  themeColor: safeThemeColorSchema.optional(),
   footerHtml: Joi.string().allow('').max(2000).optional(),
   siteName: Joi.string().trim().allow('').max(80).optional(),
   logoUrl: safeAssetUrlSchema.optional(),

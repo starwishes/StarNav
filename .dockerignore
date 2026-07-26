@@ -17,8 +17,9 @@ tmp
 .releaserc.json
 AGENTS.md
 LICENSE
+clients/extension/
 browser-extension/
-	
+
 # 测试相关文件
 tests/
 playwright-report/
@@ -26,7 +27,7 @@ test-data/
 *.test.js
 *.spec.ts
 *.spec.js
-	
+
 # 文档文件
 docs/
 TROUBLESHOOTING.md
@@ -45,6 +46,3 @@ eslint.config.js
 commitlint.config.js
 vitest.config.ts
 playwright.config.ts
-
-# Extension config
-browser-extension/config.js

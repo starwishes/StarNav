@@ -24,6 +24,11 @@ const routes: Array<RouteRecordRaw> = [
     meta: {} // Homepage defaults to site name
   },
   {
+    // Common typo / shortcut; always land on the real admin route.
+    path: '/admin',
+    redirect: '/admin/dashboard'
+  },
+  {
     path: '/admin/dashboard',
     name: 'AdminDashboard',
     component: () => import('@/views/AdminDashboard.vue'),
@@ -46,7 +51,8 @@ router.beforeEach(
     const currentUser = readStoredAdminUser()
 
     if (to.meta.requiresAdmin && (!currentUser || Number(currentUser.level) !== 3)) {
-      next('/')
+      // Send home with a flag so the header can open the login dialog.
+      next({ path: '/', query: { login: '1', redirect: to.fullPath } })
       return
     }
 

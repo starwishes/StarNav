@@ -1,11 +1,11 @@
 import { onMounted, onUnmounted } from 'vue'
 
 /**
- * 懒加载图片 Hook
- * 使用 IntersectionObserver 实现图片懒加载，减少初始加载时间
+ * Lazy-load images via IntersectionObserver.
+ * Also watches the document for newly inserted matching nodes (SPA list updates).
  *
- * @param selector - 图片选择器（默认 'img[data-src]'）
- * @param options - IntersectionObserver 配置项
+ * @param selector - Image selector (default `img[data-src]`)
+ * @param options - IntersectionObserver options
  */
 export function useLazyLoad(
   selector = 'img[data-src]',
@@ -16,6 +16,7 @@ export function useLazyLoad(
   }
 ) {
   let observer: IntersectionObserver | null = null
+  let mutationObserver: MutationObserver | null = null
 
   const loadImage = (entry: IntersectionObserverEntry) => {
     const img = entry.target as HTMLImageElement
@@ -30,7 +31,22 @@ export function useLazyLoad(
     }
   }
 
+  const observeMatching = (root: ParentNode = document) => {
+    if (!observer) {
+      return
+    }
+    const images = root.querySelectorAll(selector)
+    images.forEach((img) => observer?.observe(img))
+  }
+
   const initObserver = () => {
+    if (observer) {
+      observer.disconnect()
+    }
+    if (mutationObserver) {
+      mutationObserver.disconnect()
+    }
+
     observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
@@ -39,8 +55,24 @@ export function useLazyLoad(
       })
     }, options)
 
-    const images = document.querySelectorAll(selector)
-    images.forEach((img) => observer?.observe(img))
+    observeMatching(document)
+
+    if (typeof MutationObserver === 'function') {
+      mutationObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          mutation.addedNodes.forEach((node) => {
+            if (!(node instanceof Element)) {
+              return
+            }
+            if (node.matches?.(selector)) {
+              observer?.observe(node)
+            }
+            observeMatching(node)
+          })
+        }
+      })
+      mutationObserver.observe(document.body, { childList: true, subtree: true })
+    }
   }
 
   onMounted(() => {
@@ -48,6 +80,10 @@ export function useLazyLoad(
   })
 
   onUnmounted(() => {
+    if (mutationObserver) {
+      mutationObserver.disconnect()
+      mutationObserver = null
+    }
     if (observer) {
       observer.disconnect()
       observer = null

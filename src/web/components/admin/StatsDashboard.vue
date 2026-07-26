@@ -114,6 +114,6 @@ const accessCards = computed(() => [
 </script>
 
 <style scoped lang="scss">
-@import './StatsDashboard.scss';
+@use './StatsDashboard.scss';
 </style>
 

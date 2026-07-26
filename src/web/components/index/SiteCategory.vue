@@ -33,36 +33,57 @@
 
     <main class="category-main">
       <div v-if="currentDisplayItems.length === 0" class="empty-placeholder">暂无书签</div>
-      <ul v-else class="site-grid">
+      <ul
+        v-else
+        ref="gridRef"
+        class="site-grid"
+        :class="{ 'is-virtualized': virtualized }"
+        :style="spacerStyle"
+      >
         <li
-          v-for="(item, itemIndex) in currentDisplayItems"
-          :key="item.id"
+          v-for="entry in visibleItems"
+          :key="entry.item.id"
           class="site-wrapper"
           :class="{
-            'is-moving': moveState.active && moveState.item?.id === item.id,
-            'moving-target': isHovering(itemIndex, getItemCategoryId(item))
+            'is-moving': moveState.active && moveState.item?.id === entry.item.id,
+            'moving-target': isHovering(
+              getCategoryLocalIndex(entry.item),
+              getItemCategoryId(entry.item)
+            )
           }"
           :data-cat-index="catIndex"
-          :data-cat-id="getItemCategoryId(item)"
-          :data-item-index="itemIndex"
-          @mouseenter="$emit('item-mouseenter', { itemIndex, categoryId: getItemCategoryId(item) })"
+          :data-cat-id="getItemCategoryId(entry.item)"
+          :data-item-index="getCategoryLocalIndex(entry.item)"
+          @mouseenter="
+            $emit('item-mouseenter', {
+              itemIndex: getCategoryLocalIndex(entry.item),
+              categoryId: getItemCategoryId(entry.item)
+            })
+          "
         >
           <SiteCard
-            :item="item"
-            :favicon-url="item.icon"
-            :fallback-favicon-url="getFallbackFaviconUrl(item)"
+            :item="entry.item"
+            :favicon-url="entry.item.icon"
+            :fallback-favicon-url="getFallbackFaviconUrl(entry.item)"
             :selection-mode="selectionMode"
-            :selected="selectedItems?.has(item.id)"
-            @click="(e) => $emit('item-click', { item, event: e })"
-            @contextmenu="(e) => $emit('item-contextmenu', { item, itemIndex, event: e })"
-            @toggle-select="$emit('toggle-selection', item)"
+            :selected="selectedItems?.has(entry.item.id)"
+            @click="(e) => $emit('item-click', { item: entry.item, event: e })"
+            @contextmenu="
+              (e) =>
+                $emit('item-contextmenu', {
+                  item: entry.item,
+                  itemIndex: getCategoryLocalIndex(entry.item),
+                  event: e
+                })
+            "
+            @toggle-select="$emit('toggle-selection', entry.item)"
             @touchstart="
               (e) =>
                 $emit('item-touchstart', {
-                  item,
-                  itemIndex,
+                  item: entry.item,
+                  itemIndex: getCategoryLocalIndex(entry.item),
                   event: e,
-                  categoryId: getItemCategoryId(item)
+                  categoryId: getItemCategoryId(entry.item)
                 })
             "
           />
@@ -77,10 +98,12 @@ import { ref, computed, watch } from 'vue'
 import SiteCard from './SiteCard.vue'
 import { Favicon } from '@/config'
 import type { Category } from '@/types'
+import { useVirtualSiteGrid } from '@/composables/useVirtualSiteGrid'
 import { buildProxyIconCandidate } from './siteIconHelpers'
 import {
   hasChildCategories,
   isHoveringMoveTarget,
+  resolveCategoryLocalIndex,
   resolveDisplayedItems,
   resolveInitialActiveTabId,
   resolveItemCategoryId,
@@ -156,8 +179,17 @@ watch(
 )
 
 const currentDisplayItems = computed(() => resolveDisplayedItems(props.category, activeTabId.value))
+// Keep virtualization during bookmark move. Toggling full-render on moveState.active
+// expands every large category at once and jumps the page scroll position.
+const forceFullRender = computed(() => Boolean(props.selectionMode))
+const { gridRef, virtualized, visibleItems, spacerStyle } = useVirtualSiteGrid({
+  items: currentDisplayItems,
+  forceFullRender
+})
 const getItemCategoryId = (item: DisplayedSiteItem) =>
   resolveItemCategoryId(item, props.category.id)
+const getCategoryLocalIndex = (item: DisplayedSiteItem) =>
+  resolveCategoryLocalIndex(currentDisplayItems.value, item, props.category.id)
 const isHovering = (itemIndex: number, categoryId: number) =>
   isHoveringMoveTarget(props.moveState, itemIndex, categoryId)
 const getFallbackFaviconUrl = (item: DisplayedSiteItem) =>
@@ -165,6 +197,6 @@ const getFallbackFaviconUrl = (item: DisplayedSiteItem) =>
 </script>
 
 <style scoped lang="scss">
-@import './SiteCategory.scss';
+@use './SiteCategory.scss';
 </style>
 

@@ -46,17 +46,17 @@ StarNav 是单仓、单进程的全栈应用：
 
 ### Routes
 
-路由文件位于 `src/server/routes/`：
+路由文件位于 `src/server/routes/`（TypeScript；运行时由 `tsx` 加载）：
 
-- `auth.js`: 登录、注册、会话、用户和审计
-- `bookmarks.js`: 导航数据、分类、书签、点击统计
-- `system.js`: 公共设置、后台设置、健康检查、上传和工具接口
-- `stats.js`: PV/UV 与缓存统计
+- `auth.ts`: 登录、注册、会话、用户和审计
+- `bookmarks.ts`: 导航数据、分类、书签、点击统计
+- `system.ts`: 公共设置、后台设置、健康检查、上传和工具接口
+- `stats.ts`: PV/UV 与缓存统计
 
 ## Auth and session model
 
 - Web 管理端登录成功后，`authController` 会在响应里同时返回 JWT，并下发 HttpOnly Cookie `starnav_auth`
-- `src/server/middleware/auth.js` 认证顺序是 Bearer 优先、Cookie 回退，因此浏览器扩展和脚本客户端可作为独立客户端直接登录 `/api/login`
+- `src/server/middleware/auth.ts` 认证顺序是 Bearer 优先、Cookie 回退，因此浏览器扩展和脚本客户端可作为独立客户端直接登录 `/api/login`
 - 对于走 Cookie 的 `POST` / `PUT` / `PATCH` / `DELETE` 请求，后端会额外校验 `Origin` / `Referer` 是否属于当前站点或受信开发来源，用来降低 CSRF 风险
 
 ### Controllers
@@ -67,19 +67,19 @@ StarNav 是单仓、单进程的全栈应用：
 
 核心业务按域集中在 `src/server/services/`（实现位于子目录；根级 re-export stub 已移除，调用方直接 import 域路径）：
 
-- `bookmark/`：查询/命令编排（`bookmarkQueryService`、`bookmarkCommandService`）、快照与查重、读写底层、`cache.js` 书签快照
+- `bookmark/`：查询/命令编排（`bookmarkQueryService`、`bookmarkCommandService`）、快照与查重、读写底层、`cache.ts` 书签快照
 - `cache/`：TTL 缓存运行时、键定义、失效（含 `invalidateBookmarkCaches`）、预热
-- `database/`：SQLite 连接（`database/database.js`）、路径、schema、维护、统计
+- `database/`：SQLite 连接（`database/database.ts`）、路径、schema、维护、统计
 - `identity/`：账号、会话、登录/注册、后台用户与审计、bootstrap 管理员
-- `system/`：初始化编排、设置、健康检查、资源上传、定时备份
+- `system/`：初始化编排（`initService.ts` / `initRuntimeService.ts`）、设置、健康检查、资源上传、定时备份
 - `tools/`：favicon 代理、链接探测、搜索建议
-- 根级仅保留 `migrate.js`（JSON→SQLite 迁移入口；`initService` 与相关测试引用）
+- 根级仅保留 `migrate.ts`（JSON→SQLite 迁移入口；`initService` 与相关测试引用）
 
 ## Public settings pipeline
 
 这条链路是前端公共 UI 的基础设施：
 
-1. `src/server/services/system/settingsService.js` 从 SQLite `settings` 表读取公共字段
+1. `src/server/services/system/settingsService.ts` 从 SQLite `settings` 表读取公共字段
 2. `GET /api/settings` 暴露给未登录用户
 3. `src/web/store/config.ts` 作为公共设置单一数据源
 4. 首页、背景、时钟、登录弹窗、页头、页脚和侧边栏都从同一个 store 读取
@@ -118,14 +118,21 @@ StarNav 是单仓、单进程的全栈应用：
 
 项目存在两层缓存：
 
-- `src/server/services/cache/cacheRuntimeService.js` + `src/server/services/cache/cacheService.js`
+- `src/server/services/cache/cacheRuntimeService.ts` + `src/server/services/cache/cacheService.ts`
   面向控制器级响应和统计接口的 TTL 缓存；其中前者承接运行时和统计，后者保留共享运行时入口
-- `src/server/services/cache/cacheDefinitionService.js`、`src/server/services/cache/cacheInvalidationService.js`、`src/server/services/cache/cacheWarmupService.js`
+- `src/server/services/cache/cacheDefinitionService.ts`、`src/server/services/cache/cacheInvalidationService.ts`、`src/server/services/cache/cacheWarmupService.ts`
   分别承接缓存键/TTL、领域失效、启动预热
-- `src/server/services/bookmark/cache.js`
+- `src/server/services/bookmark/cache.ts`
   面向书签与分类快照的驻内存缓存
 
 这个组合让首页数据读取可以尽量避免重复查库；当前由 `bookmarkSnapshotService.getData()` 统一承接测试环境直读和生产环境快照过滤，而 controller 侧 TTL 缓存则按“定义 / 失效 / 预热 / 运行时”继续分层。
+
+失效策略：
+
+- **结构写**（增删改分类/书签、整库 replace）：`invalidateBookmarkCaches()` 清快照 + data TTL + search TTL
+- **点击统计**（`trackClick`）：优先 `patchItemClickInCache` 原地改快照；再 `invalidateBookmarkCaches({ includeSnapshot: false, includeSearch: false })` 只刷 data TTL，避免每次点击整表与搜索缓存雪崩
+
+慢查询：`queryMonitor` 记录 >100ms 查询；`GET /api/health` 的 `checks.queries` 带最近慢查询摘要（运维可观测，无需另起指标栈）。
 
 ## Frontend architecture
 

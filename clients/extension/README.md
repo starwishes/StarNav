@@ -68,8 +68,25 @@ npm run extension:export
 
 1. 安装后会自动打开设置页面
 2. 输入您部署的 StarNav 服务器地址（如 `https://nav.example.com`）
-3. 输入账号密码并登录
-4. 点击浏览器工具栏上的图标即可使用
+3. 首次连接时浏览器会请求**仅该站点**的访问权限（不再默认申请 `<all_urls>`）
+4. 输入账号密码并登录（扩展走 **`POST /api/login` 返回的 Bearer JWT**，不依赖主站 HttpOnly Cookie）
+5. 点击浏览器工具栏上的图标即可使用
+
+快捷能力：
+
+- 右键菜单「Add page to StarNav」：把当前页/链接写入待添加队列并打开 popup
+- `Alt+Shift+S`：打开扩展 popup
+- `Alt+Shift+A`：添加当前页面
+- popup / 设置页支持日/夜模式切换
+
+认证说明：主站 Web 管理端优先 Cookie、Bearer 回退；扩展与脚本客户端应始终带 `Authorization: Bearer <token>`。详见 `docs/ARCHITECTURE.md` 的 Auth and session model。
+
+共享 `src/shared` 变更后请在仓库根执行：
+
+```bash
+npm run extension:sync-common
+npm run extension:sync-common:check
+```
 
 ## 仓库拆分准备
 

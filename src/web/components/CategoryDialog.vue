@@ -160,5 +160,5 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
-@import './CategoryDialog.scss';
+@use './CategoryDialog.scss';
 </style>

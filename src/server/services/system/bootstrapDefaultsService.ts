@@ -1,20 +1,27 @@
 import { getDb } from '../database/database.js'
 import { logger } from '../../utils/logger.js'
-import { DEFAULT_THEME_PRESET } from '../../../shared/theme.js'
+import { resolveEnvTimezone } from '../../utils/envTimezone.js'
 import type { CountRow } from '../../types/sqliteRows.js'
+
+const REMOVED_SETTINGS_KEYS = ['themePreset', 'themeColor'] as const
 
 export const bootstrapDefaultsService = {
   initSettings() {
     const db = getDb()
+    const envTimezone = resolveEnvTimezone()
+
+    // Older installs may still store removed theme fields; drop them on boot.
+    db.prepare(
+      `DELETE FROM settings WHERE key IN (${REMOVED_SETTINGS_KEYS.map(() => '?').join(', ')})`
+    ).run(...REMOVED_SETTINGS_KEYS)
 
     const count = db.prepare<CountRow>('SELECT COUNT(*) as count FROM settings').get()?.count ?? 0
     if (count === 0) {
-      const defaults = {
+      const defaults: Record<string, unknown> = {
         registrationEnabled: false,
         defaultUserLevel: 1,
         backgroundUrl: '',
-        themePreset: DEFAULT_THEME_PRESET,
-        themeColor: ''
+        timezone: envTimezone
       }
 
       const insert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)')
@@ -22,7 +29,32 @@ export const bootstrapDefaultsService = {
         insert.run(key, JSON.stringify(value))
       })
 
-      logger.info('已初始化默认系统设置')
+      logger.info(
+        envTimezone
+          ? `已初始化默认系统设置（时区: ${envTimezone}）`
+          : '已初始化默认系统设置'
+      )
+      return
+    }
+
+    // Existing DB: only fill empty timezone from compose/env so deploys can pin display TZ
+    if (envTimezone) {
+      const row = db.prepare<{ value: string }>('SELECT value FROM settings WHERE key = ?').get('timezone')
+      let current = ''
+      if (row?.value !== undefined) {
+        try {
+          current = JSON.parse(row.value)
+        } catch {
+          current = String(row.value || '')
+        }
+      }
+      if (!current) {
+        db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
+          'timezone',
+          JSON.stringify(envTimezone)
+        )
+        logger.info(`已从环境变量写入空缺时区: ${envTimezone}`)
+      }
     }
   },
 

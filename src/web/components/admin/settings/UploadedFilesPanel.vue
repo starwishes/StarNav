@@ -70,6 +70,6 @@ const formatSize = (bytes: number) => {
 </script>
 
 <style scoped lang="scss">
-@import './UploadedFilesPanel.scss';
+@use './UploadedFilesPanel.scss';
 </style>
 

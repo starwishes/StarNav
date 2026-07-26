@@ -12,6 +12,7 @@ NODE_IMAGE="${NODE_IMAGE:-node:24.14.1-slim}"
 DOCKERFILE="${DOCKERFILE:-docker/Dockerfile}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-DockerSmoke123!}"
 JWT_SECRET="${JWT_SECRET:-docker-smoke-secret-0123456789abcdef0123456789abcdef}"
+TZ="${TZ:-Asia/Shanghai}"
 HEALTH_URL="http://127.0.0.1:${HOST_PORT}/api/health"
 LOGIN_URL="http://127.0.0.1:${HOST_PORT}/api/login"
 APT_DEBIAN_MIRROR="${APT_DEBIAN_MIRROR:-}"
@@ -94,6 +95,7 @@ set -- \
   -e "ADMIN_PASSWORD=${ADMIN_PASSWORD}" \
   -e "JWT_SECRET=${JWT_SECRET}" \
   -e "LOG_LEVEL=${LOG_LEVEL:-0}" \
+  -e "TZ=${TZ}" \
   -v "${DATA_DIR}:/app/data"
 
 if [ -n "${HTTP_PROXY}" ]; then
@@ -130,14 +132,21 @@ LOGIN_RESPONSE="$(
 )"
 
 TOKEN="$(
-  printf '%s' "${LOGIN_RESPONSE}" | node -e "
-    let data = '';
-    process.stdin.on('data', (chunk) => (data += chunk));
-    process.stdin.on('end', () => {
-      const body = JSON.parse(data);
-      process.stdout.write(body?.data?.token || '');
-    });
-  "
+  printf '%s' "${LOGIN_RESPONSE}" | if command -v node >/dev/null 2>&1; then
+    node -e "
+      let data = '';
+      process.stdin.on('data', (chunk) => (data += chunk));
+      process.stdin.on('end', () => {
+        const body = JSON.parse(data);
+        process.stdout.write(body?.data?.token || '');
+      });
+    "
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import json,sys; body=json.load(sys.stdin); print((body.get("data") or {}).get("token") or "", end="")'
+  else
+    echo "docker-smoke requires node or python3 to parse login token" >&2
+    exit 1
+  fi
 )"
 
 if [ -z "${TOKEN}" ]; then

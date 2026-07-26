@@ -14,7 +14,10 @@ vi.mock('@/store/admin', () => ({
     fetchUsers: mocks.fetchUsers,
     addUser: mocks.addUser,
     deleteUser: mocks.deleteUser,
-    updateUser: mocks.updateUser
+    updateUser: mocks.updateUser,
+    setAuth: vi.fn(),
+    token: null,
+    user: null
   })
 }))
 
@@ -78,5 +81,29 @@ describe('useUserManagement', () => {
     expect(mocks.deleteUser).toHaveBeenCalledWith('bob')
     expect(mocks.messageError).toHaveBeenCalledWith('delete failed')
     expect(mocks.fetchUsers).not.toHaveBeenCalled()
+  })
+
+  it('surfaces thrown API errors when adding a user', async () => {
+    mocks.addUser.mockRejectedValue(new Error('ERR_PASSWORD_WEAK'))
+
+    const { handleAddUser } = useUserManagement()
+    await handleAddUser({ username: 'bob', password: 'weak', level: 1 })
+
+    expect(mocks.messageError).toHaveBeenCalledWith('ERR_PASSWORD_WEAK')
+    expect(mocks.fetchUsers).not.toHaveBeenCalled()
+  })
+
+  it('sends newUsername when updating a user', async () => {
+    mocks.updateUser.mockResolvedValue({ success: true })
+    mocks.fetchUsers.mockResolvedValue([])
+
+    const { handleUpdateUser } = useUserManagement()
+    await handleUpdateUser('alice', { newUsername: 'alice2', password: 'Secret1!' })
+
+    expect(mocks.updateUser).toHaveBeenCalledWith('alice', {
+      newUsername: 'alice2',
+      password: 'Secret1!'
+    })
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:admin.updateSuccess')
   })
 })

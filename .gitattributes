@@ -1,3 +1,28 @@
-# Keep shell scripts executable on Windows checkouts (Git Bash / WSL / CI).
+# Normalize text to LF in the repository. Avoids Windows CRLF false diffs
+# and keeps shell scripts runnable under Git Bash / Linux / Docker.
+* text=auto eol=lf
+
+# Shell / container entrypoints must never pick up CRLF on Windows checkouts.
 *.sh text eol=lf
-docker-entrypoint.sh text eol=lf
+docker/docker-entrypoint.sh text eol=lf
+
+# Windows-only helpers (if present) keep CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binaries
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.7z binary
+*.zip binary
+*.db binary
+*.bak binary

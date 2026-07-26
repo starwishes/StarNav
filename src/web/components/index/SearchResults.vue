@@ -155,6 +155,6 @@ const getInitial = (name: string) => {
 </script>
 
 <style scoped lang="scss">
-@import './SearchResults.scss';
+@use './SearchResults.scss';
 </style>
 

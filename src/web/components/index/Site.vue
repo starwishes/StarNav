@@ -76,6 +76,7 @@
       :is-first-category="isFirstCategory"
       :is-last-category="isLastCategory"
       @selection-mode="handleSelectionMode"
+      @move-item="handleStartMoveItem"
       @toggle-pin="togglePin"
       @edit-item="handleEdit"
       @delete-item="handleDelete"
@@ -183,7 +184,7 @@ const {
   handleBatchDelete
 } = useBatchActions(closeContextMenu)
 
-const { moveState, handleMouseEnter, handleTouchStart, handleMouseDragUp } = useSiteDrag(
+const { moveState, startMove, handleMouseEnter, handleTouchStart, handleMouseDragUp } = useSiteDrag(
   () => dataValue.value
 )
 
@@ -248,6 +249,21 @@ const handleSelectionMode = () => {
   enterSelectionMode(contextMenu.item?.id)
 }
 
+const handleStartMoveItem = () => {
+  if (!contextMenu.item) {
+    return
+  }
+
+  startMove(
+    contextMenu.item,
+    contextMenu.catIndex,
+    contextMenu.itemIndex,
+    contextMenu.x,
+    contextMenu.y,
+    closeContextMenu
+  )
+}
+
 const handleCategoryClick = () => {}
 
 watch(selectionMode, (active: boolean) => {
@@ -274,5 +290,5 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-@import './Site.scss';
+@use './Site.scss';
 </style>

@@ -46,6 +46,7 @@
                 :placeholder="t('users.inputPassword')"
                 autocomplete="new-password"
               />
+              <span class="dialog-hint">{{ t('auth.passwordTip') }}</span>
             </label>
 
             <label class="dialog-field">
@@ -73,9 +74,10 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { ref, toRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppSelect from '@/components/AppSelect.vue'
+import { useFocusOnOpen } from '@/composables/useFocusOnOpen'
 
 type AddForm = {
   username: string
@@ -97,15 +99,13 @@ const { t } = useI18n()
 const dialogRef = ref<HTMLElement | null>(null)
 const usernameInputRef = ref<HTMLInputElement | null>(null)
 
-watch(
-  () => props.modelValue,
-  (isOpen) => {
-    if (isOpen) {
-      nextTick(() => {
-        dialogRef.value?.focus()
-        usernameInputRef.value?.focus()
-      })
-    }
-  }
+useFocusOnOpen(
+  toRef(props, 'modelValue'),
+  () => dialogRef.value,
+  () => usernameInputRef.value
 )
 </script>
+
+<style scoped lang="scss">
+@use './UserDialog.scss';
+</style>

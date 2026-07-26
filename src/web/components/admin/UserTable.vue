@@ -1,37 +1,39 @@
 <template>
   <div class="user-table">
-    <div class="table-toolbar">
-      <button type="button" class="toolbar-button" @click="openAddDialog">
-        <AppIcon name="icon-tianjia-yonghu" class="button-icon" />
-        <span>{{ t('users.addUser') }}</span>
-      </button>
-    </div>
+    <section class="panel-card">
+      <div class="card-header">
+        <span class="card-title">{{ t('menu.users') }}</span>
+        <button type="button" class="toolbar-button" @click="openAddDialog">
+          <AppIcon name="icon-tianjia-yonghu" class="button-icon" />
+          <span>{{ t('users.addUser') }}</span>
+        </button>
+      </div>
 
-    <div v-if="users.length === 0" class="sn-empty-state">
-      {{ t('common.noData') }}
-    </div>
+      <div v-if="users.length === 0" class="sn-empty-state">
+        {{ t('common.noData') }}
+      </div>
 
-    <div v-else class="sn-table-shell">
-      <div class="sn-table-scroll">
-        <table class="sn-table">
-          <thead>
-            <tr>
-              <th>{{ t('common.username') }}</th>
-              <th style="width: 160px">{{ t('users.level') }}</th>
-              <th style="width: 220px">{{ t('users.regTime') }}</th>
-              <th class="is-center" style="width: 320px">{{ t('common.action') }}</th>
-            </tr>
-          </thead>
+      <div v-else class="sn-table-shell">
+        <div class="sn-table-scroll">
+          <table class="sn-table">
+            <thead>
+              <tr>
+                <th class="col-name">{{ t('common.username') }}</th>
+                <th class="col-meta col-level" style="width: 160px">{{ t('users.level') }}</th>
+                <th class="col-meta col-time" style="width: 220px">{{ t('users.regTime') }}</th>
+                <th class="is-center col-actions" style="width: 320px">{{ t('common.action') }}</th>
+              </tr>
+            </thead>
           <tbody>
             <tr v-for="row in users" :key="row.username">
-              <td>{{ row.username }}</td>
-              <td>
+              <td class="col-name">{{ row.username }}</td>
+              <td class="col-meta col-level">
                 <span class="sn-badge" :class="getLevelClass(row.level)">
                   {{ getLevelName(row.level) }}
                 </span>
               </td>
-              <td>{{ formatDate(row.createdAt) }}</td>
-              <td class="is-center">
+              <td class="col-meta col-time">{{ formatDate(row.createdAt) }}</td>
+              <td class="is-center col-actions">
                 <div class="sn-table-actions">
                   <AppSelect
                     class="sn-inline-select level-select"
@@ -66,8 +68,9 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
-    </div>
+    </section>
 
     <UserAddDialog
       :model-value="showAddDialog"
@@ -116,7 +119,11 @@ const emit = defineEmits<{
   (e: 'update-level', username: string, level: number): void
   (e: 'delete', username: string): void
   (e: 'add', payload: { username: string; password: string; level: number }): void
-  (e: 'update', username: string, payload: { username: string; password?: string }): void
+  (
+    e: 'update',
+    username: string,
+    payload: { newUsername: string; password?: string }
+  ): void
 }>()
 
 const adminStore = useAdminStore()
@@ -149,5 +156,5 @@ const getLevelClass = (level: number) => {
 </script>
 
 <style scoped lang="scss">
-@import './UserTable.scss';
+@use './UserTable.scss';
 </style>

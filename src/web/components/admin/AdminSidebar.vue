@@ -103,6 +103,6 @@ const getMenuKey = (id: string) => {
 </script>
 
 <style scoped lang="scss">
-@import './AdminSidebar.scss';
+@use './AdminSidebar.scss';
 </style>
 

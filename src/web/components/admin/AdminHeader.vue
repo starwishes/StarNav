@@ -71,9 +71,7 @@ const toggleLang = () => {
 }
 
 const syncThemeTokens = (mode: ThemeMode) => {
-  applyThemeTokens(
-    resolveThemeTokens(configStore.siteConfig.themePreset, configStore.siteConfig.themeColor, mode)
-  )
+  applyThemeTokens(resolveThemeTokens(mode))
 }
 
 const toggleTheme = () => {
@@ -95,6 +93,6 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-@import './AdminHeader.scss';
+@use './AdminHeader.scss';
 </style>
 

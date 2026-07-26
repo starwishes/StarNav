@@ -6,8 +6,7 @@
 
 .site-card {
   --card-bg: var(--category-card-bg, #ffffff);
-  --card-border: var(--category-card-border, rgba(29, 29, 31, 0.08));
-  --card-shadow: var(--category-card-shadow, 0 24px 48px rgba(0, 0, 0, 0.08));
+  --card-border: var(--category-card-border, rgba(29, 29, 31, 0.1));
   --card-text: var(--category-card-text, #1d1d1f);
   --card-muted: var(--category-card-muted, rgba(29, 29, 31, 0.58));
   --card-icon-bg: var(--category-icon-bg, rgba(29, 29, 31, 0.05));
@@ -19,30 +18,24 @@
   min-width: 0;
   min-height: 120px;
   padding: 20px;
-  border-radius: 28px;
+  border-radius: 20px;
   overflow: hidden;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  box-shadow: var(--card-shadow);
+  box-shadow: none;
   transition:
     transform 0.18s ease,
-    box-shadow 0.18s ease,
     border-color 0.18s ease,
     background-color 0.18s ease;
 
   &:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 28px 52px rgba(0, 0, 0, 0.16);
-
-    .hover-glow {
-      opacity: 1;
-    }
+    transform: translateY(-2px);
+    border-color: rgba(var(--ui-theme-rgb), 0.28);
   }
 
   &.is-pinned {
-    box-shadow:
-      inset 0 0 0 1px rgba(var(--ui-theme-rgb), 0.24),
-      var(--card-shadow);
+    border-color: rgba(var(--ui-theme-rgb), 0.36);
+    box-shadow: inset 0 0 0 1px rgba(var(--ui-theme-rgb), 0.16);
   }
 
   &.is-selected {
@@ -121,19 +114,6 @@
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
-}
-
-.hover-glow {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    circle at top right,
-    rgba(var(--ui-theme-rgb), 0.08),
-    transparent 52%
-  );
-  opacity: 0;
-  transition: opacity 0.18s ease;
-  pointer-events: none;
 }
 
 .pin-badge {

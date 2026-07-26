@@ -12,9 +12,60 @@
   --site-batch-border: var(--el-border-color-lighter);
   --site-batch-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
   position: relative;
+  container-type: inline-size;
+  container-name: site-table;
 
   .sn-table {
     min-width: 1060px;
+  }
+
+  .sn-table th,
+  .sn-table td {
+    white-space: nowrap;
+  }
+
+  .col-name,
+  .col-url {
+    white-space: nowrap;
+  }
+}
+
+// Progressively hide secondary columns as the table pane shrinks
+@container site-table (max-width: 980px) {
+  .col-visited,
+  .col-clicks {
+    display: none;
+  }
+
+  .sn-table {
+    min-width: 820px;
+  }
+}
+
+@container site-table (max-width: 780px) {
+  .col-visibility,
+  .col-id {
+    display: none;
+  }
+
+  .sn-table {
+    min-width: 640px;
+  }
+}
+
+@container site-table (max-width: 620px) {
+  .col-category,
+  .col-check {
+    display: none;
+  }
+
+  .sn-table {
+    min-width: 0;
+  }
+
+  .batch-actions-footer {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 
@@ -83,14 +134,22 @@
 }
 
 .table-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.25rem;
+  min-height: 34px;
   border: 1px solid transparent;
   border-radius: 999px;
   background: var(--site-action-bg);
   color: var(--site-action-text);
-  padding: 7px 12px;
-  font-size: 12px;
+  padding: 8px 16px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.2;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
   cursor: pointer;
   transition:
     transform 0.18s ease,

@@ -94,4 +94,15 @@ describe('cacheInvalidationService', () => {
     expect(cacheService.del).toHaveBeenCalledWith('data:level:0')
     expect(cacheService.del).toHaveBeenCalledWith('search:1:test:10')
   })
+
+  it('should support narrow invalidation for click-hot path', () => {
+    cacheService.cache.keys.mockReturnValue(['search:1:test:10', 'categories:simple:0'])
+
+    invalidateBookmarkCaches(cacheService, { includeSnapshot: false, includeSearch: false })
+
+    expect(invalidateCache).not.toHaveBeenCalled()
+    expect(cacheService.del).toHaveBeenCalledWith('categories:simple:0')
+    expect(cacheService.del).toHaveBeenCalledWith('data:level:0')
+    expect(cacheService.del).not.toHaveBeenCalledWith('search:1:test:10')
+  })
 })

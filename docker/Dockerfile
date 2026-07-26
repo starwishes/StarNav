@@ -26,38 +26,22 @@ ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
 COPY package*.json ./
+COPY docker/apt-mirror.sh /tmp/apt-mirror.sh
 # Install only production dependencies
 # Install native build tools needed for better-sqlite3
-RUN if [ -n "${APT_DEBIAN_MIRROR}" ] || [ -n "${APT_DEBIAN_SECURITY_MIRROR}" ]; then \
-      DEBIAN_MIRROR="${APT_DEBIAN_MIRROR:-http://deb.debian.org/debian}"; \
-      SECURITY_MIRROR="${APT_DEBIAN_SECURITY_MIRROR:-http://deb.debian.org/debian-security}"; \
-      if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
-        sed -i \
-          -e "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
-          -e "s|http://deb.debian.org/debian-security|${SECURITY_MIRROR}|g" \
-          /etc/apt/sources.list.d/debian.sources; \
-      fi; \
-      if [ -f /etc/apt/sources.list ]; then \
-        sed -i \
-          -e "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
-          -e "s|http://deb.debian.org/debian-security|${SECURITY_MIRROR}|g" \
-          /etc/apt/sources.list; \
-      fi; \
-    fi
 # hadolint ignore=DL3008
-RUN apt-get -o Acquire::Retries=3 update && \
-    apt-get -o Acquire::Retries=3 install -y --no-install-recommends python3 make g++ && \
-    npm ci --omit=dev --legacy-peer-deps --ignore-scripts && \
-    npm rebuild better-sqlite3 && \
-    # Cleanup build tools
-    apt-get purge -y --auto-remove python3 make g++ && \
-    rm -rf /var/lib/apt/lists/* && \
-    # Clean up npm cache
-    npm cache clean --force && \
-    rm -rf /root/.npm /usr/local/share/.cache && \
-    # Clean up heavy unnecessary files in node_modules
-    find node_modules -type f \( -name "*.md" -o -name "*.markdown" -o -name "LICENSE*" -o -name "CHANGELOG*" -o -name "*.map" -o \( -name "*.ts" -a ! -name "*.d.ts" \) \) -delete && \
-    find node_modules -type d \( -name "test" -o -name "tests" -o -name "__tests__" -o -name "example" -o -name "examples" -o -name "demo" -o -name "docs" -o -name "coverage" \) -exec rm -rf {} +
+RUN chmod +x /tmp/apt-mirror.sh \
+    && /tmp/apt-mirror.sh \
+    && apt-get -o Acquire::Retries=3 update \
+    && apt-get -o Acquire::Retries=3 install -y --no-install-recommends python3 make g++ \
+    && npm ci --omit=dev --legacy-peer-deps --ignore-scripts \
+    && npm rebuild better-sqlite3 \
+    && apt-get purge -y --auto-remove python3 make g++ \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm cache clean --force \
+    && rm -rf /root/.npm /usr/local/share/.cache \
+    && find node_modules -type f \( -name "*.md" -o -name "*.markdown" -o -name "LICENSE*" -o -name "CHANGELOG*" -o -name "*.map" -o \( -name "*.ts" -a ! -name "*.d.ts" \) \) -delete \
+    && find node_modules -type d \( -name "test" -o -name "tests" -o -name "__tests__" -o -name "example" -o -name "examples" -o -name "demo" -o -name "docs" -o -name "coverage" \) -exec rm -rf {} +
 
 # Stage 3: Runtime
 FROM ${NODE_IMAGE} AS runtime
@@ -68,27 +52,14 @@ ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
 
+COPY docker/apt-mirror.sh /tmp/apt-mirror.sh
 # Install runtime utilities
-RUN if [ -n "${APT_DEBIAN_MIRROR}" ] || [ -n "${APT_DEBIAN_SECURITY_MIRROR}" ]; then \
-      DEBIAN_MIRROR="${APT_DEBIAN_MIRROR:-http://deb.debian.org/debian}"; \
-      SECURITY_MIRROR="${APT_DEBIAN_SECURITY_MIRROR:-http://deb.debian.org/debian-security}"; \
-      if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
-        sed -i \
-          -e "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
-          -e "s|http://deb.debian.org/debian-security|${SECURITY_MIRROR}|g" \
-          /etc/apt/sources.list.d/debian.sources; \
-      fi; \
-      if [ -f /etc/apt/sources.list ]; then \
-        sed -i \
-          -e "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
-          -e "s|http://deb.debian.org/debian-security|${SECURITY_MIRROR}|g" \
-          /etc/apt/sources.list; \
-      fi; \
-    fi
 # hadolint ignore=DL3008
-RUN apt-get -o Acquire::Retries=3 update && \
-    apt-get -o Acquire::Retries=3 install -y --no-install-recommends dumb-init gosu && \
-    rm -rf /var/lib/apt/lists/*
+RUN chmod +x /tmp/apt-mirror.sh \
+    && /tmp/apt-mirror.sh \
+    && apt-get -o Acquire::Retries=3 update \
+    && apt-get -o Acquire::Retries=3 install -y --no-install-recommends dumb-init gosu tzdata \
+    && rm -rf /var/lib/apt/lists/* /tmp/apt-mirror.sh
 
 # Create data directory with correct permissions
 RUN mkdir -p /app/data && chown -R node:node /app
@@ -106,13 +77,14 @@ COPY tsconfig.server.json ./
 COPY docker/docker-entrypoint.sh /usr/local/bin/
 COPY src ./src
 
-# Setup permissions
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# Environment variables
+# Setup permissions; strip CRLF so shebang works if checked out on Windows
+RUN tr -d "\r" < /usr/local/bin/docker-entrypoint.sh > /tmp/docker-entrypoint.sh \
+    && mv /tmp/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
 ENV NODE_ENV=production \
     PORT=8080 \
-    DATA_PATH=/app/data
+    DATA_PATH=/app/data \
+    TZ=Asia/Shanghai
 
 EXPOSE 8080
 

@@ -239,6 +239,27 @@ describe('data store', () => {
     expect(mocks.messageError).toHaveBeenCalledWith('加载失败: network down')
   })
 
+  it('dedupes concurrent loadData callers into one request', async () => {
+    let resolveContent
+    mocks.getContent.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveContent = resolve
+      })
+    )
+
+    const store = useDataStore()
+    const first = store.loadData()
+    const second = store.loadData()
+
+    expect(mocks.getContent).toHaveBeenCalledTimes(1)
+
+    resolveContent({ categories: [], items: [] })
+    await Promise.all([first, second])
+
+    expect(store.initialized).toBe(true)
+    expect(store.loading).toBe(false)
+  })
+
   it('rolls category order back when optimistic move sync fails', async () => {
     mocks.getContent.mockResolvedValue({
       categories: [

@@ -10,7 +10,7 @@ import { createBookmarkController } from './modules/bookmarks.js'
 import { createCategoryController } from './modules/categories.js'
 import { createPopupState, elements, i18n } from './modules/constants.js'
 import { createSearchController } from './modules/search.js'
-import { getStorage, setStorage } from './modules/storage.js'
+import { getMergedStorage, removeStorage, setStorage } from './modules/storage.js'
 import { createUiHelpers, openOptionsPage } from './modules/ui.js'
 
 const state = createPopupState()
@@ -55,6 +55,31 @@ bookmarkController = createBookmarkController({
 
 document.addEventListener('DOMContentLoaded', init)
 
+async function clearPendingCaptureBadge() {
+  try {
+    await chrome.action?.setBadgeText?.({ text: '' })
+  } catch {
+    // Optional.
+  }
+  try {
+    await chrome.browserAction?.setBadgeText?.({ text: '' })
+  } catch {
+    // Optional.
+  }
+}
+
+async function consumePendingCapture() {
+  const stored = await getMergedStorage(['pendingCapture'])
+  const capture = stored.pendingCapture
+  if (!capture?.url) {
+    return null
+  }
+
+  await removeStorage(['pendingCapture'], 'local')
+  await clearPendingCaptureBadge()
+  return capture
+}
+
 async function init() {
   const settingsTriggers = new Set(document.querySelectorAll('[data-open-settings]'))
   if (elements.openSettings) {
@@ -69,10 +94,15 @@ async function init() {
     elements.i18nToggle.addEventListener('click', toggleLanguage)
   }
 
-  const stored = await getStorage(['lang', 'locale'])
+  if (elements.themeToggle) {
+    elements.themeToggle.addEventListener('click', toggleTheme)
+  }
+
+  const stored = await getMergedStorage(['lang', 'locale', 'themeMode', 'theme-mode'])
   state.currentLang = resolveExtensionLanguage(stored)
+  state.currentThemeMode = resolveExtensionThemeMode(stored)
   applyDocumentLanguage(state.currentLang)
-  applyThemeMode(resolveExtensionThemeMode(stored))
+  applyThemeMode(state.currentThemeMode)
 
   try {
     state.config = await initApi(handleAuthError)
@@ -92,6 +122,12 @@ async function init() {
   await categoryController.loadCategories()
   await searchController.loadRecentBookmarks()
   setupEventListeners()
+
+  const pendingCapture = await consumePendingCapture()
+  if (pendingCapture) {
+    await bookmarkController.showAddFormFromCapture(pendingCapture)
+  }
+
   window.__STARNAV_POPUP_READY = true
 }
 
@@ -102,6 +138,13 @@ async function toggleLanguage() {
     lang: state.currentLang,
     locale: state.currentLang === 'zh' ? 'zh-CN' : 'en-US'
   })
+  ui.updateUI()
+}
+
+async function toggleTheme() {
+  state.currentThemeMode = state.currentThemeMode === 'dark' ? 'light' : 'dark'
+  applyThemeMode(state.currentThemeMode)
+  await setStorage({ themeMode: state.currentThemeMode })
   ui.updateUI()
 }
 
@@ -122,9 +165,13 @@ function setupEventListeners() {
 async function handleAuthError(errorMessage) {
   state.config.token = ''
 
-  await chrome.storage.sync.remove(['token', 'user'])
-  await chrome.storage.local.remove(['token', 'user'])
+  // Keep savedUsername for reconnect; only clear auth secrets.
+  await removeStorage(['token', 'user'], 'local')
+  await removeStorage(['token', 'user'], 'sync')
 
-  const reasonKey = errorMessage === '令牌已过期' ? 'tokenExpired' : 'tokenInvalid'
+  const reasonKey =
+    errorMessage === '令牌已过期' || /expired/i.test(String(errorMessage || ''))
+      ? 'tokenExpired'
+      : 'tokenInvalid'
   ui.showNotConnected(reasonKey)
 }

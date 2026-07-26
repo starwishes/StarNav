@@ -203,5 +203,5 @@ void dialogPanelRef
 </script>
 
 <style scoped lang="scss">
-@import './BookmarkImport.scss';
+@use './BookmarkImport.scss';
 </style>

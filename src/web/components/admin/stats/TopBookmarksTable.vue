@@ -43,6 +43,6 @@ const { formatDateTime } = useDateTimeFormatter()
 </script>
 
 <style scoped lang="scss">
-@import './TopBookmarksTable.scss';
+@use './TopBookmarksTable.scss';
 </style>
 

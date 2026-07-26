@@ -34,6 +34,10 @@ jobs:
       - name: Ops lint
         run: npm run lint:ops
 
+      # Soft guard: conflict markers / trailing whitespace (not a full CRLF rewrite).
+      - name: Git whitespace check
+        run: git diff --check
+
       - name: Production dependency audit
         run: npm run audit:prod
 

@@ -1,13 +1,8 @@
 import { ApiError, extractApiErrorMessage, readJsonBody, unwrapApiPayload } from '../common/api.js'
+import { getMergedStorage } from './storage.js'
 
 let config = { serverUrl: '', token: '' }
 let onAuthError = null
-
-async function readMergedStorage(keys) {
-  const sync = await chrome.storage.sync.get(keys)
-  const local = await chrome.storage.local.get(keys)
-  return { ...sync, ...local }
-}
 
 export function normalizeServerUrl(serverUrl) {
   return String(serverUrl || '')
@@ -29,7 +24,7 @@ function buildApiUrl(serverUrl, endpoint) {
  * 初始化 API 配置
  */
 export async function initApi(authErrorCallback) {
-  const stored = await readMergedStorage(['serverUrl', 'token'])
+  const stored = await getMergedStorage(['serverUrl', 'token'])
 
   config.serverUrl = stored.serverUrl || ''
   config.token = stored.token || ''

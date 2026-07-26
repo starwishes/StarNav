@@ -25,26 +25,9 @@
       />
 
       <div class="view-content">
-        <div
-          v-if="currentViewConfig"
-          :class="['fade-in', currentViewConfig.wrapperClass || 'data-view']"
-        >
-          <section
-            v-if="currentViewConfig.usePanel"
-            :class="['view-panel', currentViewConfig.panelClass]"
-          >
-            <header v-if="currentViewConfig.panelTitle" class="view-panel-header">
-              <span>{{ currentViewConfig.panelTitle }}</span>
-            </header>
-            <component
-              :is="currentViewConfig.component"
-              v-bind="currentViewConfig.props"
-              v-on="currentViewConfig.events || {}"
-            />
-          </section>
+        <div v-if="currentViewConfig" class="fade-in">
           <component
             :is="currentViewConfig.component"
-            v-else
             v-bind="currentViewConfig.props"
             v-on="currentViewConfig.events || {}"
           />
@@ -217,6 +200,6 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-@import './AdminDashboard.scss';
+@use './AdminDashboard.scss';
 </style>
 

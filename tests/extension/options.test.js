@@ -108,6 +108,9 @@ describe('browser extension options runtime', () => {
     document.getElementById('saveBtn').click()
 
     await flush()
+    await flush()
+    await flush()
+    await flush()
 
     expect(normalizeServerUrl).toHaveBeenCalledWith('https://nav.example.com/')
     expect(loginToServer).toHaveBeenCalledWith('https://nav.example.com', 'alice', 'secret')
@@ -165,6 +168,8 @@ describe('browser extension options runtime', () => {
     document.getElementById('testBtn').click()
 
     await flush()
+    await flush()
+    await flush()
 
     expect(normalizeServerUrl).toHaveBeenCalledWith('https://nav.example.com/')
     expect(checkHealth).toHaveBeenCalledWith('https://nav.example.com')
@@ -202,6 +207,8 @@ describe('browser extension options runtime', () => {
     vi.resetModules()
     await import('../../clients/extension/options/options.js')
     document.dispatchEvent(new Event('DOMContentLoaded'))
+    await flush()
+    await flush()
     await flush()
     await flush()
 

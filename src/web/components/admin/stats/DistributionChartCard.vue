@@ -59,6 +59,6 @@ const formatPercent = (percent: number) =>
 </script>
 
 <style scoped lang="scss">
-@import './DistributionChartCard.scss';
+@use './DistributionChartCard.scss';
 </style>
 

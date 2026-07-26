@@ -42,6 +42,34 @@ export function invalidateCache() {
 }
 
 /**
+ * 点击统计热路径：若快照仍在内存，原地更新 click 字段，避免整表失效。
+ * @returns true if snapshot was patched in place
+ */
+export function patchItemClickInCache(
+  itemId: number | string,
+  clickCount: number,
+  lastVisited: string | null | undefined
+): boolean {
+  const cache = global.__STARNAV_CACHE__
+  if (!cache?.items?.length) {
+    return false
+  }
+
+  const id = Number(itemId)
+  const item = cache.items.find((row) => Number(row.id) === id)
+  if (!item) {
+    return false
+  }
+
+  item.clickCount = clickCount
+  item.click_count = clickCount
+  item.lastVisited = lastVisited ?? null
+  item.last_visited = lastVisited ?? null
+  logger.debug(`快照已原地更新点击: item=${id} count=${clickCount}`)
+  return true
+}
+
+/**
  * 获取缓存
  */
 export function getCache(): BookmarkSnapshotCache | null {

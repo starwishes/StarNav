@@ -26,6 +26,6 @@ import SystemHealth from '@/components/admin/SystemHealth.vue'
 </script>
 
 <style scoped lang="scss">
-@import './MonitoringDashboard.scss';
+@use './MonitoringDashboard.scss';
 </style>
 

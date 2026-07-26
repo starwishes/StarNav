@@ -106,8 +106,6 @@ export interface SettingsMap {
   faviconUrl?: string
   homeUrl?: string
   logoUrl?: string
-  themePreset?: string
-  themeColor?: string
   timezone?: string
   [key: string]: unknown
 }

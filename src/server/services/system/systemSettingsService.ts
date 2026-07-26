@@ -3,7 +3,6 @@ import { errors } from '../../middleware/errorHandler.js'
 import { adminSettingsSchema, backgroundUrlSchema } from '../../middleware/validation.js'
 import { sanitizeFooterHtml } from '../../../shared/security/footerHtml.js'
 import { isAllowedTimezone, normalizeOptionalUrl } from '../../../shared/security/urlSafety.js'
-import { normalizeThemeColor, normalizeThemePreset } from '../../../shared/theme.js'
 import type { SettingsMap } from '../../types/domain.js'
 
 const validatePayload = (schema: { validate: (payload: unknown, options?: object) => { error?: unknown; value: unknown } }, payload: unknown, message: string) => {
@@ -20,52 +19,57 @@ const validatePayload = (schema: { validate: (payload: unknown, options?: object
   return value
 }
 
-const sanitizeSettingsForOutput = (settings: SettingsMap = {}) => ({
-  ...settings,
-  backgroundUrl:
-    settings.backgroundUrl === undefined
-      ? settings.backgroundUrl
-      : normalizeOptionalUrl(settings.backgroundUrl, { allowRelative: true }),
-  footerHtml:
-    settings.footerHtml === undefined
-      ? settings.footerHtml
-      : sanitizeFooterHtml(settings.footerHtml),
-  faviconUrl:
-    settings.faviconUrl === undefined
-      ? settings.faviconUrl
-      : normalizeOptionalUrl(settings.faviconUrl, { allowRelative: true }),
-  homeUrl:
-    settings.homeUrl === undefined
-      ? settings.homeUrl
-      : normalizeOptionalUrl(settings.homeUrl, { allowRelative: true }),
-  logoUrl:
-    settings.logoUrl === undefined
-      ? settings.logoUrl
-      : normalizeOptionalUrl(settings.logoUrl, { allowRelative: true }),
-  themePreset:
-    settings.themePreset === undefined
-      ? settings.themePreset
-      : normalizeThemePreset(settings.themePreset),
-  themeColor:
-    settings.themeColor === undefined
-      ? settings.themeColor
-      : normalizeThemeColor(settings.themeColor),
-  timezone:
-    settings.timezone === undefined
-      ? settings.timezone
-      : isAllowedTimezone(settings.timezone)
-        ? settings.timezone
-        : ''
-})
+const sanitizeSettingsForOutput = (settings: SettingsMap = {}) => {
+  // Drop removed/legacy theme keys if they still exist in older DBs.
+  const {
+    themePreset: _removedThemePreset,
+    themeColor: _removedThemeColor,
+    ...rest
+  } = settings
+
+  return {
+    ...rest,
+    backgroundUrl:
+      rest.backgroundUrl === undefined
+        ? rest.backgroundUrl
+        : normalizeOptionalUrl(rest.backgroundUrl, { allowRelative: true }),
+    footerHtml:
+      rest.footerHtml === undefined
+        ? rest.footerHtml
+        : sanitizeFooterHtml(rest.footerHtml),
+    faviconUrl:
+      rest.faviconUrl === undefined
+        ? rest.faviconUrl
+        : normalizeOptionalUrl(rest.faviconUrl, { allowRelative: true }),
+    homeUrl:
+      rest.homeUrl === undefined
+        ? rest.homeUrl
+        : normalizeOptionalUrl(rest.homeUrl, { allowRelative: true }),
+    logoUrl:
+      rest.logoUrl === undefined
+        ? rest.logoUrl
+        : normalizeOptionalUrl(rest.logoUrl, { allowRelative: true }),
+    timezone:
+      rest.timezone === undefined
+        ? rest.timezone
+        : isAllowedTimezone(rest.timezone)
+          ? rest.timezone
+          : ''
+  }
+}
+
+const REMOVED_SETTINGS_KEYS = ['themePreset', 'themeColor'] as const
+
+const stripRemovedSettingsKeys = (payload: Record<string, unknown> = {}) => {
+  const next = { ...payload }
+  for (const key of REMOVED_SETTINGS_KEYS) {
+    delete next[key]
+  }
+  return next
+}
 
 const normalizeAdminSettingsPayload = (payload: SettingsMap & Record<string, unknown>) => ({
   ...payload,
-  ...(payload.themePreset !== undefined
-    ? { themePreset: normalizeThemePreset(payload.themePreset) }
-    : {}),
-  ...(payload.themeColor !== undefined
-    ? { themeColor: normalizeThemeColor(payload.themeColor) }
-    : {}),
   ...(payload.footerHtml !== undefined
     ? { footerHtml: sanitizeFooterHtml(payload.footerHtml) }
     : {})
@@ -81,7 +85,9 @@ export const systemSettingsService = {
   },
 
   updateAdminSettings(payload: Record<string, unknown> = {}) {
-    const validatedPayload = validatePayload(adminSettingsSchema, payload, '设置参数不正确')
+    // Accept and drop removed theme keys so older clients/payloads do not 400.
+    const cleanedPayload = stripRemovedSettingsKeys(payload)
+    const validatedPayload = validatePayload(adminSettingsSchema, cleanedPayload, '设置参数不正确')
     const normalizedPayload = normalizeAdminSettingsPayload(validatedPayload as SettingsMap & Record<string, unknown>)
 
     if (!settingsService.updateAll(normalizedPayload)) {

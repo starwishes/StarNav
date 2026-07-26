@@ -9,8 +9,11 @@ const mocks = vi.hoisted(() => ({
   normalizeUrl: vi.fn((value) => value),
   getStorage: vi.fn(),
   setStorage: vi.fn(),
+  getMergedStorage: vi.fn(),
+  removeStorage: vi.fn(),
   openOptionsPage: vi.fn(),
   bookmarkShowAddForm: vi.fn(),
+  bookmarkShowAddFormFromCapture: vi.fn(),
   bookmarkSubmitBookmark: vi.fn(),
   bookmarkHandleEdit: vi.fn(),
   bookmarkHandleDelete: vi.fn(),
@@ -111,7 +114,9 @@ vi.mock('../../clients/extension/utils/api.js', () => ({
 
 vi.mock('../../clients/extension/popup/modules/storage.js', () => ({
   getStorage: (...args) => mocks.getStorage(...args),
-  setStorage: (...args) => mocks.setStorage(...args)
+  setStorage: (...args) => mocks.setStorage(...args),
+  getMergedStorage: (...args) => mocks.getMergedStorage(...args),
+  removeStorage: (...args) => mocks.removeStorage(...args)
 }))
 
 vi.mock('../../clients/extension/popup/modules/ui.js', () => ({
@@ -127,6 +132,7 @@ vi.mock('../../clients/extension/popup/modules/ui.js', () => ({
 vi.mock('../../clients/extension/popup/modules/bookmarks.js', () => ({
   createBookmarkController: () => ({
     showAddForm: (...args) => mocks.bookmarkShowAddForm(...args),
+    showAddFormFromCapture: (...args) => mocks.bookmarkShowAddFormFromCapture(...args),
     submitBookmark: (...args) => mocks.bookmarkSubmitBookmark(...args),
     handleEdit: (...args) => mocks.bookmarkHandleEdit(...args),
     handleDelete: (...args) => mocks.bookmarkHandleDelete(...args)
@@ -219,8 +225,13 @@ describe('browser extension popup bootstrap', () => {
     mocks.normalizeUrl.mockClear()
     mocks.getStorage.mockReset()
     mocks.setStorage.mockReset()
+    mocks.getMergedStorage.mockReset()
+    mocks.removeStorage.mockReset()
+    mocks.getMergedStorage.mockResolvedValue({})
+    mocks.removeStorage.mockResolvedValue(undefined)
     mocks.openOptionsPage.mockReset()
     mocks.bookmarkShowAddForm.mockReset()
+    mocks.bookmarkShowAddFormFromCapture.mockReset()
     mocks.bookmarkSubmitBookmark.mockReset()
     mocks.categoryLoadCategories.mockReset()
     mocks.categoryShowCategoryModal.mockReset()
@@ -257,7 +268,7 @@ describe('browser extension popup bootstrap', () => {
   })
 
   it('shows the disconnected state when config is incomplete', async () => {
-    mocks.getStorage.mockResolvedValue({ lang: 'en' })
+    mocks.getMergedStorage.mockResolvedValue({ lang: 'en' })
     mocks.initApi.mockImplementation(async (callback) => {
       mocks.authErrorCallback = callback
       return { serverUrl: '', token: '' }
@@ -265,7 +276,12 @@ describe('browser extension popup bootstrap', () => {
 
     const { popupState } = await loadPopup()
 
-    expect(mocks.getStorage).toHaveBeenCalledWith(['lang', 'locale'])
+    expect(mocks.getMergedStorage).toHaveBeenCalledWith([
+      'lang',
+      'locale',
+      'themeMode',
+      'theme-mode'
+    ])
     expect(popupState.currentLang).toBe('en')
     expect(document.documentElement.getAttribute('lang')).toBe('en')
     expect(document.documentElement.getAttribute('theme-mode')).toBe('light')
@@ -277,7 +293,7 @@ describe('browser extension popup bootstrap', () => {
   })
 
   it('loads data and wires all popup event listeners once config is available', async () => {
-    mocks.getStorage.mockResolvedValue({})
+    mocks.getMergedStorage.mockResolvedValue({})
     mocks.setStorage.mockResolvedValue(undefined)
     mocks.initApi.mockImplementation(async (callback) => {
       mocks.authErrorCallback = callback
@@ -320,7 +336,7 @@ describe('browser extension popup bootstrap', () => {
   })
 
   it('clears stored auth state when initApi reports an auth error callback', async () => {
-    mocks.getStorage.mockResolvedValue({})
+    mocks.getMergedStorage.mockResolvedValue({})
     mocks.initApi.mockImplementation(async (callback) => {
       mocks.authErrorCallback = callback
       return { serverUrl: 'https://nav.example.com', token: 'signed-token' }
@@ -330,8 +346,8 @@ describe('browser extension popup bootstrap', () => {
     await mocks.authErrorCallback('令牌已过期')
 
     expect(popupState.config.token).toBe('')
-    expect(global.chrome.storage.sync.remove).toHaveBeenCalledWith(['token', 'user'])
-    expect(global.chrome.storage.local.remove).toHaveBeenCalledWith(['token', 'user'])
+    expect(mocks.removeStorage).toHaveBeenCalledWith(['token', 'user'], 'local')
+    expect(mocks.removeStorage).toHaveBeenCalledWith(['token', 'user'], 'sync')
     expect(mocks.uiShowNotConnected).toHaveBeenCalledWith('tokenExpired')
   })
 })

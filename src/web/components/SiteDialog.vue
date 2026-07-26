@@ -116,5 +116,5 @@ void dialogPanelRef
 </script>
 
 <style scoped lang="scss">
-@import './SiteDialog.scss';
+@use './SiteDialog.scss';
 </style>

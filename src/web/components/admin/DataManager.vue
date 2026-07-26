@@ -200,5 +200,5 @@ const handleImport = (e: Event) => {
 </script>
 
 <style scoped lang="scss">
-@import './DataManager.scss';
+@use './DataManager.scss';
 </style>

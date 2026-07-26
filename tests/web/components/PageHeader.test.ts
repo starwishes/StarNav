@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 let locale = 'zh-CN'
 let routerPushMock: ReturnType<typeof vi.fn>
-let currentRoute: ReturnType<typeof ref<{ path: string }>>
+let currentRoute: ReturnType<typeof ref<{ path: string; query?: Record<string, string> }>>
 let adminStoreMock: any
 let configStoreMock: any
 let toggleSidebarMock: ReturnType<typeof vi.fn>
@@ -19,6 +19,14 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({
     push: routerPushMock,
     currentRoute
+  }),
+  useRoute: () => ({
+    get path() {
+      return currentRoute.value.path
+    },
+    get query() {
+      return currentRoute.value.query || {}
+    }
   })
 }))
 
@@ -89,7 +97,7 @@ describe('PageHeader', () => {
     vi.clearAllMocks()
     locale = 'zh-CN'
     routerPushMock = vi.fn()
-    currentRoute = ref({ path: '/current' })
+    currentRoute = ref({ path: '/current', query: {} })
     toggleSidebarMock = vi.fn()
     adminStoreMock = reactive({
       isAuthenticated: false,
@@ -98,9 +106,7 @@ describe('PageHeader', () => {
     })
     configStoreMock = reactive({
       siteConfig: reactive({
-        homeUrl: '',
-        themePreset: 'classic',
-        themeColor: ''
+        homeUrl: ''
       })
     })
 

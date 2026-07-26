@@ -26,6 +26,11 @@
             <line x1="10" y1="14" x2="21" y2="3" />
           </svg>
         </button>
+        <button id="themeToggle" class="icon-btn" title="Toggle light/dark mode" aria-label="Toggle theme">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
         <button id="openSettings" class="icon-btn" data-open-settings title="Settings">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"></circle>
@@ -52,7 +57,7 @@
 
     <main id="mainContent" class="popup-main">
       <section class="add-section" id="addSection">
-        <button id="addCurrentBtn" class="add-btn" data-i18n="addCurrent">➕ Add Current Page</button>
+        <button id="addCurrentBtn" class="add-btn" data-i18n="addCurrent">Add Current Page</button>
       </section>
 
       <div class="search-container">
@@ -63,7 +68,7 @@
       <div id="searchResults" class="bookmark-list" style="display: none"></div>
 
       <section id="bookmarkList" class="bookmark-list">
-        <div class="section-title" data-i18n="recentVisit">Recent visits</div>
+        <div class="section-title" data-i18n="recentVisit">Recent bookmarks</div>
         <div id="recentBookmarks" class="bookmark-items"></div>
       </section>
 

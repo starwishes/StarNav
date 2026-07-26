@@ -37,9 +37,7 @@ describe('config store', () => {
         siteName: 'Stored StarNav',
         faviconUrl: '/stored.ico',
         backgroundUrl: '/stored-bg.jpg',
-        homeUrl: '/stored-home',
-        themePreset: 'gallery',
-        themeColor: '#0071E3'
+        homeUrl: '/stored-home'
       })
     )
 
@@ -50,7 +48,7 @@ describe('config store', () => {
     expect(store.displaySiteName).toBe('Stored StarNav')
     expect(doc.title).toBe('Stored StarNav')
     expect(getFaviconHref()).toBe('/stored.ico')
-    expect(doc.documentElement.style.getPropertyValue('--ui-theme')).toBe('#0071e3')
+    expect(doc.documentElement.style.getPropertyValue('--ui-theme')).toBe('#409eff')
     expect(doc.documentElement.style.getPropertyValue('--bg-image')).toBe("url('/stored-bg.jpg')")
     expect(doc.body.style.backgroundImage).toContain('/stored-bg.jpg')
   })
@@ -76,8 +74,6 @@ describe('config store', () => {
       siteName: 'Updated StarNav',
       faviconUrl: '/brand.ico',
       backgroundUrl: '/brand-bg.jpg',
-      themePreset: 'cinema',
-      themeColor: '#2997ff',
       footerHtml: '<strong>Footer</strong><script>alert(1)</script>'
     })
 
@@ -86,13 +82,13 @@ describe('config store', () => {
       siteName: 'Updated StarNav',
       faviconUrl: '/brand.ico',
       backgroundUrl: '/brand-bg.jpg',
-      themePreset: 'cinema',
-      themeColor: '#2997ff',
       footerHtml: '<strong>Footer</strong>'
     })
+    expect(JSON.parse(localStorage.getItem('siteConfig'))).not.toHaveProperty('themePreset')
+    expect(JSON.parse(localStorage.getItem('siteConfig'))).not.toHaveProperty('themeColor')
     expect(doc.title).toBe('Updated StarNav')
     expect(getFaviconHref()).toBe('/brand.ico')
-    expect(doc.documentElement.style.getPropertyValue('--ui-theme')).toBe('#2997ff')
+    expect(doc.documentElement.style.getPropertyValue('--ui-theme')).toBe('#409eff')
     expect(doc.documentElement.style.getPropertyValue('--bg-image')).toBe("url('/brand-bg.jpg')")
     expect(doc.body.style.backgroundAttachment).toBe('fixed')
 

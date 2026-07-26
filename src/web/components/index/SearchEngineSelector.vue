@@ -261,5 +261,5 @@ const panelStyle = computed(() => ({
 </script>
 
 <style scoped lang="scss">
-@import './SearchEngineSelector.scss';
+@use './SearchEngineSelector.scss';
 </style>

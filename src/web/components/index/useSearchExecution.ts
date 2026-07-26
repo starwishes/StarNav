@@ -77,7 +77,8 @@ export const useSearchExecution = ({
   }
 
   const ensureLocalData = async () => {
-    if (!dataStore.initialized && !dataStore.loading) {
+    // Share in-flight loadData (store dedupes concurrent callers).
+    if (!dataStore.initialized) {
       await dataStore.loadData()
     }
   }

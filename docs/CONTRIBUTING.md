@@ -59,9 +59,19 @@ git commit -m "refactor(bookmarks): split mutation cache invalidation"
 
 ```bash
 npm run lint:check
+npm run typecheck
 npm run test:fast
 npm run build
 ```
+
+### API / OpenAPI / 扩展公共代码
+
+```bash
+npm run openapi:types:check
+npm run extension:sync-common:check
+```
+
+CI `validate` job 已包含上述两项；改共享类型或 `src/shared` 时本地应先跑。
 
 ### Shell / Dockerfile / 部署脚本改动
 

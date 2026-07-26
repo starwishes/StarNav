@@ -13,7 +13,12 @@ const insertSettingsRun = vi.fn()
 const insertCategoryRun = vi.fn()
 const insertItemRun = vi.fn()
 
+const deleteLegacySettingsRun = vi.fn()
+
 const prepareMock = vi.fn((sql) => {
+  if (sql.includes('DELETE FROM settings WHERE key IN')) {
+    return { run: deleteLegacySettingsRun }
+  }
   if (sql.includes('SELECT COUNT(*) as count FROM settings')) {
     return { get: settingsCountGet }
   }
@@ -58,16 +63,18 @@ describe('BootstrapDefaultsService', () => {
   })
 
   it('should initialize default settings when settings table is empty', () => {
+    delete process.env.TZ
     settingsCountGet.mockReturnValue({ count: 0 })
 
     bootstrapDefaultsService.initSettings()
 
-    expect(insertSettingsRun).toHaveBeenCalledTimes(5)
+    expect(deleteLegacySettingsRun).toHaveBeenCalledWith('themePreset', 'themeColor')
+    // registration/default level/background + empty timezone slot for env/display TZ
+    expect(insertSettingsRun).toHaveBeenCalledTimes(4)
     expect(insertSettingsRun).toHaveBeenCalledWith('registrationEnabled', 'false')
     expect(insertSettingsRun).toHaveBeenCalledWith('defaultUserLevel', '1')
     expect(insertSettingsRun).toHaveBeenCalledWith('backgroundUrl', '""')
-    expect(insertSettingsRun).toHaveBeenCalledWith('themePreset', '"classic"')
-    expect(insertSettingsRun).toHaveBeenCalledWith('themeColor', '""')
+    expect(insertSettingsRun).toHaveBeenCalledWith('timezone', '""')
     expect(logger.info).toHaveBeenCalledWith('已初始化默认系统设置')
   })
 

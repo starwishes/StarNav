@@ -9,7 +9,10 @@ import { check, sleep } from 'k6'
  */
 
 // 测试配置
-export const options = {
+// K6_PROFILE=smoke|full (default full). smoke is for local baseline against demo data.
+const PROFILE = (__ENV.K6_PROFILE || 'full').toLowerCase()
+
+const FULL_OPTIONS = {
   stages: [
     { duration: '30s', target: 20 }, // 30秒内增加到20并发
     { duration: '1m', target: 50 }, // 1分钟保持50并发
@@ -22,6 +25,21 @@ export const options = {
     http_reqs: ['rate>50'] // QPS>50
   }
 }
+
+const SMOKE_OPTIONS = {
+  stages: [
+    { duration: '15s', target: 10 },
+    { duration: '30s', target: 25 },
+    { duration: '10s', target: 0 }
+  ],
+  thresholds: {
+    // Looser for local demo boxes; full profile keeps production gates.
+    http_req_duration: ['p(95)<800'],
+    http_req_failed: ['rate<0.02']
+  }
+}
+
+export const options = PROFILE === 'smoke' ? SMOKE_OPTIONS : FULL_OPTIONS
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080'
 

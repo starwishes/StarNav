@@ -20,6 +20,7 @@ export const systemHealthService = {
     const checks: {
       database: { ok: boolean; error?: string; quickCheck?: string; [key: string]: unknown }
       cache: Record<string, unknown>
+      queries?: Record<string, unknown>
       memory: Record<string, unknown>
       uptime: number
       runtime: ReturnType<typeof getRuntimeChecks>
@@ -47,6 +48,23 @@ export const systemHealthService = {
       checks.cache = cacheService.getStats()
     } catch (error: unknown) {
       checks.cache = {
+        error: error instanceof Error ? error.message : String(error)
+      }
+    }
+
+    try {
+      const { queryMonitor } = await import('../../utils/queryMonitor.js')
+      const slow = queryMonitor.getSlowQueries(5)
+      checks.queries = {
+        slowRecent: slow.length,
+        slowTop: slow.map((entry) => ({
+          name: entry.name,
+          durationMs: entry.duration,
+          at: entry.timestamp
+        }))
+      }
+    } catch (error: unknown) {
+      checks.queries = {
         error: error instanceof Error ? error.message : String(error)
       }
     }

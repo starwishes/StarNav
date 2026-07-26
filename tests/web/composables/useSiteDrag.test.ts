@@ -26,7 +26,8 @@ vi.mock('@/utils/feedback', () => ({
   ElMessage: {
     success: mocks.messageSuccess,
     error: mocks.messageError,
-    info: mocks.messageInfo
+    info: mocks.messageInfo,
+    closeAll: vi.fn()
   }
 }))
 
@@ -114,14 +115,52 @@ describe('useSiteDrag', () => {
       120
     )
     api.handleMouseEnter(3, 2)
-    document.dispatchEvent(new MouseEvent('mouseup'))
-    await Promise.resolve()
+    // Placement is click-driven (not mouseup) to avoid double-commit on a single click.
+    await api.handleMouseDragUp()
 
     expect(mocks.messageInfo).toHaveBeenCalledWith('拖拽模式：点击目标位置放置书签')
     expect(dataStoreMock.moveItem).toHaveBeenCalledWith(11, 2, 3)
+    expect(dataStoreMock.moveItem).toHaveBeenCalledTimes(1)
     expect(mocks.messageSuccess).toHaveBeenCalledWith('移动成功')
     expect(api.moveState.active).toBe(false)
     expect(api.moveState.item).toBeNull()
+  })
+
+  it('ignores repeated placement commits while a move request is still in flight', async () => {
+    let resolveMove: (() => void) | undefined
+    dataStoreMock.moveItem.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveMove = resolve
+        })
+    )
+
+    const { api } = mountHarness()
+    api.startMove(
+      {
+        id: 12,
+        name: 'Slow',
+        url: 'https://slow.test',
+        description: '',
+        categoryId: 1
+      },
+      0,
+      0,
+      10,
+      20
+    )
+    api.handleMouseEnter(2, 2)
+
+    const first = api.handleMouseDragUp()
+    const second = api.handleMouseDragUp()
+    await Promise.resolve()
+
+    expect(dataStoreMock.moveItem).toHaveBeenCalledTimes(1)
+    expect(api.moveState.active).toBe(false)
+
+    resolveMove?.()
+    await Promise.all([first, second])
+    expect(mocks.messageSuccess).toHaveBeenCalledTimes(1)
   })
 
   it('falls back to the hovered category index when explicit hoverCategoryId is missing', async () => {
@@ -166,7 +205,7 @@ describe('useSiteDrag', () => {
       10,
       20
     )
-    api.handleMouseEnter(0, 1)
+    api.handleMouseEnter(1, 1)
     await api.handleMouseDragUp()
 
     expect(mocks.messageError).toHaveBeenCalledWith('move failed')
