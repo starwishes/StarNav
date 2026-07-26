@@ -61,42 +61,52 @@ NODE_IMAGE=node:24.15.0-slim npm run docker:build
 NODE_IMAGE=node:24.15.0-slim npm run docker:smoke
 ```
 
-## 2. GitHub 自动发布
+## 2. 自动发布（Docker 镜像，无 GitHub Releases）
 
-统一后的自动发布链如下：
+**不再自动创建 GitHub Release 页面。** 交付以 Docker 镜像为准。
+
+统一链路：
 
 1. [CI](../.github/workflows/ci.yml)
    - 使用 [`.nvmrc`](../.nvmrc) 指定的 Node 24
-   - `lint:ops`
-   - `audit:prod`
-   - `test:stats`
-   - `test:coverage`
-   - `test:smoke:runtime`
-   - `build`
-   - `docker:smoke`
-2. [Release](../.github/workflows/release.yml)
-   - 仅在 `CI` 对 `main` 分支 push 成功后执行
-   - 使用 [`.nvmrc`](../.nvmrc) 指定的 Node 24
-   - 读取 `package.json` 当前版本
-   - 若同名 Release 不存在，则创建 `v<package.json.version>` GitHub Release
-   - 若该版本还没有成功过的 Docker Publish，则显式通过 `workflow_dispatch` 补触发一次
+   - `lint:ops` / `audit:prod` / coverage / runtime smoke / `build` / `docker:smoke`
+2. [Release](../.github/workflows/release.yml)（CI 在 `main` 上 **push 成功后**，或手动 `workflow_dispatch`）
+   - **不**调用 `gh release create`
+   - 读取 `package.json` 的 `version`
+   - **仅在下列情况** 触发 Docker Publish：
+     - 相对上一提交，`package.json` **版本号发生了变化**；或
+     - 该版本还没有任何一次成功的 `Docker Publish vX.Y.Z`（版本已 bump 但上次镜像失败/未跑完时的补发）；或
+     - 手动 Run workflow（可带 version / source_ref / force）
+   - 普通插件/文档提交、版本未变且镜像已发过 → **跳过**，不会刷镜像
 3. [Docker Publish](../.github/workflows/docker-publish.yml)
-   - 默认由 Release workflow 显式 dispatch，并传入已解析版本号
-   - `release.published` 事件仍保留为手工发布 GitHub Release 时的兜底入口
-   - 无论由哪条入口触发，都会优先 checkout 对应 release tag，避免同版本重跑时误打 branch head
-   - 始终构建并推送多架构镜像到 `ghcr.io`
-   - 若配置了 `DOCKER_USERNAME` / `DOCKER_PASSWORD` secrets，再额外推送到 Docker Hub
+   - 由 Release workflow `workflow_dispatch` 调起，传入 `version` + `source_ref`（通常为通过 CI 的 commit SHA）
+   - `release.published` 仅作「你手工建了 GitHub Release」时的可选兜底，日常不用
+   - 推送多架构镜像到 `ghcr.io`；配置了 Docker Hub secrets 时再推 Hub
+
+清理历史 GitHub Release（可选）：
+
+```bash
+gh release list --repo starwishes/StarNav
+gh release delete v1.0.0 --repo starwishes/StarNav --yes
+```
 
 ## 3. Version Source Of Truth
 
 当前约定：
 
 - 版本号来源：`package.json`
-- GitHub Release tag：`v<package.json.version>`
-- Docker 镜像 tag：与 GitHub Release version 保持一致，并额外发布 `major.minor`、`major`、`latest`
-- `docs/archive/CHANGELOG.md` 保留为历史归档，不再作为自动发布的唯一真相源
+- Docker 镜像 tag：与 `package.json` version 一致，并额外打 `major.minor`、`major`、`latest`
+- **不依赖** GitHub Release / git tag 作为发镜像前提
+- `docs/archive/CHANGELOG.md` 保留为历史归档
 
-因此后续如果想发任意版本，就直接在仓库里把 `package.json` / `package-lock.json` 顶层版本设为目标版本号，再执行一次 `npm run versions:sync` 同步 README、Chrome manifest 与生成的 Firefox manifest；交付前用 `npm run versions:check` 兜底校验这些派生产物没有漂移，由 Release workflow 按这个版本创建 Release 和镜像，不再让另一套版本计算逻辑覆盖它。
+发新镜像的操作：
+
+1. 改 `package.json` / `package-lock.json` 顶层 `version`（例如 `1.0.0` → `1.0.1`）
+2. `npm run versions:sync`（同步 README / 扩展 manifest 等）
+3. `npm run versions:check`
+4. 合并进 `main` → CI 绿 → Release 工作流发现版本变了 → 自动 Docker Publish
+
+同版本修 bug、不改 `package.json` version → **不会**自动重打镜像；需要时 Actions → Release / Docker Publish 手动跑。
 
 ## 4. 部署默认入口
 

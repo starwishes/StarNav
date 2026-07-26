@@ -1,14 +1,30 @@
 name: Release
 
+# After CI on main (or manual dispatch): publish Docker image when package.json
+# version changes. Does NOT create GitHub Releases.
 on:
   workflow_run:
     workflows: ['CI']
     types: [completed]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without leading v (empty = package.json)'
+        required: false
+        type: string
+      source_ref:
+        description: 'Git ref/SHA to build (empty = this branch head)'
+        required: false
+        type: string
+      force:
+        description: 'Force Docker publish even if version did not change'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   actions: write
-  contents: write
+  contents: read
 
 concurrency:
   group: release-main
@@ -42,13 +58,39 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Resolve release version
-        id: version
+      - name: Resolve version and whether to publish
+        id: plan
         run: |
-          VERSION="$(node --input-type=module -e "import fs from 'node:fs'; const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); const version = pkg.version; if (!/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) { console.error(\`Invalid package.json version: ${version}\`); process.exit(1); } process.stdout.write(version);")"
-          TAG="v${VERSION}"
+          set -eu
+
+          read_version() {
+            node --input-type=module -e "
+              import fs from 'node:fs';
+              const pkg = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+              const version = pkg.version;
+              if (!/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) {
+                console.error('Invalid package.json version:', version);
+                process.exit(1);
+              }
+              process.stdout.write(version);
+            " "$1"
+          }
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="$(read_version package.json)"
+          fi
+
           TARGET_SHA="$(git rev-parse HEAD)"
-          SOURCE_REF="${TAG}"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.source_ref }}" ]; then
+            SOURCE_REF="${{ inputs.source_ref }}"
+          else
+            # Prefer the commit that just passed CI (no GitHub Release tag required).
+            SOURCE_REF="${TARGET_SHA}"
+          fi
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             WORKFLOW_REF="${{ github.ref_name }}"
@@ -56,52 +98,86 @@ jobs:
             WORKFLOW_REF="${{ github.event.workflow_run.head_branch }}"
           fi
 
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "target_sha=${TARGET_SHA}" >> "$GITHUB_OUTPUT"
-          echo "source_ref=${SOURCE_REF}" >> "$GITHUB_OUTPUT"
-          echo "workflow_ref=${WORKFLOW_REF}" >> "$GITHUB_OUTPUT"
-
-      - name: Check whether release already exists
-        id: existing
-        run: |
-          if gh release view "${{ steps.version.outputs.tag }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
+          VERSION_CHANGED=false
+          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            if git show "HEAD^:package.json" >/tmp/prev-package.json 2>/dev/null; then
+              PREV_VERSION="$(read_version /tmp/prev-package.json || true)"
+              if [ -n "${PREV_VERSION}" ] && [ "${PREV_VERSION}" != "${VERSION}" ]; then
+                VERSION_CHANGED=true
+              fi
+            else
+              # package.json added or unreadable at parent — treat as changed.
+              VERSION_CHANGED=true
+            fi
           else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
+            VERSION_CHANGED=true
           fi
 
-      - name: Check whether Docker publish already succeeded
-        id: publish
-        run: |
-          RUN_NAME="Docker Publish ${{ steps.version.outputs.tag }}"
+          RUN_NAME="Docker Publish v${VERSION}"
           SUCCESS_COUNT="$(gh run list \
             --repo "${{ github.repository }}" \
             --workflow "docker-publish.yml" \
             --limit 100 \
             --json displayTitle,conclusion \
-            --jq '[.[] | select(.displayTitle == "'"${RUN_NAME}"'" and .conclusion == "success")] | length')"
+            --jq "[.[] | select(.displayTitle == \"${RUN_NAME}\" and .conclusion == \"success\")] | length")"
 
           if [ "${SUCCESS_COUNT}" -gt 0 ]; then
-            echo "needs_publish=false" >> "$GITHUB_OUTPUT"
+            PUBLISH_EXISTS=true
           else
-            echo "needs_publish=true" >> "$GITHUB_OUTPUT"
+            PUBLISH_EXISTS=false
           fi
 
-      - name: Create GitHub release from package version
-        if: steps.existing.outputs.exists != 'true'
-        run: |
-          gh release create "${{ steps.version.outputs.tag }}" \
-            --repo "${{ github.repository }}" \
-            --target "${{ steps.version.outputs.target_sha }}" \
-            --title "${{ steps.version.outputs.tag }}" \
-            --generate-notes
+          SHOULD_PUBLISH=false
+          REASON="skip"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "${{ inputs.force }}" = "true" ] || [ "${VERSION_CHANGED}" = "true" ] || [ "${PUBLISH_EXISTS}" = "false" ]; then
+              SHOULD_PUBLISH=true
+              REASON="workflow_dispatch"
+            else
+              # Manual run with same version already published: still allow explicit publish.
+              SHOULD_PUBLISH=true
+              REASON="workflow_dispatch"
+            fi
+          elif [ "${VERSION_CHANGED}" = "true" ]; then
+            SHOULD_PUBLISH=true
+            REASON="package.json version changed (${PREV_VERSION:-none} -> ${VERSION})"
+          elif [ "${PUBLISH_EXISTS}" = "false" ]; then
+            # Version bump landed earlier but image never succeeded (e.g. CI fixed later).
+            SHOULD_PUBLISH=true
+            REASON="no successful Docker Publish for v${VERSION} yet"
+          else
+            SHOULD_PUBLISH=false
+            REASON="version unchanged (${VERSION}) and image already published"
+          fi
+
+          {
+            echo "version=${VERSION}"
+            echo "source_ref=${SOURCE_REF}"
+            echo "workflow_ref=${WORKFLOW_REF}"
+            echo "version_changed=${VERSION_CHANGED}"
+            echo "publish_exists=${PUBLISH_EXISTS}"
+            echo "should_publish=${SHOULD_PUBLISH}"
+            echo "reason=${REASON}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "version=${VERSION}"
+          echo "source_ref=${SOURCE_REF}"
+          echo "version_changed=${VERSION_CHANGED}"
+          echo "publish_exists=${PUBLISH_EXISTS}"
+          echo "should_publish=${SHOULD_PUBLISH}"
+          echo "reason=${REASON}"
 
       - name: Trigger Docker publish workflow
-        if: steps.existing.outputs.exists != 'true' || steps.publish.outputs.needs_publish == 'true' || github.event_name == 'workflow_dispatch'
+        if: steps.plan.outputs.should_publish == 'true'
         run: |
           gh workflow run docker-publish.yml \
             --repo "${{ github.repository }}" \
-            --ref "${{ steps.version.outputs.workflow_ref }}" \
-            -f version="${{ steps.version.outputs.version }}" \
-            -f source_ref="${{ steps.version.outputs.source_ref }}"
+            --ref "${{ steps.plan.outputs.workflow_ref }}" \
+            -f version="${{ steps.plan.outputs.version }}" \
+            -f source_ref="${{ steps.plan.outputs.source_ref }}"
+
+      - name: Skip Docker publish
+        if: steps.plan.outputs.should_publish != 'true'
+        run: |
+          echo "Skipping Docker publish: ${{ steps.plan.outputs.reason }}"
