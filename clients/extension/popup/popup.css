@@ -10,6 +10,9 @@
   --text-secondary: rgba(29, 29, 31, 0.68);
   --radius: 20px;
   --radius-sm: 14px;
+  /* Stable popup shell: reserve list viewport so open → load does not resize (jump). */
+  --popup-width: 360px;
+  --popup-list-height: 280px;
 }
 
 :root[theme-mode='dark'] {
@@ -30,13 +33,13 @@
 }
 
 html {
-  width: 360px;
+  width: var(--popup-width);
 }
 
 body {
-  width: 360px;
-  min-width: 360px;
-  max-width: 360px;
+  width: var(--popup-width);
+  min-width: var(--popup-width);
+  max-width: var(--popup-width);
   min-height: 0;
   max-height: 560px;
   overflow: hidden;
@@ -57,7 +60,7 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  width: 360px;
+  width: var(--popup-width);
   min-height: 0;
   max-height: 560px;
   overflow: hidden;
@@ -291,8 +294,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
+  min-height: calc(var(--popup-list-height) + 28px);
   overflow: hidden;
 }
 
@@ -309,9 +312,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: 320px;
+  flex: 0 0 auto;
+  width: 100%;
+  height: var(--popup-list-height);
+  min-height: var(--popup-list-height);
+  max-height: var(--popup-list-height);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -319,10 +324,8 @@ body {
 }
 
 #searchResults.bookmark-list {
-  max-height: 360px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  min-height: calc(var(--popup-list-height) + 28px);
+  overflow: hidden;
 }
 
 .bookmark-item-wrapper {

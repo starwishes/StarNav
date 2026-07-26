@@ -11,9 +11,9 @@ export function createSearchController({ apiRequest, elements, state, i18n, ui }
   const getTexts = () => i18n[state.currentLang]
 
   const loadRecentBookmarks = async () => {
+    // Do not use full-page loading overlay here: popup CSS reserves a fixed list
+    // viewport so open→fetch must not resize the shell (layout jump).
     try {
-      ui.showLoading()
-
       const result = await apiRequest('/bookmark/search?limit=20')
       const items = sortByRecentVisit(Array.isArray(result.items) ? result.items : []).slice(0, 10)
 
@@ -39,8 +39,6 @@ export function createSearchController({ apiRequest, elements, state, i18n, ui }
         failed.textContent = getTexts().loadFailed
         elements.recentBookmarks.appendChild(failed)
       }
-    } finally {
-      ui.hideLoading()
     }
   }
 
