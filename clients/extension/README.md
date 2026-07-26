@@ -30,7 +30,7 @@
 - [Chrome / Edge 下载包](packages/starnav-extension-chrome.zip)
 - [Firefox 下载包](packages/starnav-extension-firefox.zip)
 
-源码有更新时，可用下面命令刷新仓库内下载包：
+源码有更新并 **git commit** 时，pre-commit 会自动 `npm run extension:package` 并暂存 `packages/*.zip`。也可手动：
 
 ```bash
 npm run extension:package
@@ -102,7 +102,7 @@ npm run extension:sync-common:check
 ## 开发
 
 ```bash
-# 生成仓库内可下载的压缩包
+# 手动打包（提交扩展源码时一般会自动跑）
 npm run extension:package
 
 # 导出 Chrome / Firefox 安装目录
