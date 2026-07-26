@@ -5,6 +5,8 @@ import { sanitizeFooterHtml } from '../../../shared/security/footerHtml.js'
 import { isAllowedTimezone, normalizeOptionalUrl } from '../../../shared/security/urlSafety.js'
 import type { SettingsMap } from '../../types/domain.js'
 
+const REMOVED_SETTINGS_KEYS = ['themePreset', 'themeColor'] as const
+
 const validatePayload = (schema: { validate: (payload: unknown, options?: object) => { error?: unknown; value: unknown } }, payload: unknown, message: string) => {
   const { error, value } = schema.validate(payload, {
     abortEarly: false,
@@ -21,11 +23,10 @@ const validatePayload = (schema: { validate: (payload: unknown, options?: object
 
 const sanitizeSettingsForOutput = (settings: SettingsMap = {}) => {
   // Drop removed/legacy theme keys if they still exist in older DBs.
-  const {
-    themePreset: _removedThemePreset,
-    themeColor: _removedThemeColor,
-    ...rest
-  } = settings
+  const rest: SettingsMap = { ...settings }
+  for (const key of REMOVED_SETTINGS_KEYS) {
+    delete rest[key]
+  }
 
   return {
     ...rest,
@@ -57,8 +58,6 @@ const sanitizeSettingsForOutput = (settings: SettingsMap = {}) => {
           : ''
   }
 }
-
-const REMOVED_SETTINGS_KEYS = ['themePreset', 'themeColor'] as const
 
 const stripRemovedSettingsKeys = (payload: Record<string, unknown> = {}) => {
   const next = { ...payload }

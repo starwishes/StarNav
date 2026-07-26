@@ -30,7 +30,7 @@
               <span class="dialog-label">{{ t('common.username') }}</span>
               <input
                 ref="usernameInputRef"
-                v-model="form.username"
+                v-model="formModel.username"
                 class="dialog-input"
                 :placeholder="t('users.inputUsername')"
                 autocomplete="off"
@@ -40,7 +40,7 @@
             <label class="dialog-field">
               <span class="dialog-label">{{ t('users.password') }}</span>
               <input
-                v-model="form.password"
+                v-model="formModel.password"
                 class="dialog-input"
                 type="password"
                 :placeholder="t('users.inputPassword')"
@@ -51,7 +51,7 @@
 
             <label class="dialog-field">
               <span class="dialog-label">{{ t('users.level') }}</span>
-              <AppSelect v-model.number="form.level" class="dialog-select">
+              <AppSelect v-model.number="formModel.level" class="dialog-select">
                 <option :value="1">{{ t('userLevel.user') }} (1)</option>
                 <option :value="2">{{ t('userLevel.vip') }} (2)</option>
                 <option :value="3">{{ t('userLevel.admin') }} (3)</option>
@@ -87,8 +87,9 @@ type AddForm = {
 
 const props = defineProps<{
   modelValue: boolean
-  form: AddForm
 }>()
+
+const formModel = defineModel<AddForm>('form', { required: true })
 
 defineEmits<{
   (e: 'close'): void

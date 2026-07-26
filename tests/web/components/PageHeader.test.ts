@@ -22,10 +22,10 @@ vi.mock('vue-router', () => ({
   }),
   useRoute: () => ({
     get path() {
-      return currentRoute.value.path
+      return currentRoute.value?.path || ''
     },
     get query() {
-      return currentRoute.value.query || {}
+      return currentRoute.value?.query || {}
     }
   })
 }))

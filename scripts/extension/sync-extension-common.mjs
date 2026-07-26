@@ -10,6 +10,7 @@
  *   node scripts/extension/sync-extension-common.mjs
  *   node scripts/extension/sync-extension-common.mjs --check
  */
+import { Buffer } from 'node:buffer'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -77,19 +78,17 @@ export const syncExtensionCommon = async ({
       Buffer.from(outputFile.contents).toString('utf8').trimEnd() + '\n'
     )
 
-    let previous = null
-    try {
-      previous = normalizeNewlines(await fs.readFile(outfile, 'utf8'))
-    } catch {
-      previous = null
-    }
+    const previousContent = await fs.readFile(outfile, 'utf8').then(
+      (text) => normalizeNewlines(text),
+      () => null
+    )
 
-    const changed = previous !== nextContent
+    const changed = previousContent !== nextContent
     results.push({
       name,
       outfile: path.relative(repoRoot, outfile),
       changed,
-      missing: previous === null
+      missing: previousContent === null
     })
 
     if (!check && changed) {

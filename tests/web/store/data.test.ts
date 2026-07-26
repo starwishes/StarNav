@@ -240,7 +240,7 @@ describe('data store', () => {
   })
 
   it('dedupes concurrent loadData callers into one request', async () => {
-    let resolveContent
+    let resolveContent: (value: { categories: unknown[]; items: unknown[] }) => void = () => {}
     mocks.getContent.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveContent = resolve

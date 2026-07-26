@@ -12,7 +12,6 @@ export interface BookmarkSnapshotCache {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __STARNAV_CACHE__: BookmarkSnapshotCache | null | undefined
 }
 

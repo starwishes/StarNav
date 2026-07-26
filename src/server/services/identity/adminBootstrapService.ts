@@ -187,7 +187,7 @@ export const adminBootstrapService = {
     const adminUsername = DEFAULT_ADMIN_NAME
     const rawAdminPassword = process.env.ADMIN_PASSWORD
 
-    let adminUser = db.prepare<UserTableRow>('SELECT * FROM users WHERE username = ?').get(adminUsername)
+    const adminUser = db.prepare<UserTableRow>('SELECT * FROM users WHERE username = ?').get(adminUsername)
 
     let shouldReset = false
     let isDefault = false

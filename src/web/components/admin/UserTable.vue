@@ -74,14 +74,14 @@
 
     <UserAddDialog
       :model-value="showAddDialog"
-      :form="addForm"
+      v-model:form="addForm"
       @close="closeAddDialog"
       @confirm="confirmAdd"
     />
 
     <UserEditDialog
       :model-value="showEditDialog"
-      :form="editForm"
+      v-model:form="editForm"
       @close="closeEditDialog"
       @confirm="confirmEdit"
     />

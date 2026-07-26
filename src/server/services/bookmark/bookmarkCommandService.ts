@@ -269,9 +269,6 @@ export const bookmarkCommandService = {
       throw errors.internal('分类排序失败')
     }
 
-    if (categories.length > 0) {
-          }
-
     return { categories }
   },
 
@@ -342,9 +339,6 @@ export const bookmarkCommandService = {
       throw errors.internal('批量移动失败')
     }
 
-    if (items.length > 0) {
-          }
-
     return {
       count: items.length,
       items
@@ -364,9 +358,6 @@ export const bookmarkCommandService = {
     if (deletedCount === null) {
       throw errors.internal('批量删除失败')
     }
-
-    if (deletedCount > 0) {
-          }
 
     return {
       count: deletedCount

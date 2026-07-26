@@ -19,7 +19,6 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const REPO_ROOT = path.resolve(__dirname, '../..')
 const GENERATED_REL = path.join('src', 'shared', 'types', 'openapi.generated.ts')
-const GENERATED_PATH = path.join(REPO_ROOT, GENERATED_REL)
 
 const normalizeNewlines = (text) => text.replace(/\r\n/g, '\n')
 

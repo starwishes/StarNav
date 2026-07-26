@@ -38,7 +38,6 @@
 
 <script setup lang="ts">
 import AppIcon from '@/components/AppIcon.vue'
-import { useConfigStore } from '@/store/config'
 import { useI18n } from 'vue-i18n'
 import { getLocale, setLocale } from '@/plugins/i18n'
 import { ElMessage } from '@/utils/feedback'
@@ -53,7 +52,6 @@ import {
 } from '@/utils/theme'
 
 const { t } = useI18n()
-const configStore = useConfigStore()
 const themeMode = ref<ThemeMode>('light')
 
 const langIcon = computed(() => {

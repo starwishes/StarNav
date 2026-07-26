@@ -186,6 +186,8 @@ const { gridRef, virtualized, visibleItems, spacerStyle } = useVirtualSiteGrid({
   items: currentDisplayItems,
   forceFullRender
 })
+// TS noUnusedLocals does not treat template ref bindings as script reads.
+void gridRef
 const getItemCategoryId = (item: DisplayedSiteItem) =>
   resolveItemCategoryId(item, props.category.id)
 const getCategoryLocalIndex = (item: DisplayedSiteItem) =>

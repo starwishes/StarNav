@@ -30,7 +30,7 @@
               <span class="dialog-label">{{ t('common.username') }}</span>
               <input
                 ref="usernameInputRef"
-                v-model="form.newUsername"
+                v-model="formModel.newUsername"
                 class="dialog-input"
                 :placeholder="t('users.inputUsername')"
                 autocomplete="off"
@@ -40,7 +40,7 @@
             <label class="dialog-field">
               <span class="dialog-label">{{ t('users.resetPassword') }}</span>
               <input
-                v-model="form.password"
+                v-model="formModel.password"
                 class="dialog-input"
                 type="password"
                 :placeholder="t('users.resetPasswordPlaceholder')"
@@ -77,8 +77,9 @@ type EditForm = {
 
 const props = defineProps<{
   modelValue: boolean
-  form: EditForm
 }>()
+
+const formModel = defineModel<EditForm>('form', { required: true })
 
 defineEmits<{
   (e: 'close'): void
