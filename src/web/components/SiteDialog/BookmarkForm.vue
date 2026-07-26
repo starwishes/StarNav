@@ -233,5 +233,350 @@ void iconInputRef
 </script>
 
 <style scoped lang="scss">
-@use './BookmarkForm.scss';
+.bookmark-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+
+  .form-row {
+    display: flex;
+    gap: 16px;
+  }
+
+  .flex-1 {
+    flex: 1;
+  }
+
+  .flex-2 {
+    flex: 2;
+  }
+
+  .dialog-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .dialog-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--site-dialog-muted, rgba(15, 23, 42, 0.78));
+  }
+
+  .dialog-input,
+  .dialog-textarea {
+    width: 100%;
+    min-height: 46px;
+    border: 1px solid var(--site-dialog-input-border, rgba(148, 163, 184, 0.38));
+    border-radius: 14px;
+    background: var(--site-dialog-input-bg, rgba(255, 255, 255, 0.92));
+    color: var(--site-dialog-text, #0f172a);
+    font-size: 14px;
+    transition:
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      background-color 0.18s ease;
+
+    &:focus {
+      outline: none;
+      border-color: rgba(var(--ui-theme-rgb), 0.62);
+      box-shadow: 0 0 0 4px rgba(var(--ui-theme-rgb), 0.12);
+      background: var(--site-dialog-input-focus-bg, rgba(255, 255, 255, 0.98));
+    }
+
+    &::placeholder {
+      color: var(--site-dialog-placeholder, rgba(100, 116, 139, 0.74));
+    }
+
+    &:-webkit-autofill,
+    &:-webkit-autofill:hover,
+    &:-webkit-autofill:focus {
+      -webkit-text-fill-color: var(--site-dialog-text, #0f172a);
+      -webkit-box-shadow: 0 0 0 1000px var(--site-dialog-input-focus-bg, rgba(255, 255, 255, 0.98))
+        inset;
+      transition: background-color 9999s ease-in-out 0s;
+    }
+  }
+
+  .dialog-input {
+    padding: 0 14px;
+  }
+
+  .dialog-select {
+    width: 100%;
+    min-height: 46px;
+    border: 1px solid var(--site-dialog-input-border, rgba(148, 163, 184, 0.38));
+    border-radius: 14px;
+    background: var(--site-dialog-input-bg, rgba(255, 255, 255, 0.92));
+    color: var(--site-dialog-text, #0f172a);
+    font-size: 14px;
+    padding: 0 40px 0 14px;
+    transition:
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      color 0.18s ease;
+
+    &:focus {
+      outline: none;
+      border-color: rgba(var(--ui-theme-rgb), 0.62);
+      box-shadow: 0 0 0 4px rgba(var(--ui-theme-rgb), 0.12);
+    }
+  }
+
+  .dialog-select option,
+  .dialog-select optgroup {
+    background: var(--site-dialog-input-bg, rgba(255, 255, 255, 0.92));
+    color: var(--site-dialog-text, #0f172a);
+  }
+
+  .dialog-textarea {
+    resize: vertical;
+    padding: 12px 14px;
+    min-height: 92px;
+  }
+
+  .category-selector-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .category-selector-wrap,
+  .icon-upload-wrap,
+  .input-with-prefix {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .input-with-prefix {
+    position: relative;
+  }
+
+  .input-prefix {
+    position: absolute;
+    left: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--site-dialog-placeholder, rgba(100, 116, 139, 0.82));
+    pointer-events: none;
+
+    i {
+      font-size: 16px;
+    }
+  }
+
+  .with-prefix {
+    padding-left: 40px;
+  }
+
+  .add-cat-btn,
+  .upload-button,
+  .panel-link-button,
+  .action-button {
+    border: none;
+    cursor: pointer;
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease,
+      background-color 0.18s ease,
+      color 0.18s ease;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+  }
+
+  .add-cat-btn {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: rgba(var(--ui-theme-rgb), 0.12);
+    color: var(--ui-theme);
+  }
+
+  .add-cat-icon {
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1;
+    opacity: 0.9;
+  }
+
+  .upload-button,
+  .action-button {
+    min-height: 42px;
+    padding: 0 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .upload-button {
+    min-width: 92px;
+    background: var(--site-dialog-soft-button-bg, rgba(148, 163, 184, 0.15));
+    color: var(--site-dialog-soft-button-text, rgba(15, 23, 42, 0.82));
+  }
+
+  .action-button.primary {
+    background: linear-gradient(135deg, var(--ui-theme), rgba(var(--ui-theme-rgb), 0.74));
+    box-shadow: 0 12px 24px rgba(var(--ui-theme-rgb), 0.2);
+    color: #fff;
+  }
+
+  .inline-cat-panel {
+    padding: 16px;
+    border-radius: 18px;
+    background: var(--site-dialog-soft-bg, rgba(248, 250, 252, 0.92));
+    border: 1px solid var(--site-dialog-soft-border, rgba(148, 163, 184, 0.24));
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+
+      .title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--site-dialog-text, rgba(15, 23, 42, 0.82));
+      }
+    }
+
+    .panel-link-button {
+      padding: 0;
+      background: transparent;
+      color: var(--ui-theme);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .panel-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .panel-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 12px;
+    }
+  }
+
+  .sr-only-input {
+    display: none;
+  }
+
+  .switch-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: var(--site-dialog-soft-bg-muted, rgba(248, 250, 252, 0.88));
+    border: 1px solid var(--site-dialog-soft-border, rgba(148, 163, 184, 0.2));
+  }
+
+  .switch-copy {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--site-dialog-text, rgba(15, 23, 42, 0.82));
+  }
+
+  .toggle-control {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .toggle-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 1;
+  }
+
+  .toggle-track {
+    position: relative;
+    width: 54px;
+    height: 30px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.36);
+    transition: background-color 0.18s ease;
+  }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.16);
+    transition: transform 0.18s ease;
+  }
+
+  .toggle-input:checked + .toggle-track {
+    background: rgba(var(--ui-theme-rgb), 0.88);
+  }
+
+  .toggle-input:checked + .toggle-track .toggle-thumb {
+    transform: translateX(24px);
+  }
+
+  .inline-panel-enter-active,
+  .inline-panel-leave-active {
+    transition:
+      opacity 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  .inline-panel-enter-from,
+  .inline-panel-leave-to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  @media screen and (max-width: 720px) {
+    .form-row {
+      flex-direction: column;
+    }
+
+    .inline-cat-panel .panel-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .category-selector-wrap,
+    .icon-upload-wrap {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .add-cat-btn,
+    .upload-button,
+    .action-button {
+      width: 100%;
+    }
+
+    .inline-cat-panel .panel-actions {
+      justify-content: stretch;
+    }
+  }
+}
 </style>

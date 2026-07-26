@@ -199,6 +199,148 @@ const getFallbackFaviconUrl = (item: DisplayedSiteItem) =>
 </script>
 
 <style scoped lang="scss">
-@use './SiteCategory.scss';
+.site-item {
+  padding: clamp(28px, 4vw, 48px);
+  border-radius: 40px;
+  background: var(--category-surface);
+  color: var(--category-text);
+}
+
+.category-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+  margin-bottom: 24px;
+  cursor: pointer;
+
+  &:hover {
+    .category-title {
+      color: var(--ui-theme);
+    }
+  }
+}
+
+.category-icon {
+  font-size: 20px;
+  color: var(--ui-theme);
+}
+
+.category-title {
+  font-family: var(--ui-font-display);
+  font-size: clamp(30px, 4vw, 40px);
+  line-height: 1.08;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  color: var(--category-text);
+  text-decoration: none;
+  transition: color 0.18s ease;
+}
+
+.sub-category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.tab-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--category-tab-border);
+  background: var(--category-tab-bg);
+  color: var(--category-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    color: var(--category-text);
+  }
+
+  &.active {
+    background: var(--ui-theme);
+    border-color: transparent;
+    color: #fff;
+  }
+}
+
+.category-main {
+  width: 100%;
+}
+
+.site-grid {
+  --site-card-min-width: 250px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--site-card-min-width)), 1fr));
+  gap: 18px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  align-content: start;
+}
+
+.site-wrapper {
+  display: flex;
+  min-width: 0;
+  /* Skip offscreen layout/paint when the browser supports it (non-virtualized lists too). */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 88px;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+
+  &.is-moving {
+    opacity: 0.34;
+    transform: scale(0.96);
+  }
+
+  &.moving-target {
+    outline: 2px dashed var(--ui-theme);
+    outline-offset: 4px;
+    border-radius: 30px;
+  }
+}
+
+.empty-placeholder {
+  padding: 32px 20px;
+  border-radius: 28px;
+  background: var(--category-chip-bg);
+  border: 1px dashed var(--category-tab-border);
+  text-align: center;
+  color: var(--category-empty);
+  font-size: 14px;
+}
+
+@media screen and (min-width: 1280px) {
+  .site-grid {
+    --site-card-min-width: 272px;
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .site-item {
+    padding: 24px 20px;
+    border-radius: 28px;
+  }
+
+  .category-title {
+    font-size: 28px;
+  }
+
+  .site-grid {
+    --site-card-min-width: 100%;
+  }
+}
 </style>
 

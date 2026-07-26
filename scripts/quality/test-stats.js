@@ -45,6 +45,7 @@ const topLevelRows = [
   ['web', countByPrefix('tests/web')],
   ['shared', countByPrefix('tests/shared')],
   ['extension', countByPrefix('tests/extension')],
+  ['tools', countByPrefix('tests/tools')],
   ['integration', countByPrefix('tests/integration')],
   ['smoke', countByPrefix('tests/smoke')]
 ]

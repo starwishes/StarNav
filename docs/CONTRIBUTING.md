@@ -105,7 +105,9 @@ CI 仍会继续执行 coverage、runtime smoke 和 Docker smoke；本地验证�
 - 前端组件、composable、store、api 变更：优先补到 `tests/web/...`
 - 浏览器扩展变更：优先补到 `tests/extension/...`
 - 共享工具变更：补到 `tests/shared/...`
+- 仓库脚本（`scripts/**`：extension/export、release/version 等）变更：补到 `tests/tools/...`
 - 需要覆盖端到端运行时语义时：补或更新 `tests/smoke/...`
+- 基础设施：`tests/setup*`、`tests/shims/` 仅给 Vitest 用，不是业务用例层
 
 如果是 contract 修复，测试应和 contract 同步提交，不接受“代码先改，测试下次补”。
 

@@ -101,7 +101,7 @@ StarNav/
 │   └── shared/              # 前后端共享契约与工具
 ├── server.ts                # 进程入口（tsx）
 ├── clients/extension/       # 扩展客户端（独立打包）
-├── tests/                   # server|web|shared|extension|integration|smoke
+├── tests/                   # server|web|shared|extension|tools|integration|smoke (+ setup/shims)
 ├── docker/                  # Dockerfile / compose / entrypoint
 ├── config/                  # commitlint / lint-staged
 ├── docs/                    # 见 docs/README.md

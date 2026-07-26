@@ -73,7 +73,7 @@
     "test:browser": "npm run test:browser:web",
     "test:browser:all": "npm run test:browser:web && SKIP_BUILD=1 npm run test:browser:extension",
     "test:full": "vitest run",
-    "test:coverage": "vitest run tests/server tests/web tests/shared tests/extension tests/integration tests/smoke/app.smoke.test.js --coverage",
+    "test:coverage": "vitest run tests/server tests/web tests/shared tests/extension tests/tools tests/integration tests/smoke/app.smoke.test.js --coverage",
     "test:stats": "node scripts/quality/test-stats.js",
     "test:performance:bookmarks": "tsx src/server/tools/runBookmarksPerformanceTest.ts",
     "test:performance:bookmarks:mixed": "tsx src/server/tools/runBookmarksPerformanceTest.ts tests/performance/bookmarks-mixed-load.js",

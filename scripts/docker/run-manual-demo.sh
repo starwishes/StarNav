@@ -1,5 +1,5 @@
 #!/bin/sh
-# Start a production-like StarNav container and seed 100 realistic bookmarks.
+# Start a production-like StarNav container and seed realistic bookmarks.
 set -eu
 
 ROOT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)"
@@ -11,8 +11,10 @@ ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-UkTm7hXOUp27pbRFsY88GoS8}"
 JWT_SECRET="${JWT_SECRET:-rucL6_4F8NDlKvQ0WBUPhbvos9xjIOoYQd65i-4HJcs83FsM6Ufr1RqeImf9NzAn}"
 TZ="${TZ:-Asia/Shanghai}"
-# Override with e.g. FIXTURE=tests/fixtures/realistic-bookmarks-1000.json
-FIXTURE="${FIXTURE:-${ROOT_DIR}/tests/fixtures/realistic-bookmarks-100.json}"
+# Default: generate seed JSON via realisticBookmarkDataset (no committed fixtures).
+# Override count with SEED_COUNT=1000, or pass a prebuilt file with FIXTURE=/path/to.json
+SEED_COUNT="${SEED_COUNT:-100}"
+FIXTURE="${FIXTURE:-}"
 BASE_URL="http://127.0.0.1:${HOST_PORT}"
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -30,11 +32,6 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
-if [ ! -f "${FIXTURE}" ]; then
-  echo "fixture not found: ${FIXTURE}" >&2
-  exit 1
-fi
-
 if ! docker image inspect "${IMAGE_NAME}" >/dev/null 2>&1; then
   echo "image ${IMAGE_NAME} not found; build first, e.g.:" >&2
   echo "  docker build -f docker/Dockerfile -t starnav:smoke ." >&2
@@ -42,6 +39,29 @@ if ! docker image inspect "${IMAGE_NAME}" >/dev/null 2>&1; then
 fi
 
 mkdir -p "${DATA_DIR}"
+
+if [ -n "${FIXTURE}" ]; then
+  if [ ! -f "${FIXTURE}" ]; then
+    echo "fixture not found: ${FIXTURE}" >&2
+    exit 1
+  fi
+else
+  FIXTURE="${DATA_DIR}/seed-realistic-bookmarks-${SEED_COUNT}.json"
+  echo "generating ${SEED_COUNT} realistic bookmarks -> ${FIXTURE}"
+  TSX_BIN="${ROOT_DIR}/node_modules/.bin/tsx"
+  if [ -x "${TSX_BIN}" ]; then
+    "${TSX_BIN}" "${ROOT_DIR}/src/server/tools/realisticBookmarkDataset.ts" "${SEED_COUNT}" "${FIXTURE}"
+  elif command -v npx >/dev/null 2>&1; then
+    (cd "${ROOT_DIR}" && npx --no-install tsx src/server/tools/realisticBookmarkDataset.ts "${SEED_COUNT}" "${FIXTURE}")
+  else
+    echo "tsx is required to generate the seed dataset (npm install first)" >&2
+    exit 1
+  fi
+  if [ ! -f "${FIXTURE}" ]; then
+    echo "failed to generate fixture: ${FIXTURE}" >&2
+    exit 1
+  fi
+fi
 
 if docker ps -a --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}"; then
   echo "removing existing container ${CONTAINER_NAME}"
@@ -162,7 +182,7 @@ Data:     ${DATA_DIR}
 Image:    ${IMAGE_NAME}
 Container:${CONTAINER_NAME}
 
-Seed: realistic fixture (${FIXTURE})
+Seed: ${FIXTURE}
 
 Useful:
   docker logs -f ${CONTAINER_NAME}

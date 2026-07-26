@@ -99,17 +99,20 @@ CI 已覆盖 typecheck、audit:prod、coverage、runtime smoke、build、docker:
 
 ```bash
 # 1) 需要镜像 starnav:smoke（可先 npm run docker:smoke 或 docker build -f docker/Dockerfile -t starnav:smoke .）
-# 2) 启动容器并灌入 tests/fixtures/realistic-bookmarks-100.json
+# 2) 启动容器；脚本用 realisticBookmarkDataset 生成种子 JSON 再导入（默认 100 条，不提交 fixtures）
 cd /mnt/d/Project/CodeProject/StarNav   # 按实际挂载路径调整
 sh scripts/docker/run-manual-demo.sh
+
+# 可选：SEED_COUNT=1000 sh scripts/docker/run-manual-demo.sh
+# 可选：FIXTURE=/path/to/backup.json sh scripts/docker/run-manual-demo.sh
 ```
 
 默认：
 
 - URL：`http://127.0.0.1:8080`
 - 账号：`admin` / 脚本内 `ADMIN_PASSWORD`（与 `.env.example` 示例一致，仅本地）
-- 数据目录：`data/manual-demo`（挂载到容器 `/app/data`）
-- 种子：10 分类 + 100 书签
+- 数据目录：`data/manual-demo`（挂载到容器 `/app/data`；生成的 seed JSON 也落在此目录）
+- 种子：`tsx src/server/tools/realisticBookmarkDataset.ts` → 10 分类 + 100 书签（`SEED_COUNT` 可改）
 
 停止：`docker stop starnav-manual-demo`；删除容器：`docker rm -f starnav-manual-demo`（数据目录可保留）。
 

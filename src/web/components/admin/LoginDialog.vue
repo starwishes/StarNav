@@ -212,5 +212,322 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped lang="scss">
-@use './LoginDialog.scss';
+.login-dialog-backdrop {
+  --login-backdrop-bg: rgba(15, 23, 42, 0.52);
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--login-backdrop-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.login-dialog-shell {
+  --login-shell-bg: rgba(255, 255, 255, 0.96);
+  --login-shell-border: rgba(255, 255, 255, 0.44);
+  --login-shell-shadow: 0 26px 68px rgba(15, 23, 42, 0.24);
+  --login-shell-inset: rgba(255, 255, 255, 0.7);
+  --login-shell-text: var(--ui-text-primary, #0f172a);
+  --login-shell-muted: var(--ui-text-muted, rgba(71, 85, 105, 0.78));
+  --login-close-bg: rgba(148, 163, 184, 0.14);
+  --login-close-text: rgba(15, 23, 42, 0.7);
+  --login-tab-bg: rgba(148, 163, 184, 0.12);
+  --login-tab-text: rgba(100, 116, 139, 0.92);
+  --login-label-text: rgba(15, 23, 42, 0.8);
+  --login-prefix-text: rgba(100, 116, 139, 0.82);
+  --login-input-bg: rgba(255, 255, 255, 0.92);
+  --login-input-border: rgba(148, 163, 184, 0.34);
+  --login-input-focus-bg: #ffffff;
+  --login-input-placeholder: rgba(100, 116, 139, 0.62);
+  position: relative;
+  width: min(100%, 420px);
+  box-sizing: border-box;
+  border-radius: 22px;
+  border: 1px solid var(--login-shell-border);
+  background: var(--login-shell-bg);
+  box-shadow:
+    var(--login-shell-shadow),
+    inset 0 1px 0 var(--login-shell-inset);
+  outline: none;
+  color: var(--login-shell-text);
+  transition:
+    background-color 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.22s ease,
+    color 0.22s ease;
+}
+
+.dialog-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--login-close-bg);
+  color: var(--login-close-text);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
+
+  &:hover {
+    background: rgba(var(--ui-theme-rgb), 0.12);
+    color: var(--ui-theme);
+    transform: rotate(90deg);
+  }
+}
+
+.login-content {
+  box-sizing: border-box;
+  padding: 28px 32px 32px;
+}
+
+.login-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.tab-button {
+  min-width: 108px;
+  min-height: 38px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--login-tab-bg);
+  color: var(--login-tab-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+
+  &.active {
+    background: linear-gradient(135deg, var(--ui-theme), rgba(var(--ui-theme-rgb), 0.74));
+    box-shadow: 0 12px 24px rgba(var(--ui-theme-rgb), 0.18);
+    color: #fff;
+  }
+}
+
+.dialog-header {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.dialog-kicker {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(var(--ui-theme-rgb), 0.82);
+}
+
+.dialog-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--login-shell-text);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dialog-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--login-label-text);
+}
+
+.input-with-prefix {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input-prefix {
+  position: absolute;
+  inset: 0 auto 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--login-prefix-text);
+  pointer-events: none;
+}
+
+.prefix-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.dialog-input {
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border: 1px solid var(--login-input-border);
+  border-radius: 14px;
+  background: var(--login-input-bg);
+  color: var(--login-shell-text);
+  font-size: 14px;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
+
+  &::placeholder {
+    color: var(--login-input-placeholder);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: rgba(var(--ui-theme-rgb), 0.6);
+    box-shadow: 0 0 0 4px rgba(var(--ui-theme-rgb), 0.12);
+    background: var(--login-input-focus-bg);
+  }
+}
+
+.with-prefix {
+  padding-left: 42px;
+}
+
+.login-btn {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 4px;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--ui-theme), rgba(var(--ui-theme-rgb), 0.74));
+  box-shadow: 0 14px 28px rgba(var(--ui-theme-rgb), 0.2);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.18s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.72;
+  }
+}
+
+.login-dialog-enter-active,
+.login-dialog-leave-active {
+  transition: opacity 0.22s ease;
+}
+
+.login-dialog-enter-active .login-dialog-shell,
+.login-dialog-leave-active .login-dialog-shell {
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+.login-dialog-enter-from,
+.login-dialog-leave-to {
+  opacity: 0;
+}
+
+.login-dialog-enter-from .login-dialog-shell,
+.login-dialog-leave-to .login-dialog-shell {
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+}
+
+:global(:root[theme-mode='dark'] .login-dialog-backdrop) {
+  --login-backdrop-bg: rgba(2, 6, 23, 0.72);
+}
+
+:global(:root[theme-mode='dark'] .login-dialog-shell) {
+  --login-shell-bg: rgba(8, 12, 20, 0.94);
+  --login-shell-border: rgba(255, 255, 255, 0.08);
+  --login-shell-shadow: 0 30px 72px rgba(0, 0, 0, 0.42);
+  --login-shell-inset: rgba(255, 255, 255, 0.08);
+  --login-shell-text: #f8fafc;
+  --login-shell-muted: rgba(226, 232, 240, 0.74);
+  --login-close-bg: rgba(255, 255, 255, 0.08);
+  --login-close-text: rgba(226, 232, 240, 0.72);
+  --login-tab-bg: rgba(255, 255, 255, 0.06);
+  --login-tab-text: rgba(226, 232, 240, 0.66);
+  --login-label-text: rgba(226, 232, 240, 0.82);
+  --login-prefix-text: rgba(226, 232, 240, 0.56);
+  --login-input-bg: rgba(255, 255, 255, 0.06);
+  --login-input-border: rgba(255, 255, 255, 0.12);
+  --login-input-focus-bg: rgba(255, 255, 255, 0.1);
+  --login-input-placeholder: rgba(226, 232, 240, 0.46);
+}
+
+@media screen and (max-width: 768px) {
+  .login-dialog-shell {
+    width: min(100%, 320px);
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .login-dialog-backdrop {
+    padding: 16px;
+  }
+
+  .login-dialog-shell {
+    width: min(100%, 280px);
+  }
+
+  .login-content {
+    padding: 24px 20px 20px;
+  }
+
+  .login-tabs {
+    gap: 8px;
+  }
+
+  .tab-button {
+    min-width: 0;
+    flex: 1;
+  }
+}
+
+@media screen and (max-width: 375px) {
+  .login-dialog-shell {
+    width: min(100%, 260px);
+  }
+
+  .login-content {
+    padding: 22px 16px 16px;
+  }
+}
 </style>

@@ -59,6 +59,181 @@ const formatPercent = (percent: number) =>
 </script>
 
 <style scoped lang="scss">
-@use './DistributionChartCard.scss';
+.chart-card {
+  --stats-chart-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+  --stats-chart-border: rgba(255, 255, 255, 0.6);
+  --stats-chart-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --stats-chart-empty-bg: rgba(255, 255, 255, 0.4);
+  --stats-chart-row-bg: rgba(255, 255, 255, 0.58);
+  --stats-chart-row-border: rgba(148, 163, 184, 0.14);
+  color: var(--ui-text-primary, #0f172a);
+  min-height: 380px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  background: var(--stats-chart-bg);
+  border: 1px solid var(--stats-chart-border);
+  box-shadow: var(--stats-chart-shadow);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+}
+
+:global(:root[theme-mode='dark'] .chart-card) {
+  --stats-chart-bg: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.82));
+  --stats-chart-border: rgba(148, 163, 184, 0.18);
+  --stats-chart-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+  --stats-chart-empty-bg: rgba(15, 23, 42, 0.5);
+  --stats-chart-row-bg: rgba(15, 23, 42, 0.78);
+  --stats-chart-row-border: rgba(148, 163, 184, 0.18);
+}
+
+.chart-card h3 {
+  margin: 0 0 18px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--gray-800);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &::before {
+    content: '';
+    width: 4px;
+    height: 20px;
+    background: linear-gradient(180deg, var(--ui-theme), rgba(var(--ui-theme-rgb), 0.6));
+    border-radius: 2px;
+  }
+}
+
+.chart {
+  flex: 1;
+  width: 100%;
+  min-height: 280px;
+}
+
+.chart-empty {
+  flex: 1;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-500);
+  font-size: 14px;
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  border-radius: 18px;
+  background: var(--stats-chart-empty-bg);
+}
+
+.distribution-chart {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.donut-wrap {
+  position: relative;
+  width: 220px;
+  min-width: 220px;
+  height: 220px;
+}
+
+.donut-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.donut-track {
+  fill: none;
+  stroke: rgba(148, 163, 184, 0.18);
+  stroke-width: 22;
+}
+
+.donut-arc {
+  fill: none;
+  stroke-width: 22;
+  stroke-linecap: round;
+}
+
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.donut-total {
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--gray-900);
+  line-height: 1;
+}
+
+.donut-label {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.distribution-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.distribution-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--stats-chart-row-bg);
+  border: 1px solid var(--stats-chart-row-border);
+}
+
+.distribution-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-700);
+}
+
+.distribution-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.distribution-metrics {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-500);
+}
+
+@media (max-width: 768px) {
+  .distribution-chart {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .donut-wrap {
+    margin: 0 auto;
+  }
+}
 </style>
 

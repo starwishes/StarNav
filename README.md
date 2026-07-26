@@ -47,7 +47,7 @@ npm run build && npm run serve
 ```text
 src/{web,server,shared}   # 主应用
 clients/extension/        # 独立浏览器扩展
-tests/                    # server|web|shared|extension|…
+tests/                    # server|web|shared|extension|tools|integration|smoke|…
 scripts/                  # docker|extension|openapi|release|quality
 docker/  docs/  config/   # 交付、文档、工具配置
 server.ts                 # 进程入口

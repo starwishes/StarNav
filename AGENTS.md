@@ -17,7 +17,7 @@ src/shared/    # Shared types, constants, pure helpers
 server.ts      # Process entry
 docker/        # Dockerfile, compose, entrypoint
 docs/          # Living docs — start at docs/README.md
-tests/         # Vitest suites (server|web|shared|extension|integration|smoke)
+tests/         # Vitest suites (server|web|shared|extension|tools|integration|smoke; setup/shims at root)
 clients/extension/  # Separate client; common JS synced from src/shared
 scripts/       # docker|extension|openapi|release|quality
 ```

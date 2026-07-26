@@ -43,6 +43,34 @@ const { formatDateTime } = useDateTimeFormatter()
 </script>
 
 <style scoped lang="scss">
-@use './TopBookmarksTable.scss';
+.top-bookmarks-card {
+  --top-bookmarks-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+  --top-bookmarks-border: rgba(255, 255, 255, 0.6);
+  --top-bookmarks-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  margin-top: 20px;
+  padding: 24px;
+  background: var(--top-bookmarks-bg);
+  border: 1px solid var(--top-bookmarks-border);
+  box-shadow: var(--top-bookmarks-shadow);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+}
+
+:global(:root[theme-mode='dark'] .top-bookmarks-card) {
+  --top-bookmarks-bg: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.82));
+  --top-bookmarks-border: rgba(148, 163, 184, 0.18);
+  --top-bookmarks-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+}
+
+.top-bookmarks-header {
+  margin: 0 0 18px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+.top-bookmarks-table {
+  margin-top: 6px;
+}
 </style>
 
