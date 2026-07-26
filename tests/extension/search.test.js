@@ -73,7 +73,9 @@ describe('browser extension search controller', () => {
       .mockRejectedValueOnce(new Error('network'))
 
     await controller.loadRecentBookmarks()
-    expect(ui.showLoading).toHaveBeenCalledTimes(1)
+    // Recent list keeps a fixed CSS viewport; no full-page loading overlay on open.
+    expect(ui.showLoading).not.toHaveBeenCalled()
+    expect(ui.hideLoading).not.toHaveBeenCalled()
     expect(elements.recentBookmarks.innerHTML).toContain('暂无书签')
 
     await controller.loadRecentBookmarks()
@@ -81,7 +83,8 @@ describe('browser extension search controller', () => {
 
     await controller.loadRecentBookmarks()
     expect(elements.recentBookmarks.innerHTML).toContain('加载失败')
-    expect(ui.hideLoading).toHaveBeenCalledTimes(3)
+    expect(ui.showLoading).not.toHaveBeenCalled()
+    expect(ui.hideLoading).not.toHaveBeenCalled()
   })
 
   it('renders search results and toggles the search layout', async () => {
