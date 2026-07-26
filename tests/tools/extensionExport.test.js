@@ -53,5 +53,7 @@ describe('extension export bundles', () => {
     await expect(exists(path.join(firefoxDir, 'manifest.firefox.json'))).resolves.toBe(false)
     await expect(exists(path.join(chromeDir, 'README.md'))).resolves.toBe(false)
     await expect(exists(path.join(firefoxDir, 'version.json'))).resolves.toBe(false)
+    await expect(exists(path.join(chromeDir, 'packages'))).resolves.toBe(false)
+    await expect(exists(path.join(firefoxDir, 'packages'))).resolves.toBe(false)
   })
 })

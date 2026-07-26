@@ -88,8 +88,11 @@ describe('extension package bundles', () => {
     expect(chromeEntries.has('manifest.json')).toBe(true)
     expect(chromeEntries.has('popup/popup.html')).toBe(true)
     expect(chromeEntries.has('manifest.firefox.json')).toBe(false)
+    // Never nest previously built archives (recursive package bloat)
+    expect([...chromeEntries.keys()].some((name) => name.startsWith('packages/'))).toBe(false)
     expect(firefoxEntries.has('manifest.json')).toBe(true)
     expect(firefoxEntries.has('options/options.html')).toBe(true)
+    expect([...firefoxEntries.keys()].some((name) => name.startsWith('packages/'))).toBe(false)
 
     expect(JSON.parse(chromeEntries.get('manifest.json').toString('utf8'))).toMatchObject({
       manifest_version: 3,

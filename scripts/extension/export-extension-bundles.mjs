@@ -14,7 +14,14 @@ const EXTENSION_SOURCE_DIR = path.join(REPO_ROOT, 'clients/extension')
 const EXTENSION_EXPORT_ROOT = path.join(EXTENSION_SOURCE_DIR, 'dist')
 const CHROME_MANIFEST_PATH = path.join(EXTENSION_SOURCE_DIR, 'manifest.json')
 const FIREFOX_MANIFEST_PATH = path.join(EXTENSION_SOURCE_DIR, 'manifest.firefox.json')
-const EXCLUDED_TOP_LEVEL_NAMES = new Set(['README.md', 'version.json', 'manifest.firefox.json', 'dist'])
+// packages/ holds previously built zips — must not be nested into the next export (zip-in-zip bloat)
+const EXCLUDED_TOP_LEVEL_NAMES = new Set([
+  'README.md',
+  'version.json',
+  'manifest.firefox.json',
+  'dist',
+  'packages'
+])
 
 const resolveRepoPath = (repoRoot, absolutePath) =>
   path.join(repoRoot, path.relative(REPO_ROOT, absolutePath))
