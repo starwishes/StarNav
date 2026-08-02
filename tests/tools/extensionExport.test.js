@@ -44,7 +44,7 @@ describe('extension export bundles', () => {
 
     expect(chromeManifest.manifest_version).toBe(3)
     expect(firefoxManifest.manifest_version).toBe(2)
-    expect(chromeManifest.version_name).toBe('v1')
+    expect(chromeManifest.version_name).toBe('v1.0.1')
     expect(firefoxManifest.browser_specific_settings?.gecko?.id).toBe('starnav@example.com')
 
     await expect(exists(path.join(chromeDir, 'popup', 'popup.html'))).resolves.toBe(true)

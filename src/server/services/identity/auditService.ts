@@ -57,7 +57,8 @@ export const auditService = {
       ).run(username, action, detailsJson, ip)
 
       // 自动清理旧日志 (保留最近 2000 条)
-      const count = db.prepare<CountRow>('SELECT COUNT(*) as count FROM audit_logs').get()?.count ?? 0
+      const count =
+        db.prepare<CountRow>('SELECT COUNT(*) as count FROM audit_logs').get()?.count ?? 0
       if (count > 2000) {
         db.prepare(
           `
@@ -73,12 +74,17 @@ export const auditService = {
   },
 
   /**
-   * 清空日志
+   * 清空日志（支持按时间范围）
+   * @param before - 可选 ISO 日期字符串，只删除此日期之前的日志
    */
-  clear() {
+  clear(before?: string) {
     try {
       const db = getDb()
-      db.prepare('DELETE FROM audit_logs').run()
+      if (before) {
+        db.prepare('DELETE FROM audit_logs WHERE created_at < ?').run(before)
+      } else {
+        db.prepare('DELETE FROM audit_logs').run()
+      }
       return true
     } catch (err: unknown) {
       logger.error('清空审计日志失败', err)

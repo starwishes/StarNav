@@ -1,14 +1,13 @@
 {
   "name": "starnav",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "engines": {
     "node": ">=24 <25",
     "npm": ">=10"
   },
   "overrides": {
-    "body-parser": "^2.3.0",
     "qs": "6.15.3",
     "glob": {
       "minimatch": "9.0.9"
@@ -28,9 +27,6 @@
     },
     "brace-expansion@2": "2.1.2",
     "brace-expansion@5": "5.0.7",
-    "readdir-glob": {
-      "minimatch": "5.1.9"
-    },
     "@rollup/plugin-terser": {
       "serialize-javascript": "7.0.5"
     },

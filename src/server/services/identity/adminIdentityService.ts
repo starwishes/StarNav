@@ -5,7 +5,38 @@ import { auditService } from './auditService.js'
 import { sessionService } from './sessionService.js'
 import { ensureExistingUser, ensureStrongPassword } from './identityHelpers.js'
 import { errors } from '../../middleware/errorHandler.js'
-import type { AuthCredentials, PaginationQuery, RequestContextLike } from '../../types/domain.js'
+import type {
+  AuditClearQuery,
+  AuthCredentials,
+  PaginationQuery,
+  RequestContextLike
+} from '../../types/domain.js'
+
+// 与前端构造的 UTC 时间格式保持一致（audit_logs.created_at 为 datetime('now') 存储）
+const AUDIT_BEFORE_RE = /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/
+
+const isRealDate = (str: string): boolean => {
+  const [datePart, timePart] = str.split(' ')
+  const [y, m, d] = datePart.split('-').map(Number)
+  if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d)) return false
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return false
+  if (timePart) {
+    const [h, min, s] = timePart.split(':').map(Number)
+    if (h > 23 || min > 59 || s > 59) return false
+  }
+  return true
+}
+
+const normalizeBeforeDate = (value: unknown): string | undefined => {
+  if (value === undefined || value === null || value === '') return undefined
+  const str = String(value)
+  if (!AUDIT_BEFORE_RE.test(str) || !isRealDate(str)) {
+    throw errors.badRequest('无效的 before 参数，应为 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS')
+  }
+  return str
+}
+
 export const adminIdentityService = {
   getAuditLogs(query: PaginationQuery = {}) {
     const page = Number.parseInt(String(query.page ?? ''), 10) || 1
@@ -14,8 +45,10 @@ export const adminIdentityService = {
     return auditService.getLogs(page, limit)
   },
 
-  clearAuditLogs() {
-    if (!auditService.clear()) {
+  clearAuditLogs(query: AuditClearQuery = {}) {
+    const before = normalizeBeforeDate('before' in query ? query.before : undefined)
+
+    if (!auditService.clear(before)) {
       throw errors.internal('清空失败')
     }
 
@@ -44,7 +77,11 @@ export const adminIdentityService = {
     return undefined
   },
 
-  updateUser(targetUsername: string, updates: { newUsername?: string; password?: string; level?: number }, context: RequestContextLike = {}) {
+  updateUser(
+    targetUsername: string,
+    updates: { newUsername?: string; password?: string; level?: number },
+    context: RequestContextLike = {}
+  ) {
     ensureExistingUser(targetUsername)
 
     const { newUsername, password, level } = updates

@@ -40,7 +40,8 @@ const { auditService } = await import('../../../src/server/services/identity/aud
 const { sessionService } = await import('../../../src/server/services/identity/sessionService.js')
 const { ensureExistingUser, ensureStrongPassword } =
   await import('../../../src/server/services/identity/identityHelpers.js')
-const { adminIdentityService } = await import('../../../src/server/services/identity/adminIdentityService.js')
+const { adminIdentityService } =
+  await import('../../../src/server/services/identity/adminIdentityService.js')
 
 describe('adminIdentityService', () => {
   beforeEach(() => {
@@ -50,7 +51,10 @@ describe('adminIdentityService', () => {
   it('uses pagination defaults for audit logs and surfaces clear failures', () => {
     auditService.getLogs.mockReturnValue({ total: 2, logs: [{ id: 1 }] })
 
-    expect(adminIdentityService.getAuditLogs({ page: '2', limit: '10' })).toEqual({ total: 2, logs: [{ id: 1 }] })
+    expect(adminIdentityService.getAuditLogs({ page: '2', limit: '10' })).toEqual({
+      total: 2,
+      logs: [{ id: 1 }]
+    })
     expect(auditService.getLogs).toHaveBeenCalledWith(2, 10)
 
     adminIdentityService.getAuditLogs({})
@@ -60,6 +64,33 @@ describe('adminIdentityService', () => {
     expect(() => {
       adminIdentityService.clearAuditLogs()
     }).toThrow('清空失败')
+  })
+
+  it('forwards a validated before date to auditService.clear', () => {
+    auditService.clear.mockReturnValue(true)
+
+    expect(adminIdentityService.clearAuditLogs({ before: '2026-07-26 00:00:00' })).toBeUndefined()
+    expect(auditService.clear).toHaveBeenCalledWith('2026-07-26 00:00:00')
+
+    adminIdentityService.clearAuditLogs({ before: '2026-07-26' })
+    expect(auditService.clear).toHaveBeenLastCalledWith('2026-07-26')
+  })
+
+  it('omits before for a full clear', () => {
+    auditService.clear.mockReturnValue(true)
+
+    adminIdentityService.clearAuditLogs()
+
+    expect(auditService.clear).toHaveBeenCalledWith(undefined)
+  })
+
+  it('rejects invalid or impossible before values without touching the store', () => {
+    for (const invalid of ['zzzz', '2026-13-99', '2026-02-30', ['2026-01-01', '2026-02-01']]) {
+      expect(() => {
+        adminIdentityService.clearAuditLogs({ before: invalid })
+      }).toThrow('无效的 before 参数')
+    }
+    expect(auditService.clear).not.toHaveBeenCalled()
   })
 
   it('returns users and creates users with duplicate/internal failure handling', () => {
@@ -124,11 +155,11 @@ describe('adminIdentityService', () => {
       details: 'Updated user: admin -> owner'
     })
     expect(result).toEqual({
-        user: {
-          username: 'owner',
-          level: 3
-        }
-      })
+      user: {
+        username: 'owner',
+        level: 3
+      }
+    })
   })
 
   it('revokes sessions before delete and logs audit entries with defaults', () => {

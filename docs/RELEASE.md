@@ -108,6 +108,12 @@ gh release delete v1.0.0 --repo starwishes/StarNav --yes
 
 同版本修 bug、不改 `package.json` version → **不会**自动重打镜像；需要时 Actions → Release / Docker Publish 手动跑。
 
+浏览器扩展版本独立于主站：
+
+- 扩展版本来源：`clients/extension/version.json`（`packageVersion` = Manifest 包版本，`displayVersion` = 用户可见展示版本，两者同步 bump），由 `versions:sync` 写入 manifest 与 README
+- 主站发版（改 `package.json` version）时，**不需要** bump 扩展版本或重打包 zip；`versions:sync` / `versions:check` 照常通过
+- 仅当扩展源码有实际变更时：单独 bump `version.json` 的 `packageVersion` 与 `displayVersion` → `npm run versions:sync` → `npm run versions:check` → 重新生成扩展 zip（`npm run extension:package`，或由 lint-staged 在扩展源码变更提交时自动触发）→ 随发布提交一起合入
+
 ## 4. 部署默认入口
 
 默认 Compose 文件位于 [docker/docker-compose.yml](../docker/docker-compose.yml)，现在支持：

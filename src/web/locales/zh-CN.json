@@ -71,7 +71,10 @@
     "actionRegister": "注册",
     "actionRevoke": "踢出设备",
     "actionClear": "清空日志",
+    "clearAll": "全部",
+    "clearBeforeDays": "超过{days}天",
     "clearConfirm": "确定要清空所有审计日志吗？",
+    "clearBeforeConfirm": "删除 {date} 之前的日志？",
     "clearSuccess": "日志已清空"
   },
   "settings": {

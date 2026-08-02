@@ -46,6 +46,11 @@ export interface PaginationQuery {
   [key: string]: unknown
 }
 
+export interface AuditClearQuery {
+  /** 可选：只删除此日期（UTC，YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS）之前的日志 */
+  before?: unknown
+}
+
 export interface BookmarkPayload {
   name?: string
   url?: string

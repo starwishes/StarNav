@@ -33,6 +33,12 @@ const routes: Array<RouteRecordRaw> = [
     name: 'AdminDashboard',
     component: () => import('@/views/AdminDashboard.vue'),
     meta: { titleKey: 'nav.admin', requiresAdmin: true }
+  },
+  {
+    path: '/admin/dashboard/:view(data|users|settings|monitor)',
+    name: 'AdminDashboardView',
+    component: () => import('@/views/AdminDashboard.vue'),
+    meta: { titleKey: 'nav.admin', requiresAdmin: true }
   }
 ]
 

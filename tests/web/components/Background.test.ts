@@ -36,11 +36,15 @@ describe('Background', () => {
     vi.restoreAllMocks()
   })
 
-  it('applies the custom background image from the shared config store', async () => {
+  it('does not re-paint the custom background image (body owns fixed cover)', async () => {
     const wrapper = createWrapper()
     await nextTick()
 
-    expect(wrapper.find('.bg').attributes('style')).toContain('/uploads/bg.jpg')
+    // Config store applies backgroundUrl to document.body; this component only
+    // dims the hero so the same image is never cropped twice (horizontal seam).
+    expect(wrapper.find('.bg').classes()).toContain('is-custom')
+    expect(wrapper.find('.bg').attributes('style') || '').not.toContain('/uploads/bg.jpg')
+    expect(wrapper.find('.bg-overlay').exists()).toBe(true)
     expect(wrapper.find('.bg-stars-near').exists()).toBe(false)
   })
 

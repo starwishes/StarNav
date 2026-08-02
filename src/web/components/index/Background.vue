@@ -3,11 +3,16 @@
     <section
       class="bg"
       :class="{
+        'is-custom': hasCustomBackground,
         'is-default-art': !hasCustomBackground,
         'is-deferred': !hasCustomBackground && !visible
       }"
-      :style="bgStyle"
     >
+      <!--
+        Custom backgrounds are applied once on document.body by the config store
+        (fixed cover). This layer only adds the hero dimming overlay so the same
+        image is never painted twice with different crops (which creates a seam).
+      -->
       <div v-if="hasCustomBackground || visible" class="bg-overlay"></div>
       <div v-if="showDefaultArt" class="bg-stars bg-stars-near"></div>
       <div v-if="showDefaultArt" class="bg-stars bg-stars-far"></div>
@@ -35,14 +40,6 @@ const configStore = useConfigStore()
 
 const hasCustomBackground = computed(() => Boolean(configStore.siteConfig.backgroundUrl))
 
-const bgStyle = computed(() =>
-  hasCustomBackground.value
-    ? {
-        backgroundImage: `url(${configStore.siteConfig.backgroundUrl})`
-      }
-    : {}
-)
-
 const showDefaultArt = computed(() => !hasCustomBackground.value && props.visible)
 </script>
 
@@ -59,9 +56,11 @@ const showDefaultArt = computed(() => !hasCustomBackground.value && props.visibl
 .bg {
   position: absolute;
   inset: 0;
-  background-position: center top;
-  background-size: cover;
-  background-repeat: no-repeat;
+
+  /* Transparent over body-level custom wallpaper; default art paints its own base. */
+  &.is-custom {
+    background: transparent;
+  }
 
   &.is-default-art {
     background: #000;
@@ -76,6 +75,17 @@ const showDefaultArt = computed(() => !hasCustomBackground.value && props.visibl
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.56));
+}
+
+/* Custom wallpaper lives on body (full viewport). Fade the hero dimmer out so
+   it does not leave a hard brightness edge at the 560px band boundary. */
+.bg.is-custom .bg-overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.2) 0%,
+    rgba(0, 0, 0, 0.28) 42%,
+    rgba(0, 0, 0, 0) 100%
+  );
 }
 
 .bg-stars,
@@ -165,4 +175,3 @@ const showDefaultArt = computed(() => !hasCustomBackground.value && props.visibl
   }
 }
 </style>
-

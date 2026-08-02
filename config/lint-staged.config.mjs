@@ -49,7 +49,6 @@ const isExtensionSourceFile = (file) => {
 }
 
 export default {
-  concurrent: false,
   '*.{js,jsx,ts,tsx,vue}': (files) => [
     ...mapChunks(files, (list) => `eslint --fix ${list}`),
     ...mapChunks(files, (list) => `prettier --write ${list}`)

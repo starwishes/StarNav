@@ -61,8 +61,16 @@ describe('router bootstrap', () => {
     localStorage.setItem('admin_user', JSON.stringify({ username: 'admin', level: 3 }))
     await loadRouterModule()
 
-    expect(state.routes.map((route) => route.path)).toEqual(['/', '/admin', '/admin/dashboard'])
+    expect(state.routes.map((route) => route.path)).toEqual([
+      '/',
+      '/admin',
+      '/admin/dashboard',
+      '/admin/dashboard/:view(data|users|settings|monitor)'
+    ])
     expect(state.routes[2].meta).toEqual(
+      expect.objectContaining({ titleKey: 'nav.admin', requiresAdmin: true })
+    )
+    expect(state.routes[3].meta).toEqual(
       expect.objectContaining({ titleKey: 'nav.admin', requiresAdmin: true })
     )
 

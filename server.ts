@@ -33,7 +33,7 @@ const DIST_NO_CACHE_FILES = new Set([
 ])
 const STATIC_OPENAPI_SPEC_PATH = path.join(__dirname, 'dist', 'api-docs.json')
 
-let appPromise: Promise<import("express").Express> | null = null
+let appPromise: Promise<import('express').Express> | null = null
 
 const hasStaticOpenApiSpec = async () => {
   try {
@@ -44,13 +44,13 @@ const hasStaticOpenApiSpec = async () => {
   }
 }
 
-const setStaticCacheHeaders = (res: import("express").Response, filePath: string) => {
+const setStaticCacheHeaders = (res: import('express').Response, filePath: string) => {
   if (DIST_NO_CACHE_FILES.has(path.basename(filePath))) {
     res.setHeader('Cache-Control', 'no-cache')
   }
 }
 
-const registerSwaggerUi = async (app: import("express").Express) => {
+const registerSwaggerUi = async (app: import('express').Express) => {
   if (process.env.NODE_ENV === 'production') {
     logger.info('生产环境：Swagger UI 已禁用，仅提供 OpenAPI JSON 规范')
     return
@@ -87,6 +87,9 @@ const createConfiguredApp = async () => {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
+          baseUri: ["'none'"],
+          formAction: ["'self'"],
+          frameAncestors: ["'none'"],
           scriptSrc: isProduction ? ["'self'"] : ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:', 'http:'],

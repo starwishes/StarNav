@@ -68,7 +68,10 @@ describe('database runtime facade', () => {
     expect(Database).toHaveBeenCalledTimes(1)
     expect(Database).toHaveBeenCalledWith('/tmp/starnav.db')
     expect(pragma).toHaveBeenNthCalledWith(1, 'journal_mode = WAL')
-    expect(pragma).toHaveBeenNthCalledWith(2, 'foreign_keys = ON')
+    expect(pragma).toHaveBeenNthCalledWith(2, 'synchronous = NORMAL')
+    expect(pragma).toHaveBeenNthCalledWith(3, 'cache_size = -8000')
+    expect(pragma).toHaveBeenNthCalledWith(4, 'busy_timeout = 5000')
+    expect(pragma).toHaveBeenNthCalledWith(5, 'foreign_keys = ON')
     expect(initSchema).toHaveBeenCalledWith(databaseInstance)
     expect(logger.info).toHaveBeenCalledWith(
       expect.stringContaining('SQLite 数据库已连接: /tmp/starnav.db')

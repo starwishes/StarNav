@@ -15,8 +15,8 @@ export const adminController = {
     return respondWithService(res, () => adminIdentityService.getAuditLogs(req.query))
   },
 
-  clearAuditLogs: (_req: Request, res: Response) => {
-    return respondWithService(res, () => adminIdentityService.clearAuditLogs())
+  clearAuditLogs: (req: Request, res: Response) => {
+    return respondWithService(res, () => adminIdentityService.clearAuditLogs(req.query))
   },
 
   getUsers: (_req: Request, res: Response) => {

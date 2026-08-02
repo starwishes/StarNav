@@ -1,4 +1,5 @@
 import { computed, defineAsyncComponent, ref, watch, type Component, type Ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import type { SystemSettings, User } from '@/api'
 import type { Category, Item } from '@/types'
 import type { ParsedJsonBackup } from '@/utils/jsonBackup'
@@ -11,6 +12,11 @@ const UserTable = defineAsyncComponent(() => import('@/components/admin/UserTabl
 const SystemSettings = defineAsyncComponent(() => import('@/components/admin/SystemSettings.vue'))
 
 export type AdminDashboardViewId = 'settings' | 'users' | 'data' | 'monitor'
+
+const ADMIN_VIEW_IDS: readonly AdminDashboardViewId[] = ['settings', 'users', 'data', 'monitor']
+
+const isAdminDashboardViewId = (value: unknown): value is AdminDashboardViewId =>
+  ADMIN_VIEW_IDS.includes(value as AdminDashboardViewId)
 
 export interface AdminDashboardViewConfig {
   component: Component
@@ -62,7 +68,16 @@ interface UseAdminDashboardViewsOptions {
 }
 
 export function useAdminDashboardViews(options: UseAdminDashboardViewsOptions) {
-  const currentView = ref<AdminDashboardViewId>('settings')
+  const route = useRoute()
+  const router = useRouter()
+  const defaultView = 'settings'
+
+  // 从路由参数读取当前视图，支持 URL 直达子视图。
+  // 无路由环境（单元测试、非路由上下文）下降级为默认视图。
+  const routeView = route?.params?.view
+  const currentView = ref<AdminDashboardViewId>(
+    isAdminDashboardViewId(routeView) ? routeView : defaultView
+  )
   const sidebarVisible = ref(false)
 
   const viewConfigs = computed(
@@ -189,11 +204,32 @@ export function useAdminDashboardViews(options: UseAdminDashboardViewsOptions) {
       return
     }
 
+    // 同步到路由，使 URL 可直达子视图（无路由环境时仅切换本地视图）
+    if (router && id === defaultView) {
+      await router.push({ name: 'AdminDashboard' })
+    } else if (router) {
+      await router.push({ name: 'AdminDashboardView', params: { view: id } })
+    }
+
     currentView.value = id
     if (options.isMobile.value) {
       sidebarVisible.value = false
     }
   }
+
+  // 监听路由变化（浏览器前进/后退按钮），同步视图状态
+  watch(
+    () => route?.params?.view,
+    (newView) => {
+      if (
+        isAdminDashboardViewId(newView) &&
+        newView !== currentView.value &&
+        availableViewIds.value.includes(newView)
+      ) {
+        currentView.value = newView
+      }
+    }
+  )
 
   return {
     currentView,

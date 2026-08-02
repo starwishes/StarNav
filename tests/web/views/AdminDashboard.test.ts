@@ -42,6 +42,9 @@ let showBookmarkImportRef = ref(false)
 vi.mock('vue-router', () => ({
   useRouter: () => ({
     push: routerPushMock
+  }),
+  useRoute: () => ({
+    params: {}
   })
 }))
 

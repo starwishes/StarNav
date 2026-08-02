@@ -1507,7 +1507,7 @@ export interface components {
              * @enum {string}
              */
             status?: "healthy" | "unhealthy";
-            /** @example 1.0.0 */
+            /** @example 1.0.1 */
             version?: string;
             /** Format: date-time */
             timestamp?: string;

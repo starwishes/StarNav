@@ -69,7 +69,10 @@
     "actionRegister": "Register",
     "actionRevoke": "Revoke Session",
     "actionClear": "Clear Logs",
+    "clearAll": "All",
+    "clearBeforeDays": "older than {days} days",
     "clearConfirm": "Are you sure you want to clear all audit logs?",
+    "clearBeforeConfirm": "Delete logs older than {date}?",
     "clearSuccess": "Logs cleared successfully"
   },
   "settings": {

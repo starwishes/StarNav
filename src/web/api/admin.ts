@@ -171,7 +171,10 @@ export const adminApi = {
     }
   },
 
-  clearAuditLogs: () => api.del<ApiResponse>('/admin/audit'),
+  clearAuditLogs: (before?: string) => {
+    const query = before ? `/admin/audit?before=${encodeURIComponent(before)}` : '/admin/audit'
+    return api.del<ApiResponse>(query)
+  },
 
   getUploadedFiles: async () => {
     const payload = await api.get<UploadsResponse>('/uploads')

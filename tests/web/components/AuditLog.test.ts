@@ -121,8 +121,36 @@ describe('AuditLog', () => {
       }
     )
     expect(mocks.clearAuditLogs).toHaveBeenCalledTimes(1)
+    expect(mocks.clearAuditLogs).toHaveBeenCalledWith(undefined)
     expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:audit.clearSuccess')
     expect(mocks.getAuditLogs).toHaveBeenCalledTimes(2)
+  })
+
+  it('clears logs before a selected number of days with a UTC boundary', async () => {
+    mocks.getAuditLogs
+      .mockResolvedValueOnce({ logs: [], total: 0 })
+      .mockResolvedValueOnce({ logs: [], total: 0 })
+    mocks.confirm.mockResolvedValue('confirm')
+    mocks.clearAuditLogs.mockResolvedValue({ success: true })
+
+    const wrapper = mount(AuditLog)
+    await Promise.resolve()
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('.clear-select').setValue('7')
+    await wrapper.find('.actions .table-button.danger').trigger('click')
+    await Promise.resolve()
+    await wrapper.vm.$nextTick()
+
+    expect(mocks.confirm).toHaveBeenCalledWith(
+      expect.stringContaining('audit.clearBeforeConfirm'),
+      'translated:common.warning',
+      expect.any(Object)
+    )
+    expect(mocks.clearAuditLogs).toHaveBeenCalledTimes(1)
+    const before = mocks.clearAuditLogs.mock.calls[0][0]
+    expect(before).toMatch(/^\d{4}-\d{2}-\d{2} 00:00:00$/)
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:audit.clearSuccess')
   })
 
   it('shows errors for failed loading and failed clear operations', async () => {

@@ -3,9 +3,17 @@
     <div class="header">
       <h3>{{ t('audit.title') }}</h3>
       <div class="actions">
-        <button type="button" class="table-button danger" @click="clearLogs" :disabled="loading">
-          {{ t('audit.actionClear') }}
-        </button>
+        <div class="clear-group">
+          <button type="button" class="table-button danger" @click="clearLogs" :disabled="loading">
+            {{ t('audit.actionClear') }}
+          </button>
+          <select v-model="clearBeforeDays" class="clear-select" :disabled="loading">
+            <option value="0">{{ t('audit.clearAll') }}</option>
+            <option value="7">{{ t('audit.clearBeforeDays', { days: 7 }) }}</option>
+            <option value="30">{{ t('audit.clearBeforeDays', { days: 30 }) }}</option>
+            <option value="90">{{ t('audit.clearBeforeDays', { days: 90 }) }}</option>
+          </select>
+        </div>
         <button type="button" class="table-button" @click="fetchLogs" :disabled="loading">
           {{ loading ? t('common.loading') : t('common.refresh') }}
         </button>
@@ -101,6 +109,7 @@ const loading = ref(false)
 const page = ref(1)
 const limit = ref(50)
 const total = ref(0)
+const clearBeforeDays = ref(0)
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / limit.value)))
 
 const fetchLogs = async () => {
@@ -119,13 +128,25 @@ const fetchLogs = async () => {
 
 const clearLogs = async () => {
   try {
-    await ElMessageBox.confirm(t('audit.clearConfirm'), t('common.warning'), {
+    let confirmMessage = t('audit.clearConfirm')
+    const before =
+      clearBeforeDays.value > 0
+        ? // 使用 UTC 日期计算，与 SQLite datetime('now') 存储格式一致（均为 UTC）
+          new Date(Date.now() - clearBeforeDays.value * 86400000).toISOString().split('T')[0] +
+          ' 00:00:00'
+        : undefined
+
+    if (before) {
+      confirmMessage = t('audit.clearBeforeConfirm', { date: before.split(' ')[0] })
+    }
+
+    await ElMessageBox.confirm(confirmMessage, t('common.warning'), {
       type: 'warning',
       confirmButtonText: t('common.confirm'),
       cancelButtonText: t('common.cancel')
     })
 
-    const data = await adminApi.clearAuditLogs()
+    const data = await adminApi.clearAuditLogs(before)
     if (data.success) {
       ElMessage.success(t('audit.clearSuccess'))
       fetchLogs()
@@ -184,9 +205,43 @@ onMounted(fetchLogs)
   --audit-loading-bg: rgba(2, 6, 23, 0.56);
 }
 
+:global(:root[theme-mode='dark'] .audit-log .clear-select) {
+  background: var(--audit-button-bg);
+  color: var(--audit-button-text);
+}
+
+:global(:root[theme-mode='dark'] .audit-log .clear-select option) {
+  background: #1e293b;
+  color: rgba(226, 232, 240, 0.88);
+}
+
 .actions {
   display: flex;
   gap: 8px;
+  align-items: center;
+}
+
+.clear-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.clear-select {
+  border: 1px solid var(--audit-button-border);
+  border-radius: 999px;
+  background: var(--audit-button-bg);
+  color: var(--audit-button-text);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.18s ease;
+}
+
+.clear-select:focus {
+  border-color: var(--sk-focus-color, #0071e3);
 }
 
 .table-button {
