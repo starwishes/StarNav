@@ -10,11 +10,16 @@
       <a class="category-title" :name="category.name">{{ category.name }}</a>
     </header>
 
-    <div v-if="hasSubCategories" class="sub-category-tabs">
+    <div v-if="hasSubCategories" class="sub-category-tabs" role="tablist">
       <div
+        role="tab"
+        :tabindex="activeTabId === category.id ? 0 : -1"
+        :aria-selected="activeTabId === category.id"
         class="tab-item"
         :class="{ active: activeTabId === category.id }"
         @click.stop="activeTabId = category.id"
+        @keydown.enter="activeTabId = category.id"
+        @keydown.space.prevent="activeTabId = category.id"
         @contextmenu.prevent="$emit('header-contextmenu', { event: $event, category: category })"
       >
         综合
@@ -22,9 +27,14 @@
       <div
         v-for="child in category.children"
         :key="child.id"
+        role="tab"
+        :tabindex="activeTabId === child.id ? 0 : -1"
+        :aria-selected="activeTabId === child.id"
         class="tab-item"
         :class="{ active: activeTabId === child.id }"
         @click.stop="activeTabId = child.id"
+        @keydown.enter="activeTabId = child.id"
+        @keydown.space.prevent="activeTabId = child.id"
         @contextmenu.prevent="$emit('header-contextmenu', { event: $event, category: child })"
       >
         {{ child.name }}
@@ -343,4 +353,3 @@ const getFallbackFaviconUrl = (item: DisplayedSiteItem) =>
   }
 }
 </style>
-

@@ -15,6 +15,10 @@ const mocks = vi.hoisted(() => ({
 let adminStoreMock: any
 let configStoreMock: any
 const mountedWrappers: Array<ReturnType<typeof mount>> = []
+const routeState = vi.hoisted(() => ({
+  path: '/',
+  query: {} as Record<string, unknown>
+}))
 
 vi.mock('@/store/admin', () => ({
   useAdminStore: () => adminStoreMock
@@ -44,8 +48,8 @@ vi.mock('vue-router', () => ({
     replace: mocks.routerReplace
   }),
   useRoute: () => ({
-    path: '/',
-    query: {}
+    path: routeState.path,
+    query: routeState.query
   })
 }))
 
@@ -71,6 +75,8 @@ const createWrapper = (modelValue = true) => {
 describe('LoginDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    routeState.path = '/'
+    routeState.query = {}
     adminStoreMock = {
       login: mocks.login,
       register: mocks.register,
@@ -131,6 +137,41 @@ describe('LoginDialog', () => {
     expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:auth.loginSuccess')
     expect(wrapper.emitted('update:modelValue')).toContainEqual([false])
     expect(mocks.routerPush).not.toHaveBeenCalled()
+  })
+
+  it('navigates to an internal redirect target after a successful login', async () => {
+    routeState.query = { login: '1', redirect: '/admin/dashboard' }
+    mocks.login.mockResolvedValue({ success: true })
+
+    const wrapper = createWrapper()
+    const inputs = wrapper.findAll('input')
+    await inputs[0].setValue('alice')
+    await inputs[1].setValue('secret')
+    await wrapper.find('form').trigger('submit')
+    await nextTick()
+
+    expect(mocks.routerReplace).toHaveBeenCalledWith('/admin/dashboard')
+  })
+
+  it('drops external and protocol-relative redirect targets after login', async () => {
+    routeState.query = { login: '1', redirect: 'https://evil.com' }
+    mocks.login.mockResolvedValue({ success: true })
+
+    const wrapper = createWrapper()
+    const inputs = wrapper.findAll('input')
+    await inputs[0].setValue('alice')
+    await inputs[1].setValue('secret')
+    await wrapper.find('form').trigger('submit')
+    await nextTick()
+
+    expect(mocks.routerReplace).toHaveBeenCalledWith({ path: '/', query: {} })
+
+    vi.clearAllMocks()
+    routeState.query = { login: '1', redirect: '//evil.com' }
+    await wrapper.find('form').trigger('submit')
+    await nextTick()
+
+    expect(mocks.routerReplace).toHaveBeenCalledWith({ path: '/', query: {} })
   })
 
   it('supports registration when enabled and resets to login after success', async () => {

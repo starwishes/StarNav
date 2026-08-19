@@ -107,6 +107,76 @@ describe('useImportExport', () => {
     expect(saveDataSync).toHaveBeenCalledTimes(1)
   })
 
+  it('rejects javascript: and other unsafe URLs during json import', async () => {
+    const categories = ref([{ id: 1, name: 'Existing' }])
+    const items = ref([])
+    const saveDataSync = vi.fn()
+    const { handleJsonImport } = useImportExport(categories, items, saveDataSync)
+
+    await handleJsonImport({
+      meta: {
+        schemaVersion: 1,
+        exportedAt: '2026-04-13T10:00:00.000Z',
+        categoryCount: 1,
+        itemCount: 3
+      },
+      content: {
+        categories: [{ id: 1, name: 'Existing' }],
+        items: [
+          { id: 1, name: 'Good', url: 'https://good.test', description: '', categoryId: 1 },
+          { id: 2, name: 'Evil', url: 'javascript:alert(1)', description: '', categoryId: 1 },
+          {
+            id: 3,
+            name: 'Data',
+            url: 'data:text/html,<script>alert(1)</script>',
+            description: '',
+            categoryId: 1
+          }
+        ]
+      }
+    })
+
+    expect(items.value).toEqual([
+      { id: 1, name: 'Good', url: 'https://good.test', description: '', categoryId: 1 }
+    ])
+    expect(mocks.messageSuccess).toHaveBeenCalledWith(
+      'admin.importSuccess:{"count":1}. admin.importConfirm'
+    )
+  })
+
+  it('deduplicates json imports by normalized url so trailing slashes collide', async () => {
+    const categories = ref([{ id: 1, name: 'Existing' }])
+    const items = ref([
+      { id: 10, name: 'Saved', url: 'https://x.com', description: '', categoryId: 1 }
+    ])
+    const saveDataSync = vi.fn()
+    const { handleJsonImport } = useImportExport(categories, items, saveDataSync)
+
+    await handleJsonImport({
+      meta: {
+        schemaVersion: 1,
+        exportedAt: '2026-04-13T10:00:00.000Z',
+        categoryCount: 1,
+        itemCount: 2
+      },
+      content: {
+        categories: [{ id: 1, name: 'Existing' }],
+        items: [
+          { id: 1, name: 'Duplicate Slash', url: 'https://x.com/', description: '', categoryId: 1 },
+          { id: 2, name: 'Unique', url: 'https://y.com/', description: '', categoryId: 1 }
+        ]
+      }
+    })
+
+    expect(items.value).toEqual([
+      { id: 10, name: 'Saved', url: 'https://x.com', description: '', categoryId: 1 },
+      { id: 11, name: 'Unique', url: 'https://y.com/', description: '', categoryId: 1 }
+    ])
+    expect(mocks.messageSuccess).toHaveBeenCalledWith(
+      'admin.importSuccess:{"count":1}. admin.importConfirm'
+    )
+  })
+
   it('rolls json import state back when persistence fails', async () => {
     const categories = ref([{ id: 1, name: 'Existing' }])
     const items = ref([
@@ -254,14 +324,14 @@ describe('useImportExport', () => {
     ])
 
     const { handleCleanDuplicates } = useImportExport(categories, items, vi.fn())
-    const duplicateIds = await handleCleanDuplicates()
+    const result = await handleCleanDuplicates()
 
     expect(mocks.confirm).toHaveBeenCalledWith('manage.cleanConfirm', 'manage.cleanDuplicates', {
       confirmButtonText: 'common.confirm',
       cancelButtonText: 'common.cancel',
       type: 'warning'
     })
-    expect(duplicateIds).toEqual([3, 2])
+    expect(result).toEqual({ deleted: 2, ids: [3, 2] })
     expect(mocks.messageInfo).not.toHaveBeenCalled()
   })
 
@@ -272,7 +342,7 @@ describe('useImportExport', () => {
       vi.fn()
     )
 
-    await expect(noDupes.handleCleanDuplicates()).resolves.toBeUndefined()
+    await expect(noDupes.handleCleanDuplicates()).resolves.toEqual({ deleted: 0, ids: [] })
     expect(mocks.messageInfo).toHaveBeenCalledWith('manage.noDuplicates')
 
     vi.clearAllMocks()
@@ -287,7 +357,7 @@ describe('useImportExport', () => {
       vi.fn()
     )
 
-    await expect(withDupes.handleCleanDuplicates()).resolves.toEqual([])
+    await expect(withDupes.handleCleanDuplicates()).resolves.toEqual({ deleted: 0, ids: [] })
     expect(mocks.confirm).toHaveBeenCalledTimes(1)
   })
 })

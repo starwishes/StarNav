@@ -8,6 +8,7 @@ let store: MockDataStore
 const mocks = vi.hoisted(() => ({
   messageSuccess: vi.fn(),
   messageWarning: vi.fn(),
+  messageError: vi.fn(),
   confirm: vi.fn()
 }))
 
@@ -48,7 +49,8 @@ vi.mock('pinia', () => ({
 vi.mock('@/utils/feedback', () => ({
   ElMessage: {
     success: mocks.messageSuccess,
-    warning: mocks.messageWarning
+    warning: mocks.messageWarning,
+    error: mocks.messageError
   },
   ElMessageBox: {
     confirm: mocks.confirm
@@ -128,12 +130,30 @@ describe('useDataManagement', () => {
     expect(store.updateItem).toHaveBeenCalledWith({
       id: 20,
       name: 'New Link',
-      url: 'https://new.test',
+      url: 'https://new.test/',
       description: 'fresh',
       categoryId: 1
     })
     expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:admin.updateSuccess')
     expect(composable.itemDialogVisible.value).toBe(false)
+  })
+
+  it('rejects unsafe bookmark urls in the data manager save path', async () => {
+    const composable = useDataManagement()
+
+    composable.handleAddItem()
+    composable.itemForm.value.name = 'Evil'
+    composable.itemForm.value.url = 'javascript:alert(1)'
+    await composable.saveItem()
+
+    expect(mocks.messageError).toHaveBeenCalledWith('translated:site.invalidUrl')
+    expect(store.addItem).not.toHaveBeenCalled()
+
+    composable.itemForm.value.url = 'https://good.test'
+    await composable.saveItem()
+    expect(store.addItem).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Evil', url: 'https://good.test/' })
+    )
   })
 
   it('opens the add-item dialog with category defaults and saves valid drafts', async () => {
@@ -161,7 +181,7 @@ describe('useDataManagement', () => {
 
     expect(store.addItem).toHaveBeenCalledWith({
       name: 'Docs',
-      url: 'https://docs.test',
+      url: 'https://docs.test/',
       description: '',
       categoryId: 1,
       pinned: false,

@@ -123,10 +123,10 @@ const { showBookmarkImport, handleJsonImport, handleBookmarkImport, handleCleanD
   useImportExport(categories, items, saveDataSync)
 
 const handleCleanDuplicatesWrapper = async () => {
-  const duplicateIds = await handleCleanDuplicates()
-  if (duplicateIds && duplicateIds.length > 0) {
-    await handleBatchDelete(duplicateIds)
-    ElMessage.success(t('manage.cleanSuccess', { count: duplicateIds.length }))
+  const result = await handleCleanDuplicates()
+  if (result.ids.length > 0) {
+    await handleBatchDelete(result.ids)
+    ElMessage.success(t('manage.cleanSuccess', { count: result.deleted }))
   }
 }
 
@@ -283,4 +283,3 @@ onMounted(() => {
   }
 }
 </style>
-

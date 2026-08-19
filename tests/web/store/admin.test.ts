@@ -70,6 +70,15 @@ describe('admin store', () => {
     expect(localStorage.getItem('admin_user')).toBeNull()
   })
 
+  it('treats corrupt persisted admin_user json as unauthenticated instead of throwing', () => {
+    localStorage.setItem('admin_user', '{not valid json')
+
+    const store = useAdminStore()
+
+    expect(store.user).toBeNull()
+    expect(store.isAuthenticated).toBe(false)
+  })
+
   it('logs in successfully and maps login failures to auth results', async () => {
     mocks.login.mockResolvedValueOnce({
       token: 'jwt-token',

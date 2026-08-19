@@ -316,7 +316,6 @@ describe('Search', () => {
 
   it('switches to online mode, fetches suggestions, and opens the selected query', async () => {
     mocks.getSuggestions.mockResolvedValue(['gpt 5'])
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
 
     const wrapper = createWrapper()
     await wrapper.find('.emit-select-google').trigger('click')
@@ -344,7 +343,7 @@ describe('Search', () => {
 
     await wrapper.find('.emit-suggestion-click').trigger('click')
 
-    expect(openSpy).toHaveBeenCalledWith('https://www.google.com/search?q=gpt%205', '_blank')
+    expect(mocks.openUrl).toHaveBeenCalledWith('https://www.google.com/search?q=gpt%205')
   })
 
   it('re-runs the current keyword immediately when switching from local to online mode', async () => {

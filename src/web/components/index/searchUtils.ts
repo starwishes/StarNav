@@ -153,7 +153,12 @@ export const loadSearchEngineState = (
 
   const parsedEngines = safeJsonParse(storage.getItem(USER_SEARCH_ENGINES_KEY))
   const storedEngines = Array.isArray(parsedEngines)
-    ? parsedEngines.filter(isSearchEngineOption)
+    ? parsedEngines
+        .filter(isSearchEngineOption)
+        // Re-run the http(s) guard on persisted values so a tampered
+        // `javascript:` engine URL can never flow into window.open(engine.url + ...).
+        .map((engine) => ({ ...engine, url: normalizeSearchEngineUrlInput(engine.url) || '' }))
+        .filter((engine) => engine.url)
     : []
   const searchEngines =
     storedEngines.length > 0 ? normalizeSearchEngines(storedEngines) : [...DEFAULT_SEARCH_ENGINES]

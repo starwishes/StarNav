@@ -63,7 +63,7 @@ describe('App bootstrap shell', () => {
     vi.restoreAllMocks()
   })
 
-  it('fetches public config, syncs authenticated data refreshes, and blocks ctrl zoom', async () => {
+  it('fetches public config and syncs authenticated data refreshes', async () => {
     let now = 6_000
     vi.spyOn(Date, 'now').mockImplementation(() => now)
 
@@ -71,14 +71,6 @@ describe('App bootstrap shell', () => {
     await flushPromises()
 
     expect(configStoreMock.ensureLoaded).toHaveBeenCalledTimes(1)
-
-    const zoomEvent = new WheelEvent('wheel', {
-      bubbles: true,
-      cancelable: true,
-      ctrlKey: true
-    })
-    window.dispatchEvent(zoomEvent)
-    expect(zoomEvent.defaultPrevented).toBe(true)
 
     document.dispatchEvent(new Event('visibilitychange'))
     expect(dataStoreMock.loadData).toHaveBeenCalledTimes(1)

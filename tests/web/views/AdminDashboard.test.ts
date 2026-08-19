@@ -330,7 +330,7 @@ describe('AdminDashboard', () => {
     fetchSettingsMock = vi.fn()
     handleBatchDeleteMock = vi.fn().mockResolvedValue(undefined)
     handleBookmarkImportMock = vi.fn().mockResolvedValue(0)
-    handleCleanDuplicatesMock = vi.fn().mockResolvedValue([11, 22])
+    handleCleanDuplicatesMock = vi.fn().mockResolvedValue({ deleted: 2, ids: [11, 22] })
     showBookmarkImportRef = ref(false)
 
     adminStoreMock = {

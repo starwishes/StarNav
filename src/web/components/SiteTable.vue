@@ -54,7 +54,7 @@
                 <div class="url-cell">
                   <a
                     class="sn-table-link site-link"
-                    :href="row.url"
+                    :href="getSafeHref(row.url)"
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -199,6 +199,7 @@ import AppSelect from '@/components/AppSelect.vue'
 import type { Category, Item } from '@/types'
 import { useI18n } from 'vue-i18n'
 import { useSiteTableState } from '@/composables/useSiteTableState'
+import { isSafeHttpUrl, isSafeRelativePath } from '../../shared/security/urlSafety.js'
 import {
   formatRelativeDate,
   getCategoryNameById,
@@ -207,6 +208,11 @@ import {
 } from '@/components/siteTableHelpers'
 
 const { t } = useI18n()
+
+// Neutralize unsafe hrefs (javascript:, data:, ...) so the rendered link can never
+// execute in this page's origin even if a bookmark URL was tampered with.
+const getSafeHref = (url: string) =>
+  isSafeHttpUrl(url) || isSafeRelativePath(url) ? url : undefined
 
 const props = defineProps<{
   items: Item[]

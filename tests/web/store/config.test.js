@@ -119,6 +119,22 @@ describe('config store', () => {
     expect(doc.body.style.backgroundImage).toBe('')
   })
 
+  it('neutralizes background urls containing css-breaking characters', () => {
+    localStorage.setItem(
+      'siteConfig',
+      JSON.stringify({
+        siteName: 'Stored StarNav',
+        backgroundUrl: "https://evil.test/bg.jpg');background:red;"
+      })
+    )
+
+    const store = useConfigStore()
+
+    expect(store.siteConfig.backgroundUrl).toBe('')
+    expect(doc.body.style.backgroundImage).toBe('')
+    expect(doc.documentElement.style.getPropertyValue('--bg-image')).toBe('')
+  })
+
   it('deduplicates in-flight ensureLoaded callers and resolves both from one request', async () => {
     let resolveRequest
     mocks.getSettings.mockImplementation(

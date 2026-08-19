@@ -4,11 +4,7 @@ import { publicApi } from '@/api'
 import { sanitizeFooterHtml } from '../../shared/security/footerHtml.js'
 import { isAllowedTimezone, normalizeOptionalUrl } from '../../shared/security/urlSafety.js'
 import { createScopedLogger } from '../../shared/logger.js'
-import {
-  applyThemeTokens,
-  getStoredThemeMode,
-  resolveThemeTokens
-} from '@/utils/theme'
+import { applyThemeTokens, getStoredThemeMode, resolveThemeTokens } from '@/utils/theme'
 
 export interface PublicSiteConfig {
   siteName: string
@@ -36,11 +32,27 @@ const DEFAULT_CONFIG: PublicSiteConfig = {
   timezone: ''
 }
 
+// backgroundUrl is interpolated into `url('${...}')` CSS (see applyConfig), so
+// quotes/backslash/control chars could break out of the string literal and inject
+// CSS. Reject them outright in addition to the http(s)/relative scheme check.
+const sanitizeBackgroundUrl = (value: unknown): string => {
+  const candidate = normalizeOptionalUrl(typeof value === 'string' ? value : '', {
+    allowRelative: true
+  })
+  if (!candidate) {
+    return ''
+  }
+  if (/['"\\\u0000-\u001f\u007f-\u009f]/.test(candidate)) {
+    return ''
+  }
+  return candidate
+}
+
 const sanitizePublicSiteConfig = (config: Partial<PublicSiteConfig> = {}): PublicSiteConfig => ({
   siteName: typeof config.siteName === 'string' ? config.siteName.trim().slice(0, 80) : '',
   logoUrl: normalizeOptionalUrl(config.logoUrl || '', { allowRelative: true }),
   faviconUrl: normalizeOptionalUrl(config.faviconUrl || '', { allowRelative: true }),
-  backgroundUrl: normalizeOptionalUrl(config.backgroundUrl || '', { allowRelative: true }),
+  backgroundUrl: sanitizeBackgroundUrl(config.backgroundUrl || ''),
   footerHtml: sanitizeFooterHtml(config.footerHtml || ''),
   homeUrl: normalizeOptionalUrl(config.homeUrl || '', { allowRelative: true }),
   registrationEnabled: Boolean(config.registrationEnabled),

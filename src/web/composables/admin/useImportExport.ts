@@ -3,9 +3,15 @@ import { ElMessage, ElMessageBox } from '@/utils/feedback'
 import { useI18n } from 'vue-i18n'
 import type { Category, Item, ImportedBookmarkItem } from '@/types'
 import { parseJsonBackupPayload, type ParsedJsonBackup } from '@/utils/jsonBackup'
+import { isSafeHttpUrl } from '@common/security/urlSafety'
 
 const cloneCategories = (source: Category[]) => source.map((category) => ({ ...category }))
 const cloneItems = (source: Item[]) => source.map((item) => ({ ...item }))
+
+export interface CleanDuplicatesResult {
+  deleted: number
+  ids: number[]
+}
 
 /**
  * 导入导出 Composable
@@ -81,7 +87,10 @@ export function useImportExport(
     nextCategories.forEach((cat) => {
       currentCatNames.set(cat.name, cat.id)
     })
-    const existingUrls = new Set(nextItems.map((item) => item.url))
+    // Dedup keys are normalized (same key function as handleCleanDuplicates:
+    // strips trailing slashes, lowercases the origin) so https://x.com and
+    // https://x.com/ collide.
+    const existingUrls = new Set(nextItems.map((item) => normalizeUrl(item.url)))
 
     // 1. 合并分类
     content.categories.forEach((cat) => {
@@ -97,20 +106,29 @@ export function useImportExport(
       }
     })
 
-    // 2. 合并书签（按 URL 去重）
+    // 2. 合并书签（按规范化 URL 去重）
     let addedCount = 0
     content.items.forEach((item) => {
-      if (!existingUrls.has(item.url)) {
-        maxItemId += 1
-        const newItem = {
-          ...item,
-          id: maxItemId,
-          categoryId: catMapping[item.categoryId] ?? nextCategories[0]?.id ?? 1
-        }
-        nextItems.push(newItem)
-        existingUrls.add(item.url)
-        addedCount += 1
+      const candidateUrl = typeof item.url === 'string' ? item.url.trim() : ''
+      // Drop javascript:/data:/empty or otherwise unsafe imported URLs before
+      // they enter the store.
+      if (!candidateUrl || !isSafeHttpUrl(candidateUrl)) {
+        return
       }
+      const dedupKey = normalizeUrl(candidateUrl)
+      if (existingUrls.has(dedupKey)) {
+        return
+      }
+      maxItemId += 1
+      const newItem = {
+        ...item,
+        id: maxItemId,
+        url: candidateUrl,
+        categoryId: catMapping[item.categoryId] ?? nextCategories[0]?.id ?? 1
+      }
+      nextItems.push(newItem)
+      existingUrls.add(dedupKey)
+      addedCount += 1
     })
 
     try {
@@ -141,7 +159,7 @@ export function useImportExport(
     nextCategories.forEach((cat) => {
       catNameToId.set(cat.name, cat.id)
     })
-    const existingUrls = new Set(nextItems.map((item) => item.url))
+    const existingUrls = new Set(nextItems.map((item) => normalizeUrl(item.url)))
 
     data.categories.forEach((catName) => {
       if (!catNameToId.has(catName)) {
@@ -153,20 +171,26 @@ export function useImportExport(
 
     let addedCount = 0
     data.items.forEach((item) => {
-      if (!existingUrls.has(item.url)) {
-        maxItemId += 1
-        nextItems.push({
-          id: maxItemId,
-          name: item.name,
-          url: item.url,
-          description: item.description || '',
-          categoryId: catNameToId.get(item.categoryName) ?? nextCategories[0]?.id ?? 1,
-          pinned: false,
-          level: 0
-        })
-        existingUrls.add(item.url)
-        addedCount += 1
+      const candidateUrl = typeof item.url === 'string' ? item.url.trim() : ''
+      if (!candidateUrl || !isSafeHttpUrl(candidateUrl)) {
+        return
       }
+      const dedupKey = normalizeUrl(candidateUrl)
+      if (existingUrls.has(dedupKey)) {
+        return
+      }
+      maxItemId += 1
+      nextItems.push({
+        id: maxItemId,
+        name: item.name,
+        url: candidateUrl,
+        description: item.description || '',
+        categoryId: catNameToId.get(item.categoryName) ?? nextCategories[0]?.id ?? 1,
+        pinned: false,
+        level: 0
+      })
+      existingUrls.add(dedupKey)
+      addedCount += 1
     })
 
     await persistImportedData(nextCategories, nextItems, `导入成功，已同步 ${addedCount} 个书签`)
@@ -177,7 +201,7 @@ export function useImportExport(
   /**
    * 清理重复数据
    */
-  const handleCleanDuplicates = async () => {
+  const handleCleanDuplicates = async (): Promise<CleanDuplicatesResult> => {
     // 1. 按规范化 URL 分组
     const groups: Record<string, Item[]> = {}
     items.value.forEach((item) => {
@@ -204,7 +228,7 @@ export function useImportExport(
 
     if (duplicates.length === 0) {
       ElMessage.info(t('manage.noDuplicates'))
-      return
+      return { deleted: 0, ids: [] }
     }
 
     try {
@@ -214,12 +238,13 @@ export function useImportExport(
         type: 'warning'
       })
 
-      // 需要从调用处获取 batchDeleteItems 方法
-      // 这里返回需要删除的 ID 列表
-      return duplicates.map((i) => i.id)
+      return {
+        deleted: duplicates.length,
+        ids: duplicates.map((i) => i.id)
+      }
     } catch {
       // 用户取消
-      return []
+      return { deleted: 0, ids: [] }
     }
   }
 

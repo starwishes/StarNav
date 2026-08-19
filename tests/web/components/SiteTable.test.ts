@@ -84,6 +84,17 @@ describe('SiteTable', () => {
     expect(wrapper.find('.sn-pagination').exists()).toBe(false)
   })
 
+  it('neutralizes unsafe bookmark URLs in rendered links', () => {
+    const wrapper = createWrapper([
+      buildItem(1, { url: 'https://safe.test' }),
+      buildItem(2, { url: 'javascript:alert(document.cookie)' })
+    ])
+
+    const links = wrapper.findAll('.site-link')
+    expect(links[0].attributes('href')).toBe('https://safe.test')
+    expect(links[1].attributes('href')).toBeUndefined()
+  })
+
   it('paginates large lists, changes page size, and sorts by click count', async () => {
     const items = Array.from({ length: 22 }, (_, index) => buildItem(index + 1))
     const wrapper = createWrapper(items)

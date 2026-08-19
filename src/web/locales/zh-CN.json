@@ -20,7 +20,6 @@
     "time": "时间",
     "action": "操作",
     "deleteSuccess": "删除成功",
-    "batchDeleteSuccess": "批量删除成功",
     "username": "用户名",
     "ip": "IP 地址",
     "status": "状态",

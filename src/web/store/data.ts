@@ -102,6 +102,11 @@ export const useDataStore = defineStore('data', () => {
     return loadDataPromise
   }
 
+  // NOTE: Full-content sync is a last-write-wins wholesale replace — the client
+  // POSTs the whole tree to /api/data and the server responds by DELETE-all +
+  // INSERT-all. This is intentional for import flows (the imported snapshot
+  // becomes the source of truth), but it means concurrent editors can silently
+  // overwrite each other's changes. Do not change this behavior.
   const sync = async (action?: string) => {
     await withSaving(async () => {
       await dataApi.saveContent(buildSyncPayload(categories.value, items.value, action))

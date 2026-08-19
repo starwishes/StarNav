@@ -5,11 +5,18 @@ import type { SystemSettings } from '@/api'
 import { adminApi } from '@/api/admin'
 import { authApi } from '@/api'
 
+const readStoredAdminUser = () => {
+  try {
+    const raw = localStorage.getItem('admin_user')
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 export const useAdminStore = defineStore('admin', () => {
   const token = ref<string | null>(null)
-  const user = ref<AuthUser | null>(
-    localStorage.getItem('admin_user') ? JSON.parse(localStorage.getItem('admin_user')!) : null
-  )
+  const user = ref<AuthUser | null>(readStoredAdminUser())
   const isAuthenticated = ref<boolean>(!!user.value)
 
   // 设置认证信息

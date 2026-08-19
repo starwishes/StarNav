@@ -65,7 +65,7 @@ describe('SearchResults', () => {
 
     await wrapper.find('img.result-avatar').trigger('error')
     expect(wrapper.find('img.result-avatar').attributes('src')).toBe(
-      'https://favicon.test/?url=https://star.test'
+      'https://favicon.test/?url=https%3A%2F%2Fstar.test'
     )
 
     await wrapper.find('img.result-avatar').trigger('error')

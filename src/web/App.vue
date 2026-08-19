@@ -26,18 +26,11 @@ const handleVisibilityChange = () => {
   }
 }
 
-const preventZoom = (event: WheelEvent) => {
-  if (event.ctrlKey || event.metaKey) {
-    event.preventDefault()
-  }
-}
-
 const handleAuthCleared = () => {
   adminStore.clearAuth()
 }
 
 onMounted(() => {
-  window.addEventListener('wheel', preventZoom, { passive: false })
   document.addEventListener('visibilitychange', handleVisibilityChange)
   window.addEventListener(AUTH_CLEARED_EVENT, handleAuthCleared)
 
@@ -47,7 +40,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  window.removeEventListener('wheel', preventZoom)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   window.removeEventListener(AUTH_CLEARED_EVENT, handleAuthCleared)
 })

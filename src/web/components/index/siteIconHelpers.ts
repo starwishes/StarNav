@@ -80,7 +80,9 @@ export const buildProxyIconCandidate = (targetUrl: string, proxyPrefix = '') => 
 
   try {
     new URL(targetUrl)
-    return `${normalizedPrefix}${targetUrl}`
+    // The target becomes a query value on the proxy endpoint; URL-encode it so
+    // ampersands/quotes/etc. cannot break out of the query string.
+    return `${normalizedPrefix}${encodeURIComponent(targetUrl)}`
   } catch {
     return ''
   }

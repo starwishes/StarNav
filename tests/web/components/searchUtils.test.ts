@@ -56,7 +56,7 @@ describe('searchUtils', () => {
   it('caps persisted engines at the supported limit and falls back when the current engine is trimmed away', () => {
     const engines = Array.from({ length: MAX_SEARCH_ENGINES + 2 }, (_, index) => ({
       name: `Engine ${index + 1}`,
-      url: `https://engine${index + 1}.example.com?q=`
+      url: `https://engine${index + 1}.example.com/?q=`
     }))
     const storage = createStorage({
       user_search_engines: JSON.stringify(engines),
@@ -78,7 +78,7 @@ describe('searchUtils', () => {
     const engine = { id: 'duck', name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=' }
     const manyEngines = Array.from({ length: MAX_SEARCH_ENGINES + 2 }, (_, index) => ({
       name: `Engine ${index + 1}`,
-      url: `https://engine${index + 1}.example.com?q=`
+      url: `https://engine${index + 1}.example.com/?q=`
     }))
 
     persistSearchEngines(manyEngines, storage)
@@ -120,6 +120,28 @@ describe('searchUtils', () => {
     expect(
       getSuggestionProviderType({ name: 'Example', url: 'https://example.com/search?q=' })
     ).toBeNull()
+  })
+
+  it('drops persisted engines with unsafe urls and falls back to defaults', () => {
+    const storage = createStorage({
+      user_search_engines: JSON.stringify([
+        { id: 'evil', name: 'Evil', url: 'javascript:alert(1)' },
+        { id: 'ok', name: 'DuckDuckGo', url: 'duckduckgo.com/?q=' }
+      ]),
+      current_search_engine: JSON.stringify({
+        id: 'evil',
+        name: 'Evil',
+        url: 'javascript:alert(1)'
+      })
+    })
+
+    const state = loadSearchEngineState(true, storage)
+
+    expect(state.searchEngines).toEqual([
+      expect.objectContaining({ id: 'ok', name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=' })
+    ])
+    expect(state.searchEngines.some((engine) => engine.url.startsWith('javascript'))).toBe(false)
+    expect(state.currentEngine).toEqual(state.searchEngines[0])
   })
 
   it('normalizes and validates custom search engine drafts', () => {

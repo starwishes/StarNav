@@ -5,6 +5,7 @@ import { useDataStore } from '@/store/data'
 import { storeToRefs } from 'pinia'
 import { useDebounce } from '@/composables/useDebounce'
 import type { Category, Item } from '@/types'
+import { normalizeUrl } from '@common/url'
 
 /**
  * 数据管理 Composable
@@ -150,6 +151,14 @@ export function useDataManagement() {
     if (!payload.name || !payload.url) {
       return ElMessage.warning(t('common.tips'))
     }
+
+    // Mirror useSiteDialogForm: normalize + reject unsafe URLs before they
+    // enter the store (javascript:, data:, malformed, ...).
+    const cleanedUrl = normalizeUrl(payload.url)
+    if (!cleanedUrl) {
+      return ElMessage.error(t('site.invalidUrl'))
+    }
+    payload.url = cleanedUrl
 
     try {
       if (isEdit.value) {

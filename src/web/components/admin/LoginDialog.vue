@@ -183,13 +183,19 @@ const handleSubmit = async () => {
       if (result.success) {
         ElMessage.success(t('auth.loginSuccess'))
         closeDialog()
-        // Stay on the current frontend page after login. Admin is entered only
-        // when the user clicks the admin entry (or opens /admin/dashboard).
+        // Honor an internal redirect target (router guard sets `redirect`
+        // when a non-admin visits /admin/dashboard). Only allow site-relative
+        // paths — never `//host` (protocol-relative) or external URLs.
         if (route.query.login || route.query.redirect) {
           const nextQuery = { ...route.query }
           delete nextQuery.login
           delete nextQuery.redirect
-          void router.replace({ path: route.path, query: nextQuery }).catch(() => {})
+          const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+          if (redirect.startsWith('/') && !redirect.startsWith('//')) {
+            void router.replace(redirect).catch(() => {})
+          } else {
+            void router.replace({ path: route.path, query: nextQuery }).catch(() => {})
+          }
         }
       } else {
         ElMessage.error(result.error || t('auth.loginFailed'))

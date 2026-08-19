@@ -202,7 +202,7 @@ export const useSearchExecution = ({
     }
 
     if (currentEngine.value?.url) {
-      window.open(currentEngine.value.url + encodeURIComponent(searchText.value), '_blank')
+      openUrl(currentEngine.value.url + encodeURIComponent(searchText.value))
     }
   }
 
