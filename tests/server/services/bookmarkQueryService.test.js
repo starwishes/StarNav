@@ -21,10 +21,12 @@ vi.mock('../../../src/server/services/cache/cacheService.js', () => ({
   }
 }))
 
-const { bookmarkQueryService } = await import('../../../src/server/services/bookmark/bookmarkQueryService.js')
+const { bookmarkQueryService } =
+  await import('../../../src/server/services/bookmark/bookmarkQueryService.js')
 const { bookmarkSnapshotService } =
   await import('../../../src/server/services/bookmark/bookmarkSnapshotService.js')
-const { bookmarkLookupService } = await import('../../../src/server/services/bookmark/bookmarkLookupService.js')
+const { bookmarkLookupService } =
+  await import('../../../src/server/services/bookmark/bookmarkLookupService.js')
 const cache = (await import('../../../src/server/services/cache/cacheService.js')).default
 
 describe('BookmarkQueryService', () => {
@@ -67,6 +69,29 @@ describe('BookmarkQueryService', () => {
     expect(result).toEqual({ items })
   })
 
+  it('should clamp search limit to 100 and normalize keyword in cache key', () => {
+    const items = []
+    cache.get.mockReturnValue(undefined)
+    bookmarkLookupService.searchItems.mockReturnValue(items)
+
+    bookmarkQueryService.searchBookmarks('alice', 1, '  GitHub  ', '9999')
+
+    expect(bookmarkLookupService.searchItems).toHaveBeenCalledWith('alice', 'github', 100, 1)
+    expect(cache.set).toHaveBeenCalledWith('search:1:github:100', items, 60)
+  })
+
+  it('should truncate overly long keywords so cache keys stay bounded', () => {
+    const items = []
+    cache.get.mockReturnValue(undefined)
+    bookmarkLookupService.searchItems.mockReturnValue(items)
+
+    const longKeyword = 'x'.repeat(5000)
+    bookmarkQueryService.searchBookmarks('alice', 1, longKeyword, '5')
+
+    expect(bookmarkLookupService.searchItems).toHaveBeenCalledWith('alice', 'x'.repeat(100), 5, 1)
+    expect(cache.set).toHaveBeenCalledWith(`search:1:${'x'.repeat(100)}:5`, items, 60)
+  })
+
   it('should fetch and cache simple categories', () => {
     const categories = [{ id: 1, name: 'Dev' }]
     cache.get.mockReturnValue(undefined)
@@ -92,9 +117,9 @@ describe('BookmarkQueryService', () => {
       1
     )
     expect(result).toEqual({
-        exists: true,
-        item
-      })
+      exists: true,
+      item
+    })
   })
 
   it('should reject empty bookmark checks', () => {

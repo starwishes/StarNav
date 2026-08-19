@@ -13,7 +13,8 @@ export const migrateFromJson = () => {
   const db = getDb()
 
   // 检查是否已有数据（避免重复迁移）
-  const existingCategories = db.prepare<CountRow>('SELECT COUNT(*) as count FROM categories').get()?.count ?? 0
+  const existingCategories =
+    db.prepare<CountRow>('SELECT COUNT(*) as count FROM categories').get()?.count ?? 0
   if (existingCategories > 0) {
     logger.info('数据库已有数据，跳过迁移')
     return false
@@ -66,6 +67,10 @@ export const migrateFromJson = () => {
     })
     logger.info(`迁移分类: ${categories.length} 条`)
 
+    // 合法分类 ID 集合：items.category_id 引用不存在的分类会触发外键约束
+    // 使整个迁移事务失败，因此先收集有效 ID，悬空引用改为 NULL（未分类）
+    const validCategoryIds = new Set(categories.map((cat) => Number(cat.id)))
+
     // 迁移书签
     const items = (jsonData.items || []) as Array<Record<string, unknown>>
     const insertItem = db.prepare(`
@@ -75,13 +80,16 @@ export const migrateFromJson = () => {
         `)
 
     items.forEach((item, index) => {
+      const rawCategoryId = Number(item.categoryId)
+      const categoryId = validCategoryIds.has(rawCategoryId) ? rawCategoryId : null
+
       insertItem.run(
         Number(item.id),
         item.name || '',
         item.url || '',
         item.description || '',
         item.icon || '',
-        Number(item.categoryId),
+        categoryId,
         item.pinned ? 1 : 0,
         Number(item.level || 0),
         Number(item.clickCount || 0),
@@ -122,7 +130,8 @@ export const migrateUsers = () => {
     return false
   }
 
-  const existingUsers = db.prepare<CountRow>('SELECT COUNT(*) as count FROM users').get()?.count ?? 0
+  const existingUsers =
+    db.prepare<CountRow>('SELECT COUNT(*) as count FROM users').get()?.count ?? 0
   if (existingUsers > 0) {
     logger.info('用户表已有数据，跳过迁移')
     return false
@@ -133,6 +142,9 @@ export const migrateUsers = () => {
         VALUES (?, ?, ?, datetime('now'))
     `)
 
+  // bcrypt 哈希以 $2a$/$2b$/$2y$ 开头；其余视为明文，禁止原样入库
+  const BCRYPT_HASH_PATTERN = /^\$2[aby]\$/
+
   try {
     const files = fs.readdirSync(usersDir).filter((f) => f.endsWith('.json'))
 
@@ -140,6 +152,14 @@ export const migrateUsers = () => {
       const username = path.basename(file, '.json')
       const userPath = path.join(usersDir, file)
       const userData = JSON.parse(fs.readFileSync(userPath, 'utf8'))
+
+      const password = String(userData.password || '')
+      if (!BCRYPT_HASH_PATTERN.test(password)) {
+        logger.warn(
+          `迁移用户跳过: ${username} — 密码不是 bcrypt 哈希（疑似明文），禁止原样入库，请手动重置该账户密码`
+        )
+        return
+      }
 
       // 智能判定等级：
       // 1. 如果 JSON 中有 level，以 JSON 为准
@@ -152,7 +172,7 @@ export const migrateUsers = () => {
         finalLevel = 3
       }
 
-      insertUser.run(username, userData.password || '', finalLevel)
+      insertUser.run(username, password, finalLevel)
       logger.info(`迁移用户: ${username}`)
     })
 

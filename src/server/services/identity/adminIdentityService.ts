@@ -39,8 +39,11 @@ const normalizeBeforeDate = (value: unknown): string | undefined => {
 
 export const adminIdentityService = {
   getAuditLogs(query: PaginationQuery = {}) {
-    const page = Number.parseInt(String(query.page ?? ''), 10) || 1
-    const limit = Number.parseInt(String(query.limit ?? ''), 10) || 50
+    const parsedPage = Number.parseInt(String(query.page ?? ''), 10)
+    const parsedLimit = Number.parseInt(String(query.limit ?? ''), 10)
+
+    const page = Number.isNaN(parsedPage) ? 1 : Math.max(1, parsedPage)
+    const limit = Number.isNaN(parsedLimit) ? 50 : Math.min(200, Math.max(1, parsedLimit))
 
     return auditService.getLogs(page, limit)
   },

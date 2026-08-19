@@ -1,5 +1,6 @@
 import express from 'express'
 import { authenticate, requireAdmin } from '../middleware/auth.js'
+import { faviconLimiter, healthLimiter } from '../middleware/limiter.js'
 import { systemController } from '../controllers/systemController.js'
 import { toolController } from '../controllers/toolController.js'
 
@@ -26,7 +27,7 @@ const router = express.Router()
  *             schema:
  *               $ref: '#/components/schemas/HealthCheck'
  */
-router.get('/health', systemController.getHealth)
+router.get('/health', healthLimiter, systemController.getHealth)
 
 /**
  * @swagger
@@ -276,7 +277,7 @@ router.delete('/uploads/:filename', authenticate, requireAdmin, systemController
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/favicon', toolController.getFavicon)
+router.get('/favicon', faviconLimiter, toolController.getFavicon)
 
 /**
  * @swagger

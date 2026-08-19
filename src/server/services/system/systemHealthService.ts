@@ -1,4 +1,3 @@
-import { DATA_DIR, UPLOADS_DIR } from '../../config/index.js'
 import { APP_VERSION } from '../../utils/appVersion.js'
 import { successPayload } from '../../utils/response.js'
 const getRuntimeChecks = () => ({
@@ -10,9 +9,8 @@ const getRuntimeChecks = () => ({
         ? 'never'
         : 'auto',
   cspUpgradeInsecureRequests: process.env.CSP_UPGRADE_INSECURE_REQUESTS === 'true',
-  corsOriginsConfigured: Boolean(process.env.CORS_ORIGINS),
-  dataDir: DATA_DIR,
-  uploadsDir: UPLOADS_DIR
+  corsOriginsConfigured: Boolean(process.env.CORS_ORIGINS)
+  // 注意：不暴露 DATA_DIR/UPLOADS_DIR 等本地文件系统路径（公开端点信息泄露）
 })
 
 export const systemHealthService = {

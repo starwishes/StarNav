@@ -98,15 +98,15 @@ describe('migrate service', () => {
     fs.mkdirSync(path.join(testDataDir, 'users'), { recursive: true })
     fs.writeFileSync(
       path.join(testDataDir, 'users', 'owner.json'),
-      JSON.stringify({ password: 'hash-owner' })
+      JSON.stringify({ password: '$2a$10$abcdefghijklmnopqrstuv' })
     )
     fs.writeFileSync(
       path.join(testDataDir, 'users', 'alice.json'),
-      JSON.stringify({ password: 'hash-alice', level: 2 })
+      JSON.stringify({ password: '$2b$10$abcdefghijklmnopqrstuv', level: 2 })
     )
     fs.writeFileSync(
       path.join(testDataDir, 'users', 'bob.json'),
-      JSON.stringify({ password: 'hash-bob' })
+      JSON.stringify({ password: '$2y$10$abcdefghijklmnopqrstuv' })
     )
 
     const { migrateUsers, getDb } = await loadMigrationModule()
@@ -115,12 +115,57 @@ describe('migrate service', () => {
     expect(
       getDb().prepare('SELECT username, password, level FROM users ORDER BY username ASC').all()
     ).toEqual([
-      { username: 'alice', password: 'hash-alice', level: 2 },
-      { username: 'bob', password: 'hash-bob', level: 1 },
-      { username: 'owner', password: 'hash-owner', level: 3 }
+      { username: 'alice', password: '$2b$10$abcdefghijklmnopqrstuv', level: 2 },
+      { username: 'bob', password: '$2y$10$abcdefghijklmnopqrstuv', level: 1 },
+      { username: 'owner', password: '$2a$10$abcdefghijklmnopqrstuv', level: 3 }
     ])
 
     expect(migrateUsers()).toBe(false)
+  })
+
+  it('skips users whose stored password is plaintext instead of a bcrypt hash', async () => {
+    testDataDir = createTestDataDir('starnav-migrate-plaintext')
+    fs.mkdirSync(path.join(testDataDir, 'users'), { recursive: true })
+    fs.writeFileSync(
+      path.join(testDataDir, 'users', 'admin.json'),
+      JSON.stringify({ password: 'plaintext-secret' })
+    )
+    fs.writeFileSync(
+      path.join(testDataDir, 'users', 'alice.json'),
+      JSON.stringify({ password: '$2a$10$abcdefghijklmnopqrstuv', level: 2 })
+    )
+
+    const { migrateUsers, getDb } = await loadMigrationModule()
+
+    expect(migrateUsers()).toBe(true)
+    expect(getDb().prepare('SELECT username, password, level FROM users').all()).toEqual([
+      { username: 'alice', password: '$2a$10$abcdefghijklmnopqrstuv', level: 2 }
+    ])
+  })
+
+  it('re-parents dangling category references to uncategorized during migration', async () => {
+    testDataDir = createTestDataDir('starnav-migrate-dangling')
+    fs.writeFileSync(
+      path.join(testDataDir, 'data.json'),
+      JSON.stringify({
+        categories: [{ id: '1', name: 'Docs' }],
+        items: [
+          { id: '2', name: 'Guide', url: 'https://guide.test', categoryId: '1' },
+          { id: '3', name: 'Orphan', url: 'https://orphan.test', categoryId: '999' }
+        ]
+      })
+    )
+
+    const { migrateFromJson, getDb } = await loadMigrationModule()
+
+    expect(migrateFromJson()).toBe(true)
+    const rows = getDb()
+      .prepare('SELECT id, category_id AS categoryId FROM items ORDER BY id ASC')
+      .all()
+    expect(rows).toEqual([
+      { id: 2, categoryId: 1 },
+      { id: 3, categoryId: null }
+    ])
   })
 
   it('migrates settings into sqlite and archives the source file', async () => {

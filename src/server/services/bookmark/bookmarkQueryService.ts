@@ -6,6 +6,9 @@ import { bookmarkLookupService } from './bookmarkLookupService.js'
 
 type LevelLike = number | string | null | undefined
 
+const MAX_SEARCH_LIMIT = 100
+const MAX_KEYWORD_LENGTH = 100
+
 const normalizeLevel = (level: LevelLike) => {
   const parsed = Number.parseInt(String(level ?? 0), 10)
   return Number.isNaN(parsed) ? 0 : parsed
@@ -13,8 +16,16 @@ const normalizeLevel = (level: LevelLike) => {
 
 const normalizeLimit = (limit: LevelLike) => {
   const parsed = Number.parseInt(String(limit ?? 10), 10)
-  return Number.isNaN(parsed) || parsed <= 0 ? 10 : parsed
+  if (Number.isNaN(parsed) || parsed <= 0) return 10
+  return Math.min(parsed, MAX_SEARCH_LIMIT)
 }
+
+// 缓存键归一化：关键字去空格、转小写并截断，防止任意长度/变体关键字撑爆内存缓存
+const normalizeKeyword = (keyword: string) =>
+  String(keyword || '')
+    .trim()
+    .toLowerCase()
+    .slice(0, MAX_KEYWORD_LENGTH)
 
 export const bookmarkQueryService = {
   getData(level: LevelLike = 0) {
@@ -38,13 +49,14 @@ export const bookmarkQueryService = {
   ) {
     const normalizedLevel = normalizeLevel(level)
     const normalizedLimit = normalizeLimit(limit)
-    const cacheKey = CacheKeys.search(normalizedLevel, keyword, normalizedLimit)
+    const normalizedKeyword = normalizeKeyword(keyword)
+    const cacheKey = CacheKeys.search(normalizedLevel, normalizedKeyword, normalizedLimit)
 
     let items = cache.get(cacheKey)
     if (!items) {
       items = bookmarkLookupService.searchItems(
         username,
-        keyword,
+        normalizedKeyword,
         normalizedLimit,
         normalizedLevel
       )

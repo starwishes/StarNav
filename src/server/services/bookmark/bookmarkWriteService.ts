@@ -73,6 +73,8 @@ export const bookmarkWriteService = {
     const id = Number(itemId)
 
     try {
+      // 注意：每次更新前做整库文件备份（copyFileSync）会阻塞事件循环。
+      // 这是刻意的取舍——保证故障时能恢复数据；本轮不改为异步以免引入并发风险。
       backupDatabase()
 
       const currentItem = db.prepare<BookmarkItemRow>('SELECT * FROM items WHERE id = ?').get(id)
@@ -136,14 +138,16 @@ export const bookmarkWriteService = {
       }
       return null
     } catch (error) {
+      // 数据库/文件系统异常（磁盘满、损坏等）不是“未找到”，向上抛出 → 500，避免误报 404
       logger.error(`书签更新失败: ID ${id}`, error)
-      return null
+      throw error
     }
   },
 
   delete(itemId: IdLike) {
     try {
       const db = getDb()
+      // 整库文件备份（copyFileSync）为同步阻塞操作，刻意为换取可恢复性；本轮不异步化。
       backupDatabase()
 
       const result = db.prepare('DELETE FROM items WHERE id = ?').run(itemId)
@@ -157,8 +161,9 @@ export const bookmarkWriteService = {
       logger.warn(`书签删除失败: 未找到 ID ${itemId}`)
       return false
     } catch (error) {
+      // 数据库/文件系统异常应向上抛出（500），而非伪装成“未找到”
       logger.error(`书签删除失败: ID ${itemId}`, error)
-      return false
+      throw error
     }
   },
 
@@ -219,21 +224,25 @@ export const bookmarkWriteService = {
       const updatedItem = db.prepare<BookmarkItemRow>('SELECT * FROM items WHERE id = ?').get(id)
       return mapBookmarkRow(updatedItem, { includeSortOrder: true })
     } catch (error) {
+      // 真实数据库异常向上抛出（500），不要误报为“未找到”
       logger.error(`书签移动失败: ID ${id}`, error)
-      return null
+      throw error
     }
   },
 
   batchMove(itemIds: IdList, targetCategoryId: IdLike) {
     const db = getDb()
     const normalizedTargetCategoryId = normalizeDbCategoryId(targetCategoryId)
-    const normalizedIds = [...new Set(itemIds.map((id) => Number(id)).filter((id) => Number.isInteger(id)))] as number[]
+    const normalizedIds = [
+      ...new Set(itemIds.map((id) => Number(id)).filter((id) => Number.isInteger(id)))
+    ] as number[]
 
     if (normalizedIds.length === 0) {
       return []
     }
 
     try {
+      // 整库文件备份（copyFileSync）为同步阻塞操作，刻意为换取可恢复性；本轮不异步化。
       backupDatabase()
 
       const placeholders = buildPlaceholders(normalizedIds)
@@ -285,28 +294,36 @@ export const bookmarkWriteService = {
       logger.info(`书签批量移动成功: ${movedItems.length} 项`)
 
       return movedItems
-        .map((item) => db.prepare<BookmarkItemRow>('SELECT * FROM items WHERE id = ?').get(Number(item.id)))
+        .map((item) =>
+          db.prepare<BookmarkItemRow>('SELECT * FROM items WHERE id = ?').get(Number(item.id))
+        )
         .map((item) => mapBookmarkRow(item, { includeSortOrder: true }))
     } catch (error) {
+      // 真实数据库异常向上抛出（500），不要误报为失败/空结果
       logger.error('书签批量移动失败', error)
-      return null
+      throw error
     }
   },
 
   batchDelete(itemIds: IdList) {
     const db = getDb()
-    const normalizedIds = [...new Set(itemIds.map((id) => Number(id)).filter((id) => Number.isInteger(id)))] as number[]
+    const normalizedIds = [
+      ...new Set(itemIds.map((id) => Number(id)).filter((id) => Number.isInteger(id)))
+    ] as number[]
 
     if (normalizedIds.length === 0) {
       return 0
     }
 
     try {
+      // 整库文件备份（copyFileSync）为同步阻塞操作，刻意为换取可恢复性；本轮不异步化。
       backupDatabase()
 
       const placeholders = buildPlaceholders(normalizedIds)
       const existingItems = db
-        .prepare<ItemCategoryRefRow>(`SELECT id, category_id FROM items WHERE id IN (${placeholders})`)
+        .prepare<ItemCategoryRefRow>(
+          `SELECT id, category_id FROM items WHERE id IN (${placeholders})`
+        )
         .all(...normalizedIds)
 
       if (existingItems.length === 0) {
@@ -329,8 +346,9 @@ export const bookmarkWriteService = {
       logger.info(`书签批量删除成功: ${existingItems.length} 项`)
       return existingItems.length
     } catch (error) {
+      // 真实数据库异常向上抛出（500），不要误报为“未找到”
       logger.error('书签批量删除失败', error)
-      return null
+      throw error
     }
   },
 
@@ -360,7 +378,12 @@ export const bookmarkWriteService = {
     }
   },
 
-  bulkInsert(items: Array<BookmarkPayload & { id?: IdLike; clickCount?: number; lastVisited?: string | null }>, db: SqliteDb) {
+  bulkInsert(
+    items: Array<
+      BookmarkPayload & { id?: IdLike; clickCount?: number; lastVisited?: string | null }
+    >,
+    db: SqliteDb
+  ) {
     const insertItem = db.prepare(`
       INSERT INTO items (id, name, url, description, icon, category_id, pinned, level, click_count, last_visited, sort_order)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

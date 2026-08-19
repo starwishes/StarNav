@@ -1,8 +1,13 @@
 import { Stats } from '../models/stats.js'
 import { UAParser } from 'ua-parser-js'
 import { getClientIP } from '../utils/requestContext.js'
+import { logger } from '../utils/logger.js'
 
-export const statsLogger = (req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => {
+export const statsLogger = (
+  req: import('express').Request,
+  res: import('express').Response,
+  next: import('express').NextFunction
+) => {
   // 只统计 GET 请求，且针对页面或明确的 API 资源
   // 排除静态资源、favicon、以及心跳/轮询类型的 API
   if (req.method !== 'GET') return next()
@@ -48,7 +53,7 @@ export const statsLogger = (req: import("express").Request, res: import("express
     })
   } catch (err) {
     // 统计出错不应影响主流程
-    console.error('Stats logging error:', err)
+    logger.error('Stats logging error:', err)
   }
 
   next()

@@ -57,6 +57,22 @@ describe('config/index', () => {
     expect(exitSpy).toHaveBeenCalledWith(1)
   })
 
+  it('rejects the leaked .env.example credentials in production', async () => {
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code) => {
+      throw new Error(`exit:${code}`)
+    })
+
+    process.env.NODE_ENV = 'production'
+    process.env.PORT = '8080'
+    process.env.JWT_SECRET = 'rucL6_4F8NDlKvQ0WBUPhbvos9xjIOoYQd65i-4HJcs83FsM6Ufr1RqeImf9NzAn'
+    process.env.ADMIN_PASSWORD = 'UkTm7hXOUp27pbRFsY88GoS8'
+
+    const config = await loadConfigModule()
+
+    expect(() => config.validateEnv()).toThrow('exit:1')
+    expect(exitSpy).toHaveBeenCalledWith(1)
+  })
+
   it('warns when production uses insecure cookie overrides or forced CSP upgrades', async () => {
     process.env.NODE_ENV = 'production'
     process.env.PORT = '8080'

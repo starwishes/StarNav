@@ -30,9 +30,11 @@ export const categoryWriteService = {
     const parentId = normalizeDbParentId(categoryData.parentId)
 
     try {
-      const maxId = db.prepare<MaxIdRow>('SELECT MAX(id) as maxId FROM categories').get()?.maxId || 0
+      const maxId =
+        db.prepare<MaxIdRow>('SELECT MAX(id) as maxId FROM categories').get()?.maxId || 0
       const newId = maxId + 1
-      const sortOrder = db.prepare<CountRow>('SELECT COUNT(*) as count FROM categories').get()?.count ?? 0
+      const sortOrder =
+        db.prepare<CountRow>('SELECT COUNT(*) as count FROM categories').get()?.count ?? 0
 
       db.prepare(
         `
@@ -62,6 +64,7 @@ export const categoryWriteService = {
     const id = Number(categoryId)
 
     try {
+      // 整库文件备份（copyFileSync）为同步阻塞操作，刻意为换取可恢复性；本轮不异步化。
       backupDatabase()
       const fields: string[] = []
       const values: unknown[] = []
@@ -96,8 +99,9 @@ export const categoryWriteService = {
       }
       return null
     } catch (error) {
+      // 真实数据库异常向上抛出（500），不要误报为“未找到”
       logger.error(`分类更新失败: ID ${id}`, error)
-      return null
+      throw error
     }
   },
 
@@ -139,8 +143,9 @@ export const categoryWriteService = {
         targetCategoryId
       }
     } catch (error) {
+      // 真实数据库异常向上抛出（500），不要误报为“未找到”
       logger.error(`分类删除失败: ID ${id}`, error)
-      return null
+      throw error
     }
   },
 
@@ -153,6 +158,7 @@ export const categoryWriteService = {
     }
 
     try {
+      // 整库文件备份（copyFileSync）为同步阻塞操作，刻意为换取可恢复性；本轮不异步化。
       backupDatabase()
 
       const existingIds = selectCategoryIds(db)
@@ -179,8 +185,9 @@ export const categoryWriteService = {
         .all()
         .map((category) => mapCategoryRow(category, { includeSortOrder: true }))
     } catch (error) {
+      // 真实数据库异常向上抛出（500），不要误报为失败/空结果
       logger.error('分类排序失败', error)
-      return null
+      throw error
     }
   },
 

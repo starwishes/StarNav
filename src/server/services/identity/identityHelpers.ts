@@ -8,7 +8,6 @@ import { errors } from '../../middleware/errorHandler.js'
 import type { AuthCredentials, AuthUserLike } from '../../types/domain.js'
 
 const TOKEN_EXPIRES_IN = '7d'
-const EXTENSION_TOKEN_EXPIRES_IN = '365d'
 
 export const buildAuthUser = (user: AuthUserLike) => ({
   login: user.username,
@@ -26,20 +25,6 @@ export const issueToken = (user: AuthUserLike, sessionId?: string | null) => {
     },
     JWT_SECRET,
     { expiresIn: TOKEN_EXPIRES_IN }
-  )
-}
-
-export const issueExtensionToken = (user: AuthUserLike, sessionId?: string | null) => {
-  return jwt.sign(
-    {
-      username: user.username,
-      level: user.level,
-      authVersion: Number(user.authVersion || 0),
-      ...(sessionId ? { sessionId } : {}),
-      source: 'extension'
-    },
-    JWT_SECRET,
-    { expiresIn: EXTENSION_TOKEN_EXPIRES_IN }
   )
 }
 

@@ -1,12 +1,33 @@
 import { errors } from '../../middleware/errorHandler.js'
 import { sendPayload } from '../../utils/response.js'
 
-const faviconCache = new Map<
-  string,
-  { data: Buffer; contentType: string; timestamp: number }
->()
+const faviconCache = new Map<string, { data: Buffer; contentType: string; timestamp: number }>()
 const FAVICON_CACHE_TTL = 24 * 60 * 60 * 1000
+const FAVICON_CACHE_MAX_ENTRIES = 256
 const FAVICON_FETCH_TIMEOUT_MS = 2000
+
+// 有界缓存：过期条目即时清除；超出上限时按最旧优先逐出，防止公开端点内存无限增长
+const evictFaviconCache = () => {
+  const now = Date.now()
+  for (const [key, entry] of faviconCache) {
+    if (now - entry.timestamp >= FAVICON_CACHE_TTL) {
+      faviconCache.delete(key)
+    }
+  }
+
+  while (faviconCache.size > FAVICON_CACHE_MAX_ENTRIES) {
+    let oldestKey: string | null = null
+    let oldestTimestamp = Infinity
+    for (const [key, entry] of faviconCache) {
+      if (entry.timestamp < oldestTimestamp) {
+        oldestTimestamp = entry.timestamp
+        oldestKey = key
+      }
+    }
+    if (oldestKey === null) break
+    faviconCache.delete(oldestKey)
+  }
+}
 
 const normalizeHostname = (targetUrl: string) =>
   new URL(targetUrl.startsWith('http') ? targetUrl : `https://${targetUrl}`).hostname
@@ -44,6 +65,7 @@ export const toolFaviconService = {
 
     try {
       const hostname = normalizeHostname(targetUrl)
+      evictFaviconCache()
       const cached = faviconCache.get(hostname)
 
       if (cached && Date.now() - cached.timestamp < FAVICON_CACHE_TTL) {
@@ -62,6 +84,7 @@ export const toolFaviconService = {
         contentType: result.type,
         timestamp: Date.now()
       })
+      evictFaviconCache()
 
       return sendPayload(result.data, { 'Content-Type': result.type })
     } catch {

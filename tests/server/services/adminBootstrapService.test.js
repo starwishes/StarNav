@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import crypto from 'crypto'
 
 const logger = {
   info: vi.fn(),
@@ -96,7 +97,7 @@ describe('AdminBootstrapService', () => {
   })
 
   it('should persist generated production passwords to a secure file by default instead of logging them', () => {
-    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    const randomSpy = vi.spyOn(crypto, 'randomInt').mockReturnValue(0)
     getMock.mockReturnValue(undefined)
     process.env = { ...originalEnv, NODE_ENV: 'production' }
 
@@ -116,7 +117,7 @@ describe('AdminBootstrapService', () => {
   })
 
   it('should log generated production passwords when delivery mode is set to log', () => {
-    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    const randomSpy = vi.spyOn(crypto, 'randomInt').mockReturnValue(0)
     getMock.mockReturnValue(undefined)
     process.env = {
       ...originalEnv,

@@ -15,6 +15,43 @@ export interface SlowQueryRecord {
   args: string
 }
 
+const MAX_STORED_ARG_LENGTH = 500
+
+// 慢查询参数脱敏：URL 字符串剥掉 query/hash，超长值截断，
+// 避免把原始查询字符串（可能含敏感 token）留在内存里
+const sanitizeArg = (value: unknown): unknown => {
+  const result = value
+
+  if (typeof result === 'string') {
+    let str = result
+    if (/^https?:\/\//i.test(str)) {
+      try {
+        const url = new URL(str)
+        url.search = ''
+        url.hash = ''
+        str = url.toString()
+      } catch {
+        // 非标准 URL 保持原值
+      }
+    }
+    return str.length > MAX_STORED_ARG_LENGTH ? str.slice(0, MAX_STORED_ARG_LENGTH) + '…' : str
+  }
+
+  if (Array.isArray(result)) {
+    return result.map(sanitizeArg)
+  }
+
+  if (result && typeof result === 'object') {
+    const sanitized: Record<string, unknown> = {}
+    for (const [key, entry] of Object.entries(result)) {
+      sanitized[key] = sanitizeArg(entry)
+    }
+    return sanitized
+  }
+
+  return result
+}
+
 /**
  * 数据库查询性能监控工具
  */
@@ -62,12 +99,13 @@ export class QueryMonitor {
 
       // 记录慢查询（超过 100ms）
       if (duration > 100) {
-        logger.warn(`慢查询 [${queryName}]: ${duration}ms`, { args })
+        const sanitizedArgs = args.map(sanitizeArg)
+        logger.warn(`慢查询 [${queryName}]: ${duration}ms`, { args: sanitizedArgs })
         this.slowQueries.push({
           name: queryName,
           duration,
           timestamp: new Date().toISOString(),
-          args: JSON.stringify(args)
+          args: JSON.stringify(sanitizedArgs)
         })
 
         // 只保留最近 50 条慢查询

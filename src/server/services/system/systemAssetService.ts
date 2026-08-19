@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import crypto from 'crypto'
 
 import { UPLOADS_DIR } from '../../config/index.js'
 import { settingsService } from './settingsService.js'
@@ -8,6 +9,8 @@ import { logger } from '../../utils/logger.js'
 import { parseImageData } from './systemAssetImageCodec.js'
 
 const SETTINGS_FILE_KEYS = ['backgroundUrl', 'logoUrl', 'faviconUrl']
+
+const randomFileToken = () => crypto.randomBytes(4).toString('hex')
 
 const ensureUploadsDir = () => {
   if (!fs.existsSync(UPLOADS_DIR)) {
@@ -29,7 +32,7 @@ export const systemAssetService = {
   uploadBackground(data: string) {
     const { ext, buffer } = parseImageData(data, ['jpg', 'png', 'gif', 'webp'])
 
-    const filename = `bg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`
+    const filename = `bg_${Date.now()}_${randomFileToken()}.${ext}`
     ensureUploadsDir()
     fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer)
 
@@ -41,7 +44,7 @@ export const systemAssetService = {
   uploadIcon(data: string) {
     const { ext, buffer } = parseImageData(data, ['jpg', 'png', 'gif', 'webp', 'ico'])
 
-    const filename = `icon_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`
+    const filename = `icon_${Date.now()}_${randomFileToken()}.${ext}`
     ensureUploadsDir()
     fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer)
 

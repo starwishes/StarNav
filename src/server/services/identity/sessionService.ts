@@ -15,9 +15,15 @@ export const sessionService = {
   /**
    * 创建新会话
    */
-  create(username: string, ip?: string | null, userAgent?: string | null, options: SessionCreateOptions = {}) {
+  create(
+    username: string,
+    ip?: string | null,
+    userAgent?: string | null,
+    options: SessionCreateOptions = {}
+  ) {
     const db = getDb()
-    const expiresInDays = Number.parseInt(String(options.expiresInDays ?? ''), 10) || SESSION_EXPIRE_DAYS
+    const expiresInDays =
+      Number.parseInt(String(options.expiresInDays ?? ''), 10) || SESSION_EXPIRE_DAYS
 
     // 计算过期时间
     const expiresAt = new Date()
@@ -85,10 +91,12 @@ export const sessionService = {
       return false
     }
 
-    // 更新最后活跃时间
-    db.prepare(`UPDATE sessions SET last_active_at = datetime('now') WHERE session_id = ?`).run(
-      sessionId
-    )
+    // 节流更新最后活跃时间：距上次更新不足 5 分钟时跳过写库，
+    // 避免每个已认证请求都触发一次 SQLite 写操作
+    db.prepare(
+      `UPDATE sessions SET last_active_at = datetime('now')
+       WHERE session_id = ? AND last_active_at <= datetime('now', '-5 minutes')`
+    ).run(sessionId)
 
     return true
   },

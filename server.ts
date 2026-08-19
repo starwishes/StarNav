@@ -18,6 +18,7 @@ import { initService } from './src/server/services/system/initService.js'
 import { APP_VERSION } from './src/server/utils/appVersion.js'
 import { logger } from './src/server/utils/logger.js'
 import { resolveCorsOriginPolicy } from './src/server/utils/requestOrigin.js'
+import { buildErrorBody } from './src/server/utils/response.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -153,6 +154,11 @@ const createConfiguredApp = async () => {
   app.use('/api', bookmarkRoutes)
   app.use('/api', systemRoutes)
   app.use('/api', statsRoutes)
+
+  // 未匹配的 /api 请求返回 JSON 404，而不是回退到 SPA 的 index.html（200 HTML）
+  app.use('/api', (req, res) => {
+    res.status(404).json(buildErrorBody('接口不存在', 'NOT_FOUND'))
+  })
 
   await registerSwaggerUi(app)
 

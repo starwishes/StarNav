@@ -23,6 +23,12 @@ vi.mock('../../../src/server/utils/validators.js', () => ({
   }
 }))
 
+vi.mock('../../../src/server/services/bookmark/categoryReadService.js', () => ({
+  categoryReadService: {
+    exists: vi.fn()
+  }
+}))
+
 vi.mock('../../../src/server/utils/logger.js', () => ({
   logger: {
     info: vi.fn()
@@ -33,6 +39,8 @@ const { bookmarkCommandService } =
   await import('../../../src/server/services/bookmark/bookmarkCommandService.js')
 const { bookmarkMutationService } =
   await import('../../../src/server/services/bookmark/bookmarkMutationService.js')
+const { categoryReadService } =
+  await import('../../../src/server/services/bookmark/categoryReadService.js')
 const { validators } = await import('../../../src/server/utils/validators.js')
 const { logger } = await import('../../../src/server/utils/logger.js')
 
@@ -40,6 +48,7 @@ describe('BookmarkCommandService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     validators.isValidUrl.mockReturnValue(true)
+    categoryReadService.exists.mockReturnValue(true)
   })
 
   it('should reject bulk saves without an allowed action', () => {
@@ -50,6 +59,39 @@ describe('BookmarkCommandService', () => {
       })
     }).toThrow('POST /data 仅用于全量导入/清理/替换')
     expect(bookmarkMutationService.saveData).not.toHaveBeenCalled()
+  })
+
+  it('should reject bulk imports containing non-http(s) URLs', () => {
+    expect(() => {
+      bookmarkCommandService.saveData('alice', {
+        categories: [],
+        items: [{ id: 2, name: 'XSS', url: 'javascript:alert(1)', categoryId: 1 }],
+        action: 'import'
+      })
+    }).toThrow('无效的 URL 格式')
+    expect(bookmarkMutationService.saveData).not.toHaveBeenCalled()
+
+    expect(() => {
+      bookmarkCommandService.saveData('alice', {
+        categories: [],
+        items: [{ id: 3, name: 'Mail', url: 'mailto:test@example.com', categoryId: 1 }],
+        action: 'import'
+      })
+    }).toThrow('无效的 URL 格式')
+    expect(bookmarkMutationService.saveData).not.toHaveBeenCalled()
+  })
+
+  it('should reject creating a bookmark in a nonexistent category with a 400-style error', () => {
+    categoryReadService.exists.mockReturnValue(false)
+
+    expect(() => {
+      bookmarkCommandService.addBookmark('alice', {
+        name: 'GitHub',
+        url: 'https://github.com',
+        categoryId: 999
+      })
+    }).toThrow('分类不存在')
+    expect(bookmarkMutationService.addItem).not.toHaveBeenCalled()
   })
 
   it('should normalize bulk save payloads for bulk import action', () => {

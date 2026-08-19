@@ -1,4 +1,5 @@
 import fs from 'fs'
+import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 
 import { getDb } from '../database/database.js'
@@ -21,11 +22,10 @@ const getBootstrapPasswordTtlMs = () => {
 }
 
 const createRandomPassword = (length = 12) => {
+  // 使用 CSPRNG (crypto.randomInt) 而非 Math.random，凭据类随机数不可预测
   let password = ''
   for (let i = 0; i < length; i++) {
-    password += RANDOM_PASSWORD_CHARS.charAt(
-      Math.floor(Math.random() * RANDOM_PASSWORD_CHARS.length)
-    )
+    password += RANDOM_PASSWORD_CHARS.charAt(crypto.randomInt(RANDOM_PASSWORD_CHARS.length))
   }
   return password
 }
@@ -125,7 +125,10 @@ export const consumeBootstrapPasswordFile = () => {
   }
 }
 
-const clearBootstrapPasswordFileIfStale = (adminUsername: string, adminUser: { password?: string } | null) => {
+const clearBootstrapPasswordFileIfStale = (
+  adminUsername: string,
+  adminUser: { password?: string } | null
+) => {
   const normalized = normalizeBootstrapPasswordRecord(readBootstrapPasswordRecord())
   if (!normalized) {
     clearBootstrapPasswordFile()
@@ -187,7 +190,9 @@ export const adminBootstrapService = {
     const adminUsername = DEFAULT_ADMIN_NAME
     const rawAdminPassword = process.env.ADMIN_PASSWORD
 
-    const adminUser = db.prepare<UserTableRow>('SELECT * FROM users WHERE username = ?').get(adminUsername)
+    const adminUser = db
+      .prepare<UserTableRow>('SELECT * FROM users WHERE username = ?')
+      .get(adminUsername)
 
     let shouldReset = false
     let isDefault = false
@@ -233,7 +238,7 @@ export const adminBootstrapService = {
       }
 
       const deliveryMode = getBootstrapPasswordDeliveryMode()
-      const hashed = bcrypt.hashSync(finalPassword || "admin123", 10)
+      const hashed = bcrypt.hashSync(finalPassword || 'admin123', 10)
 
       if (isNew) {
         db.prepare(

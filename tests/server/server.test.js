@@ -231,6 +231,23 @@ describe('server app assembly', () => {
     expect(app.use).toHaveBeenCalledWith('/api', runtime.bookmarkRoutes)
     expect(app.use).toHaveBeenCalledWith('/api', runtime.systemRoutes)
     expect(app.use).toHaveBeenCalledWith('/api', runtime.statsRoutes)
+
+    // 未匹配的 /api 请求应返回 JSON 404，而不是落入 SPA 回退
+    const apiNotFoundHandler = app.use.mock.calls.find(
+      ([path, handler]) => path === '/api' && typeof handler === 'function'
+    )?.[1]
+    const notFoundRes = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn()
+    }
+    apiNotFoundHandler({}, notFoundRes)
+    expect(notFoundRes.status).toHaveBeenCalledWith(404)
+    expect(notFoundRes.json).toHaveBeenCalledWith({
+      success: false,
+      error: '接口不存在',
+      code: 'NOT_FOUND'
+    })
+
     expect(app.use).toHaveBeenCalledWith('/api-docs', swaggerServe, runtime.swaggerUiHandler)
     expect(swaggerSetup).toHaveBeenCalledWith(
       null,

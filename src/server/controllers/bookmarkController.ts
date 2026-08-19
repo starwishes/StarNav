@@ -8,8 +8,10 @@ const resolveUsername = (req: Request) =>
   (req as Request & { user?: { username?: string; level?: number } }).user?.username ||
   DEFAULT_ADMIN_NAME
 
-const resolveUserLevel = (req: Request) =>
-  (req as Request & { user?: { level?: number } }).user?.level || 0
+const resolveUserLevel = (req: Request) => {
+  const level = (req as Request & { user?: { level?: number } }).user?.level
+  return level == null ? 0 : level
+}
 
 /** Express params/query may be string | string[]; normalize to a single string */
 const asString = (value: unknown, fallback = ''): string => {
@@ -37,9 +39,7 @@ export const bookmarkController = {
 
   // POST /sites/:id/click - 点击次数统计
   trackClick: (req: Request, res: Response) => {
-    return respondWithService(res, () =>
-      bookmarkCommandService.trackClick(asString(req.params.id))
-    )
+    return respondWithService(res, () => bookmarkCommandService.trackClick(asString(req.params.id)))
   },
 
   // POST /api/bookmark - 添加单个书签 (浏览器插件)
@@ -78,11 +78,7 @@ export const bookmarkController = {
   // PUT /category/:id - 更新分类
   updateCategory: (req: Request, res: Response) => {
     return respondWithService(res, () =>
-      bookmarkCommandService.updateCategory(
-        resolveUsername(req),
-        asString(req.params.id),
-        req.body
-      )
+      bookmarkCommandService.updateCategory(resolveUsername(req), asString(req.params.id), req.body)
     )
   },
 
@@ -113,21 +109,13 @@ export const bookmarkController = {
   // PUT /bookmark/:id - 更新书签
   updateBookmark: (req: Request, res: Response) => {
     return respondWithService(res, () =>
-      bookmarkCommandService.updateBookmark(
-        resolveUsername(req),
-        asString(req.params.id),
-        req.body
-      )
+      bookmarkCommandService.updateBookmark(resolveUsername(req), asString(req.params.id), req.body)
     )
   },
 
   moveBookmark: (req: Request, res: Response) => {
     return respondWithService(res, () =>
-      bookmarkCommandService.moveBookmark(
-        resolveUsername(req),
-        asString(req.params.id),
-        req.body
-      )
+      bookmarkCommandService.moveBookmark(resolveUsername(req), asString(req.params.id), req.body)
     )
   },
 

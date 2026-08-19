@@ -15,6 +15,12 @@ const loginLimiter = vi.fn(function loginLimiter(req, res, next) {
 const dataUpdateLimiter = vi.fn(function dataUpdateLimiter(req, res, next) {
   next?.()
 })
+const faviconLimiter = vi.fn(function faviconLimiter(req, res, next) {
+  next?.()
+})
+const healthLimiter = vi.fn(function healthLimiter(req, res, next) {
+  next?.()
+})
 
 const authController = {
   login: vi.fn(),
@@ -88,7 +94,9 @@ vi.mock('../../../src/server/middleware/auth.js', () => ({
 
 vi.mock('../../../src/server/middleware/limiter.js', () => ({
   loginLimiter,
-  dataUpdateLimiter
+  dataUpdateLimiter,
+  faviconLimiter,
+  healthLimiter
 }))
 
 vi.mock('../../../src/server/controllers/authController.js', () => ({
@@ -267,12 +275,16 @@ describe('route mounting', () => {
       bookmarkController.deleteBookmark
     ])
     expect(getHandlers(bookmarkRoutes, 'post', '/sites/:id/click')).toEqual([
+      dataUpdateLimiter,
       bookmarkController.trackClick
     ])
   })
 
   it('wires system routes with public tools and protected admin handlers', () => {
-    expect(getHandlers(systemRoutes, 'get', '/health')).toEqual([systemController.getHealth])
+    expect(getHandlers(systemRoutes, 'get', '/health')).toEqual([
+      healthLimiter,
+      systemController.getHealth
+    ])
     expect(getHandlers(systemRoutes, 'get', '/settings')).toEqual([
       systemController.getPublicSettings
     ])
@@ -311,7 +323,10 @@ describe('route mounting', () => {
       requireAdmin,
       systemController.deleteUpload
     ])
-    expect(getHandlers(systemRoutes, 'get', '/favicon')).toEqual([toolController.getFavicon])
+    expect(getHandlers(systemRoutes, 'get', '/favicon')).toEqual([
+      faviconLimiter,
+      toolController.getFavicon
+    ])
     expect(getHandlers(systemRoutes, 'get', '/suggest')).toEqual([toolController.getSuggestions])
     expect(getHandlers(systemRoutes, 'post', '/check-links')).toEqual([
       authenticate,
@@ -331,6 +346,9 @@ describe('route mounting', () => {
       requireAdmin,
       statsController.getCacheStats
     ])
-    expect(getHandlers(statsRoutes, 'post', '/visit')).toEqual([statsController.recordVisit])
+    expect(getHandlers(statsRoutes, 'post', '/visit')).toEqual([
+      dataUpdateLimiter,
+      statsController.recordVisit
+    ])
   })
 })

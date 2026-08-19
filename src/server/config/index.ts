@@ -98,10 +98,23 @@ export const validateEnv = () => {
     .trim()
     .toLowerCase()
 
+  // 已知泄露值（曾作为 .env.example 示例发布，禁止复用）
+  const KNOWN_LEAKED_JWT_SECRETS = new Set([
+    'rucL6_4F8NDlKvQ0WBUPhbvos9xjIOoYQd65i-4HJcs83FsM6Ufr1RqeImf9NzAn'
+  ])
+  const KNOWN_LEAKED_ADMIN_PASSWORDS = new Set(['UkTm7hXOUp27pbRFsY88GoS8'])
+
   // 1. JWT_SECRET 校验
   const jwtSecret = process.env.JWT_SECRET || ''
   if (jwtSecret.length > 0 && jwtSecret.length < 32) {
     errors.push('JWT_SECRET 长度不足（最少 32 字符）。推荐使用: openssl rand -base64 64')
+  }
+  if (KNOWN_LEAKED_JWT_SECRETS.has(jwtSecret)) {
+    if (isProduction) {
+      errors.push(`JWT_SECRET 是已公开泄露的示例值，生产环境必须更换为随机长字符串！`)
+    } else {
+      warnings.push(`JWT_SECRET 使用了已公开泄露的示例值，建议更换以增强安全性`)
+    }
   }
   if (
     jwtSecret === 'your-secret-key-here' ||
@@ -120,6 +133,13 @@ export const validateEnv = () => {
   const adminPassword = process.env.ADMIN_PASSWORD || ''
   if (adminPassword.length > 0 && adminPassword.length < 8) {
     warnings.push('ADMIN_PASSWORD 长度不足 8 字符，建议使用更强的密码')
+  }
+  if (KNOWN_LEAKED_ADMIN_PASSWORDS.has(adminPassword)) {
+    if (isProduction) {
+      errors.push('ADMIN_PASSWORD 是已公开泄露的示例值，生产环境必须更换！')
+    } else {
+      warnings.push('ADMIN_PASSWORD 使用了已公开泄露的示例值，建议更换以增强安全性')
+    }
   }
 
   // 3. ADMIN_BOOTSTRAP_PASSWORD_DELIVERY 校验
@@ -192,6 +212,10 @@ export const validateEnv = () => {
   }
 
   // 8. TRUST_PROXY 校验
+  // 注意：TRUST_PROXY 关闭（默认）时 Express 会把反向代理出口 IP 当作客户端 IP，
+  // 基于 IP 的限流器（见 middleware/limiter.ts）会共享同一 key。登录限流已按
+  // IP+username 复合 key，避免单代理 IP 下全站账号被整体锁定；如需精确识别
+  // 真实客户端 IP，请在受信任代理后显式设置 TRUST_PROXY=true。
   if (
     trustProxy !== undefined &&
     trustProxy !== '' &&

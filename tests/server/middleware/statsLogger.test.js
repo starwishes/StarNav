@@ -5,6 +5,9 @@ const getResult = vi.fn()
 const UAParser = vi.fn(function UAParser() {
   this.getResult = getResult
 })
+const logger = {
+  error: vi.fn()
+}
 
 vi.mock('../../../src/server/models/stats.js', () => ({
   Stats: {
@@ -14,6 +17,10 @@ vi.mock('../../../src/server/models/stats.js', () => ({
 
 vi.mock('ua-parser-js', () => ({
   UAParser
+}))
+
+vi.mock('../../../src/server/utils/logger.js', () => ({
+  logger
 }))
 
 const { statsLogger } = await import('../../../src/server/middleware/statsLogger.js')
@@ -74,7 +81,6 @@ describe('statsLogger', () => {
 
   it('swallows stats collection failures without breaking the request', () => {
     const next = vi.fn()
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     recordVisit.mockImplementation(() => {
       throw new Error('boom')
     })
@@ -94,7 +100,7 @@ describe('statsLogger', () => {
       next
     )
 
-    expect(errorSpy).toHaveBeenCalledWith('Stats logging error:', expect.any(Error))
+    expect(logger.error).toHaveBeenCalledWith('Stats logging error:', expect.any(Error))
     expect(next).toHaveBeenCalledTimes(1)
   })
 })

@@ -66,6 +66,16 @@ describe('adminIdentityService', () => {
     }).toThrow('清空失败')
   })
 
+  it('clamps audit pagination to sane bounds', () => {
+    auditService.getLogs.mockReturnValue({ total: 0, logs: [] })
+
+    adminIdentityService.getAuditLogs({ page: '-5', limit: '999999' })
+    expect(auditService.getLogs).toHaveBeenLastCalledWith(1, 200)
+
+    adminIdentityService.getAuditLogs({ page: '0', limit: '0' })
+    expect(auditService.getLogs).toHaveBeenLastCalledWith(1, 1)
+  })
+
   it('forwards a validated before date to auditService.clear', () => {
     auditService.clear.mockReturnValue(true)
 

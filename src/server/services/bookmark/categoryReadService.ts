@@ -1,6 +1,6 @@
 import { getDb } from '../database/database.js'
 import { mapCategoryRow } from './recordTransforms.js'
-import type { LevelLike } from '../../types/domain.js'
+import type { IdLike, LevelLike } from '../../types/domain.js'
 import type { CategoryRow, CategoryIdRow } from '../../types/sqliteRows.js'
 
 export const categoryReadService = {
@@ -25,5 +25,13 @@ export const categoryReadService = {
       .prepare<CategoryIdRow>('SELECT id FROM categories WHERE level <= ? ORDER BY sort_order, id')
       .all(normalizedLevel)
     return new Set(categories.map((category) => Number(category.id)))
+  },
+
+  exists(categoryId: IdLike) {
+    const db = getDb()
+    const row = db
+      .prepare<CategoryIdRow>('SELECT id FROM categories WHERE id = ?')
+      .get(Number(categoryId))
+    return Boolean(row)
   }
 }

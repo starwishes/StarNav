@@ -6,6 +6,8 @@ import {
   shouldUseSecureAuthCookie
 } from '../utils/authCookie.js'
 import { buildRequestContext } from '../utils/requestContext.js'
+import { validateTrustedWriteOrigin } from '../utils/requestOrigin.js'
+import { errors } from '../middleware/errorHandler.js'
 import { respondWithService } from '../utils/controllerResponder.js'
 import { buildSuccessBody } from '../utils/response.js'
 
@@ -20,6 +22,14 @@ const withCookieHeader = (body: unknown, cookieHeader: string) => ({
 export const authController = {
   login: (req: Request, res: Response) => {
     return respondWithService(res, async () => {
+      // 登录 CSRF 防护：跨站表单 POST 会携带 Origin/Referer。
+      // 若来源头存在且未通过同源/白名单校验则拒绝；无来源头的请求
+      // （CLI、浏览器插件、同源 fetch）放行，与现有 cookie 写请求策略一致。
+      const originCheck = validateTrustedWriteOrigin(req)
+      if (originCheck.source && !originCheck.trusted) {
+        throw errors.forbidden('请求来源无效')
+      }
+
       const result = await authLifecycleService.login(req.body, buildRequestContext(req))
       return withCookieHeader(
         buildSuccessBody(result),

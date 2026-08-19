@@ -38,7 +38,7 @@ type AuthRequest = Request & {
 }
 
 const verifyAuthToken = (token: string): AuthTokenPayload => {
-  const decoded = jwt.verify(token, JWT_SECRET)
+  const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] })
   if (typeof decoded === 'string') {
     return { username: decoded }
   }

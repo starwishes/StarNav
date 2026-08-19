@@ -1,6 +1,7 @@
 import express from 'express'
 import { statsController } from '../controllers/statsController.js'
 import { authenticate, requireAdmin } from '../middleware/auth.js'
+import { dataUpdateLimiter } from '../middleware/limiter.js'
 
 const router = express.Router()
 
@@ -116,6 +117,6 @@ router.get('/cache', authenticate, requireAdmin, statsController.getCacheStats)
  *               type: string
  *               enum: [OK, Error]
  */
-router.post('/visit', statsController.recordVisit)
+router.post('/visit', dataUpdateLimiter, statsController.recordVisit)
 
 export default router
