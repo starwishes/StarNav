@@ -5,7 +5,14 @@ import { accountService } from './accountService.js'
 import { auditService } from './auditService.js'
 import { sessionService } from './sessionService.js'
 import { settingsService } from '../system/settingsService.js'
-import { buildAuthUser, ensureStrongPassword, issueToken } from './identityHelpers.js'
+import {
+  buildAuthUser,
+  ensureStrongPassword,
+  issueToken,
+  DEFAULT_SESSION_DAYS,
+  REMEMBER_SESSION_DAYS,
+  sessionDaysToExpiresIn
+} from './identityHelpers.js'
 import { loginSchema } from '../../middleware/validation.js'
 import { errors } from '../../middleware/errorHandler.js'
 import { logger } from '../../utils/logger.js'
@@ -29,17 +36,20 @@ export const authLifecycleService = {
       throw errors.unauthorized('用户名或密码错误')
     }
 
-    const sessionId = sessionService.create(user.username, ip, userAgent)
+    const remember = credentials.remember === true
+    const expiresInDays = remember ? REMEMBER_SESSION_DAYS : DEFAULT_SESSION_DAYS
+    const sessionId = sessionService.create(user.username, ip, userAgent, { expiresInDays })
     accountService.updateLastLogin(user.username)
-    const token = issueToken(user, sessionId)
+    const token = issueToken(user, sessionId, { expiresIn: sessionDaysToExpiresIn(expiresInDays) })
 
     auditService.log('login', { username: user.username, ip, userAgent, success: true })
-    logger.info(`用户登录成功: ${user.username}`)
+    logger.info(`用户登录成功: ${user.username} (remember=${remember}, ${expiresInDays}d)`)
 
     return {
       token,
       user: buildAuthUser(user),
-      sessionId
+      sessionId,
+      expiresInDays
     }
   },
 

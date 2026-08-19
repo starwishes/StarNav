@@ -12,7 +12,8 @@ const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
 export const loginSchema = Joi.object({
   username: Joi.string().alphanum().min(3).max(30).required(),
   password: Joi.string().min(6).required(), // 登录时不强制复杂密码（兼容旧账户）
-  level: Joi.number().integer().min(1).max(3).optional()
+  level: Joi.number().integer().min(1).max(3).optional(),
+  remember: Joi.boolean().optional()
 })
 
 // 注册/修改密码时使用强密码验证

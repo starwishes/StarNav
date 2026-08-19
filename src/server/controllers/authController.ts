@@ -10,6 +10,10 @@ import { validateTrustedWriteOrigin } from '../utils/requestOrigin.js'
 import { errors } from '../middleware/errorHandler.js'
 import { respondWithService } from '../utils/controllerResponder.js'
 import { buildSuccessBody } from '../utils/response.js'
+import {
+  DEFAULT_SESSION_DAYS,
+  REMEMBER_SESSION_DAYS
+} from '../services/identity/identityHelpers.js'
 
 const withCookieHeader = (body: unknown, cookieHeader: string) => ({
   statusCode: 200,
@@ -31,9 +35,16 @@ export const authController = {
       }
 
       const result = await authLifecycleService.login(req.body, buildRequestContext(req))
+      // remember=true 时延长到 90 天，默认 30 天，cookie / JWT / session 三处保持一致。
+      const remember = req.body?.remember === true
+      const expiresInDays =
+        result.expiresInDays || (remember ? REMEMBER_SESSION_DAYS : DEFAULT_SESSION_DAYS)
+      const maxAgeMs = expiresInDays * 24 * 60 * 60 * 1000
       return withCookieHeader(
         buildSuccessBody(result),
         createAuthCookieHeader(result.token, {
+          maxAge: maxAgeMs,
+          expires: new Date(Date.now() + maxAgeMs),
           secure: shouldUseSecureAuthCookie(req)
         })
       )

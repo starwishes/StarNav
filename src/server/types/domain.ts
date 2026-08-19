@@ -19,6 +19,7 @@ export interface AuthCredentials {
   username?: string
   password?: string
   level?: number
+  remember?: boolean
 }
 
 export interface AuthUserLike {

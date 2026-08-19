@@ -2,7 +2,7 @@ import type { Request } from 'express'
 
 export const AUTH_COOKIE_NAME = 'starnav_auth'
 
-const AUTH_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+const AUTH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 
 export interface AuthCookieOptions {
   maxAge?: number

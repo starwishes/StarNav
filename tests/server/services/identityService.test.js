@@ -45,19 +45,48 @@ describe('Identity Services', () => {
     )
 
     expect(result).toEqual({
-        token: 'token-1',
-        user: {
-          login: 'alice',
-          name: 'alice',
-          level: 2
-        },
-        sessionId: 'session-1'
-      })
-    expect(sessionService.create).toHaveBeenCalledWith('alice', '1.1.1.1', 'Vitest')
+      token: 'token-1',
+      user: {
+        login: 'alice',
+        name: 'alice',
+        level: 2
+      },
+      sessionId: 'session-1',
+      expiresInDays: 30
+    })
+    expect(sessionService.create).toHaveBeenCalledWith('alice', '1.1.1.1', 'Vitest', {
+      expiresInDays: 30
+    })
     expect(accountService.updateLastLogin).toHaveBeenCalledWith('alice')
     expect(auditService.log).toHaveBeenCalledWith(
       'login',
       expect.objectContaining({ username: 'alice', success: true })
+    )
+  })
+
+  it('should extend session to 90 days when remember is requested', () => {
+    accountService.findByUsername.mockReturnValue({
+      username: 'alice',
+      password: 'hashed',
+      level: 2
+    })
+    bcrypt.compareSync.mockReturnValue(true)
+    sessionService.create.mockReturnValue('session-2')
+    jwt.sign.mockReturnValue('token-2')
+
+    const result = authLifecycleService.login(
+      { username: 'alice', password: 'secret', remember: true },
+      { ip: '1.1.1.1', userAgent: 'Vitest' }
+    )
+
+    expect(result.expiresInDays).toBe(90)
+    expect(sessionService.create).toHaveBeenCalledWith('alice', '1.1.1.1', 'Vitest', {
+      expiresInDays: 90
+    })
+    expect(jwt.sign).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(String),
+      expect.objectContaining({ expiresIn: '90d' })
     )
   })
 

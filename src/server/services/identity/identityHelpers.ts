@@ -9,13 +9,23 @@ import type { AuthCredentials, AuthUserLike } from '../../types/domain.js'
 
 const TOKEN_EXPIRES_IN = '7d'
 
+// 会话有效期（天）：默认 30 天，勾选"记住我"后延长到 90 天。
+// 同时作用于 JWT 过期、HttpOnly Cookie maxAge、数据库 sessions.expires_at。
+export const DEFAULT_SESSION_DAYS = 30
+export const REMEMBER_SESSION_DAYS = 90
+export const sessionDaysToExpiresIn = (days: number) => `${Math.max(1, days)}d`
+
 export const buildAuthUser = (user: AuthUserLike) => ({
   login: user.username,
   name: user.username,
   level: user.level
 })
 
-export const issueToken = (user: AuthUserLike, sessionId?: string | null) => {
+export const issueToken = (
+  user: AuthUserLike,
+  sessionId?: string | null,
+  options: { expiresIn?: string | number } = {}
+) => {
   return jwt.sign(
     {
       username: user.username,
@@ -24,7 +34,7 @@ export const issueToken = (user: AuthUserLike, sessionId?: string | null) => {
       ...(sessionId ? { sessionId } : {})
     },
     JWT_SECRET,
-    { expiresIn: TOKEN_EXPIRES_IN }
+    { expiresIn: (options.expiresIn ?? TOKEN_EXPIRES_IN) as jwt.SignOptions['expiresIn'] }
   )
 }
 
