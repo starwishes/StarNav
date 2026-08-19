@@ -101,7 +101,7 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
     }
   }
 
-  const showNotConnected = (reasonKey) => {
+  const showNotConnected = (reasonKey, mode = 'setup') => {
     const texts = getTexts()
     const message = reasonKey && texts[reasonKey] ? texts[reasonKey] : texts.notConnectedTip
 
@@ -113,6 +113,14 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
 
     setDisplay(elements.notConnected, 'flex')
     setDisplay(elements.mainContent, 'none')
+    // mode='reconnect' 显示内联重连卡片(用户名+密码+记住我);
+    // mode='setup' 显示简单的"前往设置"提示(尚未配置服务器)。
+    if (elements.notConnectedSetup) {
+      setDisplay(elements.notConnectedSetup, mode === 'setup' ? 'block' : 'none')
+    }
+    if (elements.notConnectedReconnect) {
+      setDisplay(elements.notConnectedReconnect, mode === 'reconnect' ? 'block' : 'none')
+    }
   }
 
   const showMainContent = () => {

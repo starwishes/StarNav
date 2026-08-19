@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   initApi: vi.fn(),
   apiRequest: vi.fn(),
+  loginToServer: vi.fn(),
+  normalizeServerUrl: vi.fn((value) => String(value || '').replace(/\/+$/, '')),
   normalizeUrl: vi.fn((value) => value),
   getStorage: vi.fn(),
   setStorage: vi.fn(),
@@ -28,6 +30,9 @@ const mocks = vi.hoisted(() => ({
   uiUpdateUI: vi.fn(),
   uiShowNotConnected: vi.fn(),
   uiShowMainContent: vi.fn(),
+  uiShowLoading: vi.fn(),
+  uiHideLoading: vi.fn(),
+  uiShowToast: vi.fn(),
   uiHideAddForm: vi.fn(),
   popupState: null,
   authErrorCallback: null
@@ -53,6 +58,12 @@ const renderDom = () => {
     <div id="addSection"></div>
     <div id="addForm"></div>
     <div id="notConnected"></div>
+    <div id="notConnectedSetup"></div>
+    <div id="notConnectedReconnect"></div>
+    <input id="reconnectUsername" />
+    <input id="reconnectPassword" />
+    <input id="reconnectRemember" type="checkbox" />
+    <button id="reconnectBtn"></button>
     <div id="loading"></div>
     <select id="bookmarkCategory"></select>
     <div id="duplicateWarning"></div>
@@ -100,6 +111,12 @@ const getElements = () => ({
   openSite: document.getElementById('openSite'),
   openSettings: document.getElementById('openSettings'),
   notConnected: document.getElementById('notConnected'),
+  notConnectedSetup: document.getElementById('notConnectedSetup'),
+  notConnectedReconnect: document.getElementById('notConnectedReconnect'),
+  reconnectUsername: document.getElementById('reconnectUsername'),
+  reconnectPassword: document.getElementById('reconnectPassword'),
+  reconnectRemember: document.getElementById('reconnectRemember'),
+  reconnectBtn: document.getElementById('reconnectBtn'),
   loading: document.getElementById('loading')
 })
 
@@ -109,7 +126,9 @@ vi.mock('../../clients/extension/utils/url.js', () => ({
 
 vi.mock('../../clients/extension/utils/api.js', () => ({
   initApi: (...args) => mocks.initApi(...args),
-  apiRequest: (...args) => mocks.apiRequest(...args)
+  apiRequest: (...args) => mocks.apiRequest(...args),
+  loginToServer: (...args) => mocks.loginToServer(...args),
+  normalizeServerUrl: (...args) => mocks.normalizeServerUrl(...args)
 }))
 
 vi.mock('../../clients/extension/popup/modules/storage.js', () => ({
@@ -125,6 +144,9 @@ vi.mock('../../clients/extension/popup/modules/ui.js', () => ({
     updateUI: (...args) => mocks.uiUpdateUI(...args),
     showNotConnected: (...args) => mocks.uiShowNotConnected(...args),
     showMainContent: (...args) => mocks.uiShowMainContent(...args),
+    showLoading: (...args) => mocks.uiShowLoading(...args),
+    hideLoading: (...args) => mocks.uiHideLoading(...args),
+    showToast: (...args) => mocks.uiShowToast(...args),
     hideAddForm: (...args) => mocks.uiHideAddForm(...args)
   })
 }))
@@ -244,6 +266,9 @@ describe('browser extension popup bootstrap', () => {
     mocks.uiUpdateUI.mockReset()
     mocks.uiShowNotConnected.mockReset()
     mocks.uiShowMainContent.mockReset()
+    mocks.uiShowLoading.mockReset()
+    mocks.uiHideLoading.mockReset()
+    mocks.uiShowToast.mockReset()
     mocks.uiHideAddForm.mockReset()
 
     global.chrome = {
@@ -349,5 +374,58 @@ describe('browser extension popup bootstrap', () => {
     expect(mocks.removeStorage).toHaveBeenCalledWith(['token', 'user'], 'local')
     expect(mocks.removeStorage).toHaveBeenCalledWith(['token', 'user'], 'sync')
     expect(mocks.uiShowNotConnected).toHaveBeenCalledWith('tokenExpired')
+  })
+
+  it('shows the inline reconnect card and reconnects without opening settings', async () => {
+    mocks.getMergedStorage.mockImplementation(async (keys) => {
+      if (Array.isArray(keys) && keys.includes('serverUrl')) {
+        return { serverUrl: 'https://nav.example.com', savedUsername: 'alice', rememberLogin: true }
+      }
+      return { lang: 'en', themeMode: 'light' }
+    })
+    mocks.setStorage.mockResolvedValue(undefined)
+    mocks.loginToServer.mockResolvedValue({
+      token: 'new-token',
+      user: { login: 'alice' }
+    })
+    mocks.initApi.mockImplementation(async (callback) => {
+      mocks.authErrorCallback = callback
+      return { serverUrl: '', token: '' }
+    })
+
+    await loadPopup()
+
+    // Reconnect card is shown with the saved username pre-filled.
+    expect(mocks.uiShowNotConnected).toHaveBeenCalledWith('tokenExpired', 'reconnect')
+    expect(document.getElementById('reconnectUsername').value).toBe('alice')
+    expect(document.getElementById('reconnectRemember').checked).toBe(true)
+    expect(mocks.openOptionsPage).not.toHaveBeenCalled()
+
+    document.getElementById('reconnectPassword').value = 'secret'
+    document.getElementById('reconnectBtn').click()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(mocks.loginToServer).toHaveBeenCalledWith(
+      'https://nav.example.com',
+      'alice',
+      'secret',
+      true
+    )
+    expect(mocks.setStorage).toHaveBeenCalledWith(
+      { serverUrl: 'https://nav.example.com', savedUsername: 'alice', rememberLogin: true },
+      'sync'
+    )
+    expect(mocks.setStorage).toHaveBeenCalledWith(
+      { token: 'new-token', user: { login: 'alice' } },
+      'local'
+    )
+    expect(mocks.uiShowMainContent).toHaveBeenCalled()
+    expect(mocks.categoryLoadCategories).toHaveBeenCalled()
+    expect(mocks.searchLoadRecentBookmarks).toHaveBeenCalled()
   })
 })

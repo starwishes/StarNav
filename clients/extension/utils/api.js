@@ -96,11 +96,11 @@ export async function authenticatedPublicApiRequest(serverUrl, token, endpoint, 
   })
 }
 
-export async function loginToServer(serverUrl, username, password) {
+export async function loginToServer(serverUrl, username, password, remember = false) {
   return publicApiRequest(serverUrl, '/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
+    body: JSON.stringify({ username, password, remember: remember === true })
   })
 }
 

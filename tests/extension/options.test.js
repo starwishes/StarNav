@@ -113,7 +113,7 @@ describe('browser extension options runtime', () => {
     await flush()
 
     expect(normalizeServerUrl).toHaveBeenCalledWith('https://nav.example.com/')
-    expect(loginToServer).toHaveBeenCalledWith('https://nav.example.com', 'alice', 'secret')
+    expect(loginToServer).toHaveBeenCalledWith('https://nav.example.com', 'alice', 'secret', false)
     expect(syncState.serverUrl).toBe('https://nav.example.com')
     expect(syncState.savedUsername).toBe('alice')
     expect(localState.token).toBe('signed-token')

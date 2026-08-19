@@ -47,11 +47,33 @@
     </header>
 
     <section id="notConnected" class="not-connected" style="display: none">
-      <div class="not-connected-card">
+      <div id="notConnectedSetup" class="not-connected-card">
         <div class="not-connected-eyebrow">StarNav</div>
         <h1 class="not-connected-title">StarNav</h1>
         <p class="not-connected-copy" data-i18n="notConnectedTip">Please configure the server URL first</p>
         <button class="primary-btn" type="button" data-open-settings data-i18n="goToSettings">Go to Settings</button>
+      </div>
+
+      <div id="notConnectedReconnect" class="not-connected-card reconnect-card" style="display: none">
+        <div class="not-connected-eyebrow">StarNav</div>
+        <h1 class="not-connected-title" data-i18n="reconnectTitle">Session expired</h1>
+        <p class="not-connected-copy" data-i18n="reconnectTip">Re-enter your password to reconnect. Your username is filled in.</p>
+        <div class="form-group">
+          <label data-i18n="username">Username</label>
+          <input type="text" id="reconnectUsername" class="form-input" autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label data-i18n="password">Password</label>
+          <input type="password" id="reconnectPassword" class="form-input" autocomplete="current-password" />
+        </div>
+        <div class="form-group form-group-checkbox">
+          <label class="checkbox-label" for="reconnectRemember">
+            <input type="checkbox" id="reconnectRemember" />
+            <span data-i18n="rememberLogin">Keep me signed in (90 days)</span>
+          </label>
+        </div>
+        <button id="reconnectBtn" class="primary-btn" type="button" data-i18n="reconnect">Reconnect</button>
+        <button id="reconnectOpenSettings" class="link-btn" type="button" data-open-settings data-i18n="goToSettings">Go to Settings</button>
       </div>
     </section>
 
@@ -86,7 +108,7 @@
         </div>
         <div class="form-group">
           <label data-i18n="url">URL</label>
-          <input type="text" id="bookmarkUrl" class="form-input" readonly />
+          <input type="text" id="bookmarkUrl" class="form-input" />
         </div>
         <div class="form-row">
           <div class="form-group flex-1">

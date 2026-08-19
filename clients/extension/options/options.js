@@ -12,6 +12,7 @@ const elements = {
   serverUrl: document.getElementById('serverUrl'),
   username: document.getElementById('username'),
   password: document.getElementById('password'),
+  rememberLogin: document.getElementById('rememberLogin'),
   saveBtn: document.getElementById('saveBtn'),
   testBtn: document.getElementById('testBtn'),
   themeToggle: document.getElementById('themeToggle'),
@@ -38,6 +39,7 @@ const i18n = {
     usernamePlaceholder: 'admin',
     passwordLabel: '密码',
     passwordPlaceholder: '••••••••',
+    rememberLogin: '记住我（90 天内自动登录）',
     saveConnect: '保存并连接',
     disconnect: '断开连接',
     connecting: '连接中...',
@@ -83,6 +85,7 @@ const i18n = {
     usernamePlaceholder: 'admin',
     passwordLabel: 'Password',
     passwordPlaceholder: '••••••••',
+    rememberLogin: 'Keep me signed in (90 days)',
     saveConnect: 'Save and Connect',
     disconnect: 'Disconnect',
     connecting: 'Connecting...',
@@ -159,6 +162,10 @@ async function init() {
 
   if (stored.savedUsername) {
     elements.username.value = stored.savedUsername
+  }
+
+  if (elements.rememberLogin) {
+    elements.rememberLogin.checked = stored.rememberLogin === true
   }
 
   if (stored.token) {
@@ -306,6 +313,7 @@ async function saveAndConnect() {
   const serverUrl = normalizeServerUrl(elements.serverUrl.value)
   const username = elements.username.value.trim()
   const password = elements.password.value
+  const remember = elements.rememberLogin?.checked === true
 
   if (!serverUrl) {
     showToast(formatText('missingServerUrl'), 'error')
@@ -326,7 +334,7 @@ async function saveAndConnect() {
       return
     }
 
-    const result = await loginToServer(serverUrl, username, password)
+    const result = await loginToServer(serverUrl, username, password, remember)
 
     if (
       !serverUrl.startsWith('https://') &&
@@ -339,7 +347,8 @@ async function saveAndConnect() {
     await setStorage(
       {
         serverUrl,
-        savedUsername: username
+        savedUsername: username,
+        rememberLogin: remember
       },
       'sync'
     )
