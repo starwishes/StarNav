@@ -1,4 +1,3 @@
-/* global console, process */
 /**
  * Regenerate OpenAPI client types and fail if the committed artifact drifts.
  *
@@ -30,10 +29,7 @@ const readIfExists = async (filePath) => {
   }
 }
 
-export const checkOpenApiTypes = async ({
-  repoRoot = REPO_ROOT,
-  regenerateSpec = true
-} = {}) => {
+export const checkOpenApiTypes = async ({ repoRoot = REPO_ROOT, regenerateSpec = true } = {}) => {
   const generatedPath = path.join(repoRoot, GENERATED_REL)
   const before = await readIfExists(generatedPath)
 
@@ -66,11 +62,9 @@ export const checkOpenApiTypes = async ({
   // If tracked, fail when git still reports a content modification after regenerate
   // (e.g. line-ending / mode edge cases). Untracked (??) is OK for first-time add.
   try {
-    const { stdout } = await execFileAsync(
-      'git',
-      ['status', '--porcelain', '--', GENERATED_REL],
-      { cwd: repoRoot }
-    )
+    const { stdout } = await execFileAsync('git', ['status', '--porcelain', '--', GENERATED_REL], {
+      cwd: repoRoot
+    })
     const lines = stdout
       .split(/\r?\n/)
       .map((line) => line.trimEnd())

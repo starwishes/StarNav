@@ -1,4 +1,3 @@
-/* global console, process */
 /**
  * Sync src/shared/*.ts modules used by the browser extension into
  * clients/extension/common/*.js (type-stripped ESM via esbuild).
@@ -36,10 +35,7 @@ const loadEsbuild = () => {
 
 const normalizeNewlines = (text) => text.replace(/\r\n/g, '\n')
 
-export const syncExtensionCommon = async ({
-  repoRoot = REPO_ROOT,
-  check = false
-} = {}) => {
+export const syncExtensionCommon = async ({ repoRoot = REPO_ROOT, check = false } = {}) => {
   const esbuild = loadEsbuild()
   const sourceDir = path.join(repoRoot, 'src', 'shared')
   const destDir = path.join(repoRoot, 'clients/extension', 'common')
@@ -111,9 +107,7 @@ if (shouldRunAsScript) {
     if (dirty.length > 0) {
       console.error('[extension:sync-common] drift detected:')
       for (const item of dirty) {
-        console.error(
-          `  - ${item.outfile}${item.missing ? ' (missing)' : ' (out of date)'}`
-        )
+        console.error(`  - ${item.outfile}${item.missing ? ' (missing)' : ' (out of date)'}`)
       }
       console.error('Run: npm run extension:sync-common')
       process.exit(1)

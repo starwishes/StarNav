@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Repo-local rules for coding agents working on **StarNav** (product version **1.0.0**).
+Repo-local rules for coding agents working on **StarNav** (product version **1.0.1**).
 
 ## What this project is
 
@@ -49,14 +49,14 @@ Path aliases: `@/*` → `src/web/*`, `@common/*` → `src/shared/*`.
 
 ## Verification (pick the smallest sufficient set)
 
-| Change type | Run |
-|-------------|-----|
-| Default code | `npm run typecheck` and/or `npm run test:fast` |
-| Server only | `npm run typecheck:server` |
-| Web only | `npm run typecheck:web` |
-| Deps / prod surface | `npm run audit:prod` |
-| Docker delivery | `npm run docker:smoke` (uses `docker/`) |
-| Release-ish | `npm run release:dry-run` (heavy) |
+| Change type         | Run                                            |
+| ------------------- | ---------------------------------------------- |
+| Default code        | `npm run typecheck` and/or `npm run test:fast` |
+| Server only         | `npm run typecheck:server`                     |
+| Web only            | `npm run typecheck:web`                        |
+| Deps / prod surface | `npm run audit:prod`                           |
+| Docker delivery     | `npm run docker:smoke` (uses `docker/`)        |
+| Release-ish         | `npm run release:dry-run` (heavy)              |
 
 Commands of record:
 

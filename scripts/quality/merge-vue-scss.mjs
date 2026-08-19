@@ -1,4 +1,3 @@
-/* global console, process */
 /**
  * Inline single-use companion .scss files into their Vue SFC <style lang="scss"> blocks.
  * Only merges when the Vue file has exactly one local @use './X.scss'.
@@ -62,7 +61,10 @@ for (const vuePath of vueFiles) {
     continue
   }
 
-  const scss = fs.readFileSync(scssPath, 'utf8').replace(/^\uFEFF/, '').trim()
+  const scss = fs
+    .readFileSync(scssPath, 'utf8')
+    .replace(/^\uFEFF/, '')
+    .trim()
   const styleRe =
     /(<style\b[^>]*lang=["']scss["'][^>]*>)\s*@use\s+['"]\.\/[^'"]+\.scss['"]\s*;?\s*(<\/style>)/i
 

@@ -114,10 +114,12 @@ jobs:
           fi
 
           RUN_NAME="Docker Publish v${VERSION}"
+          # --limit 1000: the default 100 can miss an older successful run once
+          # the workflow has accumulated more than 100 runs.
           SUCCESS_COUNT="$(gh run list \
             --repo "${{ github.repository }}" \
             --workflow "docker-publish.yml" \
-            --limit 100 \
+            --limit 1000 \
             --json displayTitle,conclusion \
             --jq "[.[] | select(.displayTitle == \"${RUN_NAME}\" and .conclusion == \"success\")] | length")"
 
@@ -135,9 +137,10 @@ jobs:
               SHOULD_PUBLISH=true
               REASON="workflow_dispatch"
             else
-              # Manual run with same version already published: still allow explicit publish.
-              SHOULD_PUBLISH=true
-              REASON="workflow_dispatch"
+              # Manual run with unchanged version and an already-published image:
+              # publish only when force=true (handled above).
+              SHOULD_PUBLISH=false
+              REASON="manual run: version unchanged and image already published (set force=true to override)"
             fi
           elif [ "${VERSION_CHANGED}" = "true" ]; then
             SHOULD_PUBLISH=true

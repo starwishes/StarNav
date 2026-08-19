@@ -1,5 +1,16 @@
 import { escapeHtml } from '../../utils/dom.js'
 
+// Only http(s) links are safe to open from a rendered anchor; schemes such as
+// javascript: must never become executable hrefs.
+const isSafeHttpUrl = (url) => {
+  try {
+    const parsed = new URL(String(url))
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 const setDisplay = (element, value) => {
   if (element) {
     element.style.display = value
@@ -150,7 +161,7 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
       .map(
         (item) => `
       <div class="bookmark-item-wrapper">
-        <a href="${escapeHtml(item.url)}" class="bookmark-item" target="_blank" rel="noopener">
+        <a href="${isSafeHttpUrl(item.url) ? escapeHtml(item.url) : '#'}" class="bookmark-item" target="_blank" rel="noopener">
           <div class="bookmark-icon">${(item.name || '?').charAt(0).toUpperCase()}</div>
           <div class="bookmark-info">
             <div class="bookmark-name">${escapeHtml(item.name)}</div>

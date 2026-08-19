@@ -1,4 +1,4 @@
-/* global URL, chrome, console, document, history, process, window */
+/* global chrome, document, history, window */
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -25,7 +25,8 @@ const deletedBookmarkUrl = normalizeUrl('https://gitlab.com')
 const editedBookmarkUrl = normalizeUrl('https://github.com')
 const extensionCategoryName = 'Extension E2E 分类'
 const targetTitle = 'Extension E2E Target'
-const targetDescription = 'Playwright-loaded extension captures this page through real browser APIs.'
+const targetDescription =
+  'Playwright-loaded extension captures this page through real browser APIs.'
 
 const tempPaths = []
 
@@ -238,10 +239,7 @@ const loadExtensionContext = async (extensionDir) => {
       width: 1440,
       height: 1200
     },
-    args: [
-      `--disable-extensions-except=${extensionDir}`,
-      `--load-extension=${extensionDir}`
-    ]
+    args: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`]
   })
 
   let serviceWorker = context.serviceWorkers()[0]
@@ -404,13 +402,7 @@ const exercisePopupCrudFlows = async ({ api, token, context, popupUrl }) => {
   await popupPage.close()
 }
 
-const exerciseAddCurrentAndDuplicate = async ({
-  api,
-  token,
-  context,
-  serviceWorker,
-  popupUrl
-}) => {
+const exerciseAddCurrentAndDuplicate = async ({ api, token, context, serviceWorker, popupUrl }) => {
   log('exercise add-current-page, category creation, and duplicate handling')
 
   const targetPage = await context.newPage()
@@ -495,7 +487,9 @@ const exerciseAddCurrentAndDuplicate = async ({
   assert(categoriesResponse.ok(), 'failed to read categories after popup category creation')
   const categoriesPayload = getPayloadData(await categoriesResponse.json())
   assert(
-    (categoriesPayload.categories || []).some((category) => category.name === extensionCategoryName),
+    (categoriesPayload.categories || []).some(
+      (category) => category.name === extensionCategoryName
+    ),
     'new popup-created category was not persisted'
   )
 

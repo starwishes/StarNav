@@ -1,10 +1,10 @@
 # Default ownership stays centralized until the repo has stable domain maintainers.
 * @starwishes
 
-/backend/ @starwishes
-/frontend/ @starwishes
-/browser-extension/ @starwishes
-/common/ @starwishes
+/src/ @starwishes
+/clients/ @starwishes
+/tests/ @starwishes
+/docker/ @starwishes
 /docs/ @starwishes
 /.github/ @starwishes
 /scripts/ @starwishes

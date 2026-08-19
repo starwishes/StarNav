@@ -49,7 +49,7 @@ const isExtensionSourceFile = (file) => {
 }
 
 export default {
-  '*.{js,jsx,ts,tsx,vue}': (files) => [
+  '*.{js,mjs,jsx,ts,tsx,vue}': (files) => [
     ...mapChunks(files, (list) => `eslint --fix ${list}`),
     ...mapChunks(files, (list) => `prettier --write ${list}`)
   ],
@@ -63,7 +63,9 @@ export default {
     }
     return [
       'npm run extension:package',
-      'git add clients/extension/packages/SHA256SUMS.txt clients/extension/packages/starnav-extension-chrome.zip clients/extension/packages/starnav-extension-firefox.zip'
+      // Packaging may also write synced metadata/common when drifted
+      // (manifests, READMEs, clients/extension/common/*.js), not just the zips.
+      'git add README.md clients/extension/README.md clients/extension/manifest.json clients/extension/manifest.firefox.json clients/extension/common/ clients/extension/packages/'
     ]
   }
 }

@@ -10,9 +10,10 @@ services:
       - ./data:/app/data
     environment:
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      # 下列为仓库示例默认值，仅便本地首启；部署前请更换（在 .env 覆盖）
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-UkTm7hXOUp27pbRFsY88GoS8}
-      JWT_SECRET: ${JWT_SECRET:-rucL6_4F8NDlKvQ0WBUPhbvos9xjIOoYQd65i-4HJcs83FsM6Ufr1RqeImf9NzAn}
+      # Required — no public defaults. Fails fast on `docker compose up` unless
+      # these are set (e.g. via .env); never boot with repo-shipped credentials.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       LOG_LEVEL: ${LOG_LEVEL:-3}
       NODE_ENV: production

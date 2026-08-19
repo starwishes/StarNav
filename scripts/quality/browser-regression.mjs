@@ -1,4 +1,4 @@
-/* global Buffer, console, document, process */
+/* global document */
 import { chromium } from 'playwright-core'
 
 const baseUrl = process.env.BASE_URL || 'http://host.docker.internal:38112'
@@ -6,35 +6,8 @@ const adminPassword = process.env.ADMIN_PASSWORD || 'BrowserQa123!'
 const siteName = process.env.SITE_NAME || 'StarNav Browser QA'
 
 const pngBuffer = Buffer.from([
-  0x89,
-  0x50,
-  0x4e,
-  0x47,
-  0x0d,
-  0x0a,
-  0x1a,
-  0x0a,
-  0x00,
-  0x00,
-  0x00,
-  0x0d,
-  0x49,
-  0x48,
-  0x44,
-  0x52,
-  0x00,
-  0x00,
-  0x00,
-  0x10,
-  0x00,
-  0x00,
-  0x00,
-  0x10,
-  0x08,
-  0x02,
-  0x00,
-  0x00,
-  0x00
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x10, 0x08, 0x02, 0x00, 0x00, 0x00
 ])
 
 const log = (message) => {
@@ -205,8 +178,16 @@ async function run() {
     ),
     page.locator('.login-btn').click()
   ])
-  await page.locator('.admin-menu-item').filter({ hasText: /管理后台|Admin/i }).first().waitFor()
-  await page.locator('.admin-menu-item').filter({ hasText: /退出登录|Logout/i }).first().waitFor()
+  await page
+    .locator('.admin-menu-item')
+    .filter({ hasText: /管理后台|Admin/i })
+    .first()
+    .waitFor()
+  await page
+    .locator('.admin-menu-item')
+    .filter({ hasText: /退出登录|Logout/i })
+    .first()
+    .waitFor()
 
   log('enter admin dashboard')
   await clickMenuItem(page, ['管理后台', 'Admin'])
@@ -266,8 +247,8 @@ async function run() {
 
     return Boolean(
       favicon?.getAttribute('src')?.includes('/uploads/') &&
-        logo?.getAttribute('src')?.includes('/uploads/') &&
-        bg?.getAttribute('style')?.includes('/uploads/')
+      logo?.getAttribute('src')?.includes('/uploads/') &&
+      bg?.getAttribute('style')?.includes('/uploads/')
     )
   })
 
@@ -285,7 +266,11 @@ async function run() {
   await page.locator('.admin-sidebar .logout-btn').click()
   await page.locator('.sn-feedback-dialog-button.primary').click()
   await page.waitForURL(`${baseUrl}/`)
-  await page.locator('.admin-menu-item').filter({ hasText: /登录|Login/i }).first().waitFor()
+  await page
+    .locator('.admin-menu-item')
+    .filter({ hasText: /登录|Login/i })
+    .first()
+    .waitFor()
 
   log('browser regression passed')
   await context.close()

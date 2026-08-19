@@ -31,7 +31,7 @@ export default [
     files: [
       'server.ts',
       'src/server/**/*.{js,ts}',
-      'scripts/**/*.{js,ts}',
+      'scripts/**/*.{js,ts,mjs}',
       '*.config.{js,ts,cjs,mjs}',
       'tests/**/*.{js,ts}'
     ],

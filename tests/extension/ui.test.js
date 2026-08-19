@@ -207,4 +207,20 @@ describe('browser extension ui helpers', () => {
     })
     expect(onDelete).toHaveBeenCalledWith('1')
   })
+
+  it('does not render javascript: URLs as executable links', () => {
+    const target = document.getElementById('listTarget')
+
+    ui.renderBookmarkList(target, [
+      {
+        id: 2,
+        name: 'Unsafe',
+        url: 'javascript:alert(1)',
+        categoryName: ''
+      }
+    ])
+
+    expect(target.querySelector('.bookmark-item').getAttribute('href')).toBe('#')
+    expect(target.innerHTML).not.toMatch(/href="javascript:/i)
+  })
 })

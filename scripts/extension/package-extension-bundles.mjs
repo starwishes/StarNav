@@ -1,4 +1,3 @@
-/* global console, process */
 import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import fs from 'node:fs/promises'
@@ -31,13 +30,40 @@ const resolveRepoPath = (repoRoot, absolutePath) =>
 
 const normalizeArchivePath = (relativePath) => relativePath.split(path.sep).join('/')
 
+// File extensions kept as raw bytes. Everything else is treated as text and
+// normalized to LF so zips are reproducible regardless of the packager's
+// checkout line endings (repo canonical is LF per .gitattributes).
+const BINARY_ARCHIVE_EXTENSIONS = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.ico',
+  '.webp',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.eot',
+  '.db',
+  '.zip'
+])
+
+const normalizeContentForArchive = (relativePath, content) => {
+  const extension = path.extname(relativePath).toLowerCase()
+
+  if (BINARY_ARCHIVE_EXTENSIONS.has(extension)) {
+    return content
+  }
+
+  return Buffer.from(content.toString('utf8').replace(/\r/g, ''))
+}
+
 const toDosTimestamp = (value) => {
   const date = value instanceof Date ? value : new Date(value)
   const clampedYear = Math.min(Math.max(date.getFullYear(), 1980), 2107)
 
   return {
-    time:
-      (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2),
+    time: (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2),
     date: ((clampedYear - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate()
   }
 }
@@ -70,7 +96,11 @@ const buildArchiveEntries = async (sourceDir) => {
 
   return Promise.all(
     files.map(async ({ absolutePath, relativePath }) => {
-      const [content, stats] = await Promise.all([fs.readFile(absolutePath), fs.stat(absolutePath)])
+      const [rawContent, stats] = await Promise.all([
+        fs.readFile(absolutePath),
+        fs.stat(absolutePath)
+      ])
+      const content = normalizeContentForArchive(relativePath, rawContent)
       const compressedContent = deflateRawSync(content)
       const shouldCompress = compressedContent.length < content.length
       const archiveContent = shouldCompress ? compressedContent : content
@@ -150,10 +180,7 @@ const createZipArchiveBuffer = (entries) => {
 
   const totalSize = localSize + centralSize + endOfCentralDirectory.length
 
-  return Buffer.concat(
-    [...localChunks, ...centralChunks, endOfCentralDirectory],
-    totalSize
-  )
+  return Buffer.concat([...localChunks, ...centralChunks, endOfCentralDirectory], totalSize)
 }
 
 const writeZipArchive = async (sourceDir, archivePath) => {
@@ -213,7 +240,10 @@ export const packageExtensionBundles = async ({
 
     const packagedBundles = await Promise.all(
       PACKAGE_TARGETS.map(({ bundleName, archiveName }) =>
-        writeZipArchive(path.join(exportPaths.exportRoot, bundleName), path.join(packagePaths.packageRoot, archiveName))
+        writeZipArchive(
+          path.join(exportPaths.exportRoot, bundleName),
+          path.join(packagePaths.packageRoot, archiveName)
+        )
       )
     )
 
