@@ -133,10 +133,23 @@ describe('LoginDialog', () => {
     await inputs[1].setValue('secret')
     await wrapper.find('form').trigger('submit')
 
-    expect(mocks.login).toHaveBeenCalledWith('alice', 'secret')
+    expect(mocks.login).toHaveBeenCalledWith('alice', 'secret', false)
     expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:auth.loginSuccess')
     expect(wrapper.emitted('update:modelValue')).toContainEqual([false])
     expect(mocks.routerPush).not.toHaveBeenCalled()
+  })
+
+  it('passes remember=true to the store when the checkbox is checked', async () => {
+    mocks.login.mockResolvedValue({ success: true })
+
+    const wrapper = createWrapper()
+    const inputs = wrapper.findAll('input')
+    await inputs[0].setValue('alice')
+    await inputs[1].setValue('secret')
+    await inputs[2].setValue()
+    await wrapper.find('form').trigger('submit')
+
+    expect(mocks.login).toHaveBeenCalledWith('alice', 'secret', true)
   })
 
   it('navigates to an internal redirect target after a successful login', async () => {

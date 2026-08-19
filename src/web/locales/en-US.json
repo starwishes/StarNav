@@ -61,6 +61,7 @@
     "registerNotice": "Create a new account to save your navigation data",
     "loginSuccess": "Login successful",
     "loginFailed": "Login failed",
+    "rememberMe": "Keep me signed in (90 days)",
     "logoutSuccess": "Logged out successfully"
   },
   "audit": {

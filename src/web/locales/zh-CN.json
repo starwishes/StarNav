@@ -61,6 +61,7 @@
     "registerNotice": "创建一个新账户以保存自己的导航数据",
     "loginSuccess": "登录成功",
     "loginFailed": "登录失败",
+    "rememberMe": "记住我（90 天内自动登录）",
     "logoutSuccess": "退出登录成功"
   },
   "audit": {

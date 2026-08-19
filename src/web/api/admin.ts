@@ -126,7 +126,7 @@ type AssetUploadResponse = ApiResponse<{ url: string }> & {
 }
 
 export const adminApi = {
-  login: (credentials: { username: string; password: string }) =>
+  login: (credentials: { username: string; password: string; remember?: boolean }) =>
     api
       .post<AuthResponse>('/login', credentials)
       .then((payload) => mergeApiPayload<Partial<LoginResponse>>(payload)),

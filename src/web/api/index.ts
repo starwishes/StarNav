@@ -156,7 +156,7 @@ export const toolApi = {
 
 // 认证相关 API
 export const authApi = {
-  login: (credentials: { username: string; password: string }) => {
+  login: (credentials: { username: string; password: string; remember?: boolean }) => {
     return adminApi.login(credentials)
   },
 

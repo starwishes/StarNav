@@ -90,7 +90,8 @@ describe('admin store', () => {
     await expect(store.login('admin', 'secret')).resolves.toEqual({ success: true })
     expect(mocks.login).toHaveBeenCalledWith({
       username: 'admin',
-      password: 'secret'
+      password: 'secret',
+      remember: false
     })
     expect(store.token).toBe('jwt-token')
     expect(store.user).toEqual(authUser)

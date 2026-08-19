@@ -46,9 +46,13 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   // 登录
-  const login = async (username: string, password: string): Promise<AuthResult> => {
+  const login = async (
+    username: string,
+    password: string,
+    remember = false
+  ): Promise<AuthResult> => {
     try {
-      const data = await authApi.login({ username, password })
+      const data = await authApi.login({ username, password, remember })
       if (!data.token || !data.user) {
         throw new Error(typeof data.error === 'string' ? data.error : '登录失败')
       }

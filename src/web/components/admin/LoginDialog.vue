@@ -75,6 +75,11 @@
                 </div>
               </label>
 
+              <label v-if="mode === 'login'" class="dialog-checkbox">
+                <input v-model="loginForm.remember" type="checkbox" />
+                <span>{{ t('auth.rememberMe') }}</span>
+              </label>
+
               <button type="submit" class="login-btn" :disabled="loading">
                 {{
                   loading
@@ -123,7 +128,8 @@ const usernameInputRef = ref<HTMLInputElement | null>(null)
 
 const loginForm = reactive({
   username: '',
-  password: ''
+  password: '',
+  remember: false
 })
 
 const visible = computed({
@@ -179,7 +185,11 @@ const handleSubmit = async () => {
   loading.value = true
   try {
     if (mode.value === 'login') {
-      const result = await adminStore.login(loginForm.username, loginForm.password)
+      const result = await adminStore.login(
+        loginForm.username,
+        loginForm.password,
+        loginForm.remember
+      )
       if (result.success) {
         ElMessage.success(t('auth.loginSuccess'))
         closeDialog()
