@@ -1,7 +1,4 @@
-const normalizeServerUrl = (serverUrl) =>
-  String(serverUrl || '')
-    .trim()
-    .replace(/\/+$/, '')
+import { normalizeServerUrl } from './url.js'
 
 export const originPatternFromServerUrl = (serverUrl) => {
   const normalized = normalizeServerUrl(serverUrl)

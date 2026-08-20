@@ -2,6 +2,13 @@
  * URL 规范化与安全清洗 (Shared Module Copy)
  * 适用于: Backend, Frontend, Browser Extension
  */
+
+/** 去掉尾部斜杠,返回干净的服务器根地址(不带协议校验,交给上层处理)。 */
+export const normalizeServerUrl = (serverUrl) =>
+  String(serverUrl || '')
+    .trim()
+    .replace(/\/+$/, '')
+
 export const normalizeUrl = (url) => {
   if (!url || typeof url !== 'string') return ''
 

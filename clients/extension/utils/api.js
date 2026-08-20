@@ -1,14 +1,12 @@
 import { ApiError, extractApiErrorMessage, readJsonBody, unwrapApiPayload } from '../common/api.js'
 import { getMergedStorage } from './storage.js'
+import { normalizeServerUrl } from './url.js'
+
+// 保持向后兼容:popup/options 仍从 api.js 导入
+export { normalizeServerUrl }
 
 let config = { serverUrl: '', token: '' }
 let onAuthError = null
-
-export function normalizeServerUrl(serverUrl) {
-  return String(serverUrl || '')
-    .trim()
-    .replace(/\/+$/, '')
-}
 
 function buildApiUrl(serverUrl, endpoint) {
   const normalizedServerUrl = normalizeServerUrl(serverUrl)
