@@ -29,7 +29,8 @@ export const authController = {
       // 登录 CSRF 防护：跨站表单 POST 会携带 Origin/Referer。
       // 若来源头存在且未通过同源/白名单校验则拒绝；无来源头的请求
       // （CLI、浏览器插件、同源 fetch）放行，与现有 cookie 写请求策略一致。
-      const originCheck = validateTrustedWriteOrigin(req)
+      // 浏览器扩展来源(chrome-extension://)允许登录：无 cookie 可窃取，无 CSRF 风险。
+      const originCheck = validateTrustedWriteOrigin(req, { allowExtensionOrigins: true })
       if (originCheck.source && !originCheck.trusted) {
         throw errors.forbidden('请求来源无效')
       }

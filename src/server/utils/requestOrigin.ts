@@ -138,7 +138,7 @@ export const resolveCorsOriginPolicy = (
   const requestOrigin = getRequestOrigin(req)
   const allowed = Boolean(
     (requestOrigin && normalizedOrigin === requestOrigin) ||
-      includesConfiguredOrigin(normalizedOrigin)
+    includesConfiguredOrigin(normalizedOrigin)
   )
 
   return {
@@ -164,14 +164,20 @@ export const isAllowedCorsOrigin = (
 }
 
 export const validateTrustedWriteOrigin = (
-  req: Request | RequestLike | null | undefined
+  req: Request | RequestLike | null | undefined,
+  options: { allowExtensionOrigins?: boolean } = {}
 ): TrustedWriteOriginResult => {
+  const { allowExtensionOrigins = false } = options
+  const trustedExtensionOrigin = (origin: string | null): boolean =>
+    allowExtensionOrigins && isExtensionOrigin(origin)
+
   const originHeader = normalizeOriginValue(readHeader(req, 'origin'))
   if (originHeader) {
     return {
       trusted:
         originHeader === getRequestOrigin(req) ||
-        includesConfiguredOrigin(originHeader, { allowWildcard: false }),
+        includesConfiguredOrigin(originHeader, { allowWildcard: false }) ||
+        trustedExtensionOrigin(originHeader),
       source: 'origin',
       origin: originHeader
     }
@@ -182,7 +188,8 @@ export const validateTrustedWriteOrigin = (
     return {
       trusted:
         refererOrigin === getRequestOrigin(req) ||
-        includesConfiguredOrigin(refererOrigin, { allowWildcard: false }),
+        includesConfiguredOrigin(refererOrigin, { allowWildcard: false }) ||
+        trustedExtensionOrigin(refererOrigin),
       source: 'referer',
       origin: refererOrigin
     }
