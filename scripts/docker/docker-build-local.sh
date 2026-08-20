@@ -10,8 +10,18 @@ APT_DEBIAN_SECURITY_MIRROR="${APT_DEBIAN_SECURITY_MIRROR:-}"
 HTTP_PROXY="${HTTP_PROXY:-}"
 HTTPS_PROXY="${HTTPS_PROXY:-}"
 NO_PROXY="${NO_PROXY:-}"
+# 本地构建缓存目录;开启 buildx 时显著加速重复构建(apt/npm 层不再重装)
+DOCKER_BUILD_CACHE_DIR="${DOCKER_BUILD_CACHE_DIR:-.docker-cache}"
 
 run_docker_build() {
+  if docker buildx version >/dev/null 2>&1; then
+    docker buildx build --load \
+      --cache-from "type=local,src=${DOCKER_BUILD_CACHE_DIR}" \
+      --cache-to "type=local,dest=${DOCKER_BUILD_CACHE_DIR},mode=max" \
+      "$@"
+    return
+  fi
+
   if [ "${DOCKER_BUILDKIT+x}" = "x" ]; then
     DOCKER_BUILDKIT="${DOCKER_BUILDKIT}" docker build "$@"
     return

@@ -52,3 +52,6 @@ test-data/
 .ai_memory/
 browser-extension/config.js
 browser-extension/dist/
+
+# Docker buildx local cache
+.docker-cache/

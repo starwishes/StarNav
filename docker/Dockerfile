@@ -1,6 +1,7 @@
 ARG NODE_IMAGE=node:24.14.1-slim
 ARG APT_DEBIAN_MIRROR=
 ARG APT_DEBIAN_SECURITY_MIRROR=
+ARG NPM_REGISTRY=
 ARG HTTP_PROXY=
 ARG HTTPS_PROXY=
 ARG NO_PROXY=
@@ -10,10 +11,11 @@ FROM ${NODE_IMAGE} AS build-stage
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
+ARG NPM_REGISTRY
 WORKDIR /app
 COPY package*.json ./
 # Use clean install for consistency
-RUN npm ci --legacy-peer-deps --ignore-scripts
+RUN npm ci --legacy-peer-deps --ignore-scripts --registry "${NPM_REGISTRY:-https://registry.npmjs.org/}"
 COPY . .
 RUN npm run build
 
@@ -22,6 +24,7 @@ FROM ${NODE_IMAGE} AS prod-deps
 WORKDIR /app
 ARG APT_DEBIAN_MIRROR
 ARG APT_DEBIAN_SECURITY_MIRROR
+ARG NPM_REGISTRY
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
@@ -34,7 +37,7 @@ RUN chmod +x /tmp/apt-mirror.sh \
     && /tmp/apt-mirror.sh \
     && apt-get -o Acquire::Retries=3 update \
     && apt-get -o Acquire::Retries=3 install -y --no-install-recommends python3 make g++ \
-    && npm ci --omit=dev --legacy-peer-deps --ignore-scripts \
+    && npm ci --omit=dev --legacy-peer-deps --ignore-scripts --registry "${NPM_REGISTRY:-https://registry.npmjs.org/}" \
     && npm rebuild better-sqlite3 \
     && apt-get purge -y --auto-remove python3 make g++ \
     && rm -rf /var/lib/apt/lists/* \

@@ -53,6 +53,9 @@ jobs:
       - name: Extension common sync check
         run: npm run extension:sync-common:check
 
+      - name: Version metadata check
+        run: npm run versions:check
+
       - name: Test surface stats
         run: npm run test:stats
 
