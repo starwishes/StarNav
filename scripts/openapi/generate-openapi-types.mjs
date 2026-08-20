@@ -59,6 +59,11 @@ export const generateOpenApiTypes = async ({
     await fs.writeFile(outputPath, `${HEADER}${generated}`)
   }
 
+  // The pre-commit hook formats staged .ts with prettier, so the generated
+  // artifact must match that style or `openapi:types:check` always drifts.
+  const prettierBin = path.join(REPO_ROOT, 'node_modules', 'prettier', 'bin', 'prettier.cjs')
+  await execFileAsync(process.execPath, [prettierBin, '--write', outputPath], { cwd: REPO_ROOT })
+
   return outputPath
 }
 
