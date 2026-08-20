@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "StarNav",
-  "version": "1.0.1",
-  "version_name": "v1.0.1",
+  "version": "1.0.2",
+  "version_name": "v1.0.2",
   "description": "Quickly add bookmarks and search your StarNav navigation site",
   "background": {
     "service_worker": "background/service-worker.js",
@@ -24,17 +24,8 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self';"
   },
-  "permissions": [
-    "activeTab",
-    "storage",
-    "tabs",
-    "scripting",
-    "contextMenus"
-  ],
-  "optional_host_permissions": [
-    "http://*/*",
-    "https://*/*"
-  ],
+  "permissions": ["activeTab", "storage", "tabs", "scripting", "contextMenus"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
   "commands": {
     "_execute_action": {
       "suggested_key": {

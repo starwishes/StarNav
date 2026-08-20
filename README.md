@@ -7,7 +7,7 @@
 ## 当前版本
 
 - 主站：`v1.0.2`
-- 浏览器扩展：`v1.0.1`
+- 浏览器扩展：`v1.0.2`
 <!-- version-sync:end -->
 
 ## 快速开始
@@ -31,14 +31,14 @@ npm run build && npm run serve
 
 ## 常用命令
 
-| 命令 | 说明 |
-|------|------|
-| `npm run test:fast` | 默认单测 |
-| `npm run typecheck` | 前后端类型检查 |
-| `npm run lint:check` | ESLint |
-| `npm run docker:smoke` | 镜像冒烟 |
-| `npm run extension:package` | 打包浏览器扩展（改扩展源码提交时自动跑） |
-| `npm run db:backup` / `db:restore` | 数据库备份恢复 |
+| 命令                               | 说明                                     |
+| ---------------------------------- | ---------------------------------------- |
+| `npm run test:fast`                | 默认单测                                 |
+| `npm run typecheck`                | 前后端类型检查                           |
+| `npm run lint:check`               | ESLint                                   |
+| `npm run docker:smoke`             | 镜像冒烟                                 |
+| `npm run extension:package`        | 打包浏览器扩展（改扩展源码提交时自动跑） |
+| `npm run db:backup` / `db:restore` | 数据库备份恢复                           |
 
 更多：`docs/README.md` · 协作约束 `AGENTS.md`
 

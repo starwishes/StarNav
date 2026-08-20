@@ -1,14 +1,9 @@
 {
   "manifest_version": 2,
   "name": "StarNav",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Quickly add bookmarks and search your StarNav navigation site",
-  "permissions": [
-    "activeTab",
-    "storage",
-    "tabs",
-    "contextMenus"
-  ],
+  "permissions": ["activeTab", "storage", "tabs", "contextMenus"],
   "browser_action": {
     "default_popup": "popup/popup.html",
     "default_title": "StarNav",
@@ -28,9 +23,7 @@
     "open_in_tab": true
   },
   "background": {
-    "scripts": [
-      "background/service-worker.js"
-    ],
+    "scripts": ["background/service-worker.js"],
     "persistent": false
   },
   "content_security_policy": "script-src 'self'; object-src 'self';",
