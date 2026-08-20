@@ -19,7 +19,6 @@ describe('cacheDefinitionService', () => {
     expect(CacheKeys.categoriesSimple(2)).toBe('categories:simple:2')
     expect(CacheKeys.data(3)).toBe('data:level:3')
     expect(CacheKeys.search(1, 'git', 10)).toBe('search:1:git:10')
-    expect(CacheKeys.statsSummary()).toBe('stats:summary')
     expect(CacheKeys.userInfo('alice')).toBe('user:alice')
     expect(CacheKeys.settings()).toBe('settings:all')
     expect(CacheKeys.searchEngines()).toBe('search_engines:all')

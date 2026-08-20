@@ -81,8 +81,6 @@ const toolController = {
 }
 
 const statsController = {
-  getStats: vi.fn(),
-  getCacheStats: vi.fn(),
   recordVisit: vi.fn()
 }
 
@@ -336,16 +334,6 @@ describe('route mounting', () => {
   })
 
   it('wires stats routes with the expected guards', () => {
-    expect(getHandlers(statsRoutes, 'get', '/stats')).toEqual([
-      authenticate,
-      requireAdmin,
-      statsController.getStats
-    ])
-    expect(getHandlers(statsRoutes, 'get', '/cache')).toEqual([
-      authenticate,
-      requireAdmin,
-      statsController.getCacheStats
-    ])
     expect(getHandlers(statsRoutes, 'post', '/visit')).toEqual([
       dataUpdateLimiter,
       statsController.recordVisit

@@ -2,10 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { fileURLToPath } from 'url'
 import path from 'path'
 import { cleanupTestDataDir, createTestDataDir } from '../../setup/testDataDir.js'
+import { getDb } from '../../../src/server/services/database/database.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const projectRoot = path.resolve(__dirname, '../../..')
+
+const today = () => new Date().toISOString().split('T')[0]
 
 describe('Stats 统计模型测试 (增量断言版)', () => {
   let Stats
@@ -14,7 +17,7 @@ describe('Stats 统计模型测试 (增量断言版)', () => {
   beforeEach(async () => {
     testDataDir = createTestDataDir('starnav-stats-model-test')
 
-    // 动态加载数据库和模型，添加时间戳参数防止 ESM 缓存
+    // 动态加载模型，添加时间戳参数防止 ESM 缓存
     const statsModule = await import(
       path.join(projectRoot, 'src/server/models/stats.js?t=' + Date.now())
     )
@@ -25,14 +28,12 @@ describe('Stats 统计模型测试 (增量断言版)', () => {
     await cleanupTestDataDir(testDataDir)
   })
 
-  it('初始状态统计', () => {
-    const summary = Stats.getSummary()
-    expect(summary).toBeDefined()
-    expect(summary.distribution).toBeDefined()
-  })
-
   it('应该能成功记录一次访问并增加 PV/UV (相对值判断)', () => {
-    const initial = Stats.getSummary()
+    const db = getDb()
+    const before = db.prepare('SELECT pv, uv FROM daily_stats WHERE date = ?').get(today()) || {
+      pv: 0,
+      uv: 0
+    }
 
     Stats.recordVisit({
       ip: '127.0.0.1',
@@ -41,47 +42,40 @@ describe('Stats 统计模型测试 (增量断言版)', () => {
       referrer: 'https://google.com'
     })
 
-    const summary = Stats.getSummary()
-    expect(summary.total_pv - initial.total_pv).toBe(1)
-    expect(summary.total_uv - initial.total_uv).toBe(1)
-    expect(summary.today_pv - initial.today_pv).toBe(1)
-    expect(summary.today_uv - initial.today_uv).toBe(1)
+    const after = db.prepare('SELECT pv, uv FROM daily_stats WHERE date = ?').get(today()) || {
+      pv: 0,
+      uv: 0
+    }
+    expect(after.pv - before.pv).toBe(1)
+    expect(after.uv - before.uv).toBe(1)
+
+    const log = db.prepare('SELECT * FROM visit_logs WHERE ip = ?').get('127.0.0.1')
+    expect(log.os).toBe('Mac OS')
+    expect(log.browser).toBe('Chrome')
   })
 
   it('同一个 IP 多次访问应仅增加 PV 不增加 UV', () => {
-    const initial = Stats.getSummary()
+    const db = getDb()
+    const before = db.prepare('SELECT pv, uv FROM daily_stats WHERE date = ?').get(today()) || {
+      pv: 0,
+      uv: 0
+    }
 
-    // 生成随机 IP 避免冲突
     const randomIp = '192.168.100.1'
     Stats.recordVisit({ ip: randomIp })
     Stats.recordVisit({ ip: randomIp })
 
-    const summary = Stats.getSummary()
-    expect(summary.total_pv - initial.total_pv).toBe(2)
-    expect(summary.total_uv - initial.total_uv).toBe(1)
-  })
+    const after = db.prepare('SELECT pv, uv FROM daily_stats WHERE date = ?').get(today()) || {
+      pv: 0,
+      uv: 0
+    }
+    expect(after.pv - before.pv).toBe(2)
+    expect(after.uv - before.uv).toBe(1)
 
-  it('应该正确统计 OS 和 Browser 分布 (相对值判断)', () => {
-    const initial = Stats.getSummary()
-    const getCount = (list, name) => list.find((i) => i.name === name)?.value || 0
-
-    Stats.recordVisit({ ip: '10.0.0.1', os: 'Windows-Test', browser: 'Edge-Test' })
-    Stats.recordVisit({ ip: '10.0.0.2', os: 'Linux-Test', browser: 'Firefox-Test' })
-    Stats.recordVisit({ ip: '10.0.0.3', os: 'Windows-Test', browser: 'Chrome-Test' })
-
-    const summary = Stats.getSummary()
-
-    expect(
-      getCount(summary.distribution.os, 'Windows-Test') -
-        getCount(initial.distribution.os, 'Windows-Test')
-    ).toBe(2)
-    expect(
-      getCount(summary.distribution.os, 'Linux-Test') -
-        getCount(initial.distribution.os, 'Linux-Test')
-    ).toBe(1)
-    expect(
-      getCount(summary.distribution.browser, 'Chrome-Test') -
-        getCount(initial.distribution.browser, 'Chrome-Test')
-    ).toBe(1)
+    // 同一 IP 只记录一条访问日志 (UNIQUE 去重)
+    const logCount = db
+      .prepare('SELECT COUNT(*) as count FROM visit_logs WHERE ip = ?')
+      .get(randomIp).count
+    expect(logCount).toBe(1)
   })
 })

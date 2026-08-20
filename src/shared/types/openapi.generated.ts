@@ -9,1739 +9,1606 @@
  */
 
 export interface paths {
-    "/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 获取系统健康状态 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 系统健康 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["HealthCheck"];
-                    };
-                };
-                /** @description 系统处于降级或异常状态 */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["HealthCheck"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 获取公开站点设置
-         * @description 返回首页所需的公开配置，不包含管理员专用字段。
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 成功返回公开设置 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example 星语导航 */
-                            siteName?: string;
-                            /** @example /uploads/logo.png */
-                            logoUrl?: string;
-                            /** @example /uploads/icon.png */
-                            faviconUrl?: string;
-                            /** @example /uploads/bg.png */
-                            backgroundUrl?: string;
-                            /** @example <p>Powered by StarNav</p> */
-                            footerHtml?: string;
-                            /** @example https://nav.example.com */
-                            homeUrl?: string;
-                            /** @example false */
-                            registrationEnabled?: boolean;
-                            /** @example Asia/Shanghai */
-                            timezone?: string;
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 获取后台设置 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 成功返回后台完整设置 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                401: components["responses"]["Unauthorized"];
-                403: components["responses"]["Forbidden"];
-            };
-        };
-        put?: never;
-        /** 更新后台设置 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            responses: {
-                /** @description 设置已保存 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                        };
-                    };
-                };
-                401: components["responses"]["Unauthorized"];
-                403: components["responses"]["Forbidden"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/set-background": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 直接设置背景图 URL */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example /uploads/bg_1712912345.png */
-                        url?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description 背景图设置成功 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/upload-background": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 上传背景图 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example data:image/png;base64,iVBORw0KGgoAAAANSUhEUg... */
-                        data: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description 上传成功并自动写入 backgroundUrl */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                            /** @example /uploads/bg_1712912345.png */
-                            url?: string;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/upload-icon": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 上传图标文件 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example data:image/png;base64,iVBORw0KGgoAAAANSUhEUg... */
-                        data: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description 图标上传成功 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                            /** @example /uploads/icon_1712912345.png */
-                            url?: string;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/uploads": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 获取已上传文件列表 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 成功返回上传文件 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            files?: components["schemas"]["UploadedFile"][];
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/uploads/{filename}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** 删除上传文件 */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    filename: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 删除成功 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                        };
-                    };
-                };
-                404: components["responses"]["NotFound"];
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/favicon": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 代理拉取站点 favicon */
-        get: {
-            parameters: {
-                query: {
-                    url: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 返回 favicon 二进制内容 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "image/*": string;
-                    };
-                };
-                /** @description 未找到可用 favicon */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/suggest": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 获取搜索建议 */
-        get: {
-            parameters: {
-                query: {
-                    keyword: string;
-                    type?: "baidu" | "google" | "bing" | "duckduckgo" | "brave";
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 返回建议词数组 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": string[];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/check-links": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 批量检测公网链接可达性 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        urls: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description 返回每个链接的检测结果 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            results?: components["schemas"]["LinkCheckResult"][];
-                        };
-                    };
-                };
-                401: components["responses"]["Unauthorized"];
-                403: components["responses"]["Forbidden"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/stats": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 获取访问统计摘要
-         * @description 返回 PV/UV 摘要、趋势数据以及操作系统和浏览器分布，仅管理员可访问。
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 成功返回统计摘要 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                            data?: {
-                                /** @example 42 */
-                                today_pv?: number;
-                                /** @example 21 */
-                                today_uv?: number;
-                                /** @example 420 */
-                                total_pv?: number;
-                                /** @example 210 */
-                                total_uv?: number;
-                                trend?: {
-                                    /** @example 2026-04-12 */
-                                    date?: string;
-                                    /** @example 42 */
-                                    pv?: number;
-                                    /** @example 21 */
-                                    uv?: number;
-                                }[];
-                                distribution?: {
-                                    os?: {
-                                        /** @example Windows */
-                                        name?: string;
-                                        /** @example 15 */
-                                        value?: number;
-                                    }[];
-                                    browser?: {
-                                        /** @example Chrome */
-                                        name?: string;
-                                        /** @example 18 */
-                                        value?: number;
-                                    }[];
-                                };
-                            };
-                        };
-                    };
-                };
-                401: components["responses"]["Unauthorized"];
-                403: components["responses"]["Forbidden"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/cache": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 获取缓存运行统计
-         * @description 返回当前内存缓存命中、未命中和键数量，仅管理员监控使用。
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 成功返回缓存统计 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                            data?: components["schemas"]["CacheStats"];
-                        };
-                    };
-                };
-                401: components["responses"]["Unauthorized"];
-                403: components["responses"]["Forbidden"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/visit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 记录一次访问
-         * @description 公开接口。根据请求头和可选的 `url`/referer 记录访问来源、UA 和 PV/UV，返回纯文本 `OK` 或 `Error`。
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /**
-                         * @description 可选，作为访问来源写入统计
-                         * @example https://nav.example.com/
-                         */
-                        url?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description 成功接收访问记录请求 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": "OK" | "Error";
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 获取所有导航数据（书签和分类）
-         * @description 公开接口，未登录用户看到 level=0 的内容，登录用户看到符合权限的内容。成功响应统一返回 `{ success, message, data }`，其中 `data` 包含 `categories/items`。
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: components["responses"]["NavigationDataResponse"];
-            };
-        };
-        put?: never;
-        /**
-         * 全量导入/清理/替换导航数据
-         * @description 仅管理员可用。该接口仅用于全量导入、清理或替换导航数据，不作为日常增量写入口。须提供 `action=import|clear|replace`（兼容历史值 `数据导入/清理`）。接受直接 `categories/items`，也兼容 `content.categories/content.items` 包装格式。
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * @description 全量写语义；日常 CRUD 请使用增量书签/分类接口
-                         * @enum {string}
-                         */
-                        action: "import" | "clear" | "replace" | "数据导入/清理";
-                        categories?: components["schemas"]["Category"][];
-                        items?: components["schemas"]["Bookmark"][];
-                        /** @description 兼容旧客户端的包装字段 */
-                        content?: {
-                            categories?: components["schemas"]["Category"][];
-                            items?: components["schemas"]["Bookmark"][];
-                            action?: string;
-                        };
-                    };
-                };
-            };
-            responses: {
-                200: components["responses"]["SaveDataResponse"];
-                /** @description 未认证 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bookmark": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 创建书签 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example GitHub */
-                        name: string;
-                        /** @example https://github.com */
-                        url: string;
-                        /** @example 1 */
-                        categoryId: number;
-                        /** @example Code hosting */
-                        description?: string;
-                        /** @example 0 */
-                        minLevel?: number;
-                    };
-                };
-            };
-            responses: {
-                200: components["responses"]["BookmarkResponse"];
-                /** @description 请求参数错误 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description URL 已存在 */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bookmark/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 搜索当前权限范围内的书签 */
-        get: {
-            parameters: {
-                query: {
-                    /** @description Search query */
-                    q: string;
-                    limit?: number;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: components["responses"]["BookmarkSearchResponse"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bookmark/check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 检查当前权限范围内书签 URL 是否已存在 */
-        get: {
-            parameters: {
-                query: {
-                    /** @description 要检查的 URL */
-                    url: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: components["responses"]["BookmarkExistsResponse"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/categories/simple": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 获取当前权限范围内的简化分类列表 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: components["responses"]["CategoriesResponse"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/category": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 创建新分类 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        name: string;
-                        icon?: string;
-                        /** @default 0 */
-                        minLevel?: number;
-                        parentId?: number;
-                    };
-                };
-            };
-            responses: {
-                200: components["responses"]["CategoryResponse"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/category/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** 更新分类 */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        name?: string;
-                        icon?: string;
-                        /** @default 0 */
-                        minLevel?: number;
-                        parentId?: number | null;
-                    };
-                };
-            };
-            responses: {
-                200: components["responses"]["SuccessResponse"];
-            };
-        };
-        post?: never;
-        /**
-         * 删除分类
-         * @description 删除分类时，会将其子分类回挂到上级分类，并将该分类下的书签迁移到上级分类；若无上级分类则迁移到未分类。
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: components["responses"]["SuccessResponse"];
-                /** @description 分类不存在 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bookmark/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** 更新书签 */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        name?: string;
-                        url?: string;
-                        description?: string;
-                        categoryId?: number;
-                        icon?: string;
-                    };
-                };
-            };
-            responses: {
-                200: components["responses"]["BookmarkResponse"];
-            };
-        };
-        post?: never;
-        /** 删除书签 */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: components["responses"]["SuccessResponse"];
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/sites/{id}/click": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 记录书签点击统计 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: components["responses"]["BookmarkResponse"];
-                /** @description 书签不存在 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** User login */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example admin */
-                        username: string;
-                        /** @example admin */
-                        password: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Login successful */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                            token?: string;
-                            user?: components["schemas"]["User"];
-                        };
-                    };
-                };
-                /** @description Invalid credentials */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** User logout */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Logout successful */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 用户注册
-         * @description 需要系统设置允许注册
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        username: string;
-                        password: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description 注册成功 */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 获取当前用户的所有会话 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/sessions/revoke-others": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 撤销除当前会话外的所有会话 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/sessions/{sessionId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** 撤销指定会话 */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    sessionId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/audit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 获取审计日志 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        put?: never;
-        post?: never;
-        /** 清空审计日志 */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/users": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 获取所有用户 */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        put?: never;
-        /** 创建新用户 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/users/{username}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** 删除用户 */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    username: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        options?: never;
-        head?: never;
-        /** 更新用户 */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    username: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        trace?: never;
-    };
-}
-export type webhooks = Record<string, never>;
-export interface components {
-    schemas: {
-        Error: {
-            /** @example false */
-            success?: boolean;
-            /** @example Error message */
-            error?: string;
-            /** @example ERROR_CODE */
-            code?: string;
-            /** @description Stack trace (dev only) */
-            details?: string;
-        };
-        Category: {
-            /** @example 1 */
-            id?: number;
-            /** @example Development */
-            name?: string;
-            /** @example null */
-            parentId?: number | null;
-            /** @example 0 */
-            level?: number;
-            /** @example /uploads/icon_123.png */
-            icon?: string;
-            /** @example 1 */
-            sortIndex?: number;
-        };
-        Bookmark: {
-            /** @example 1 */
-            id?: number;
+  '/health': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 获取系统健康状态 */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 系统健康 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['HealthCheck']
+          }
+        }
+        /** @description 系统处于降级或异常状态 */
+        503: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['HealthCheck']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/settings': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * 获取公开站点设置
+     * @description 返回首页所需的公开配置，不包含管理员专用字段。
+     */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 成功返回公开设置 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': {
+              /** @example 星语导航 */
+              siteName?: string
+              /** @example /uploads/logo.png */
+              logoUrl?: string
+              /** @example /uploads/icon.png */
+              faviconUrl?: string
+              /** @example /uploads/bg.png */
+              backgroundUrl?: string
+              /** @example <p>Powered by StarNav</p> */
+              footerHtml?: string
+              /** @example https://nav.example.com */
+              homeUrl?: string
+              /** @example false */
+              registrationEnabled?: boolean
+              /** @example Asia/Shanghai */
+              timezone?: string
+            }
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/admin/settings': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 获取后台设置 */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 成功返回后台完整设置 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': {
+              [key: string]: unknown
+            }
+          }
+        }
+        401: components['responses']['Unauthorized']
+        403: components['responses']['Forbidden']
+      }
+    }
+    put?: never
+    /** 更新后台设置 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            [key: string]: unknown
+          }
+        }
+      }
+      responses: {
+        /** @description 设置已保存 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': {
+              /** @example true */
+              success?: boolean
+            }
+          }
+        }
+        401: components['responses']['Unauthorized']
+        403: components['responses']['Forbidden']
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/set-background': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 直接设置背景图 URL */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @example /uploads/bg_1712912345.png */
+            url?: string
+          }
+        }
+      }
+      responses: {
+        /** @description 背景图设置成功 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': {
+              /** @example true */
+              success?: boolean
+            }
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/upload-background': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 上传背景图 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @example data:image/png;base64,iVBORw0KGgoAAAANSUhEUg... */
+            data: string
+          }
+        }
+      }
+      responses: {
+        /** @description 上传成功并自动写入 backgroundUrl */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': {
+              /** @example true */
+              success?: boolean
+              /** @example /uploads/bg_1712912345.png */
+              url?: string
+            }
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/upload-icon': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 上传图标文件 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @example data:image/png;base64,iVBORw0KGgoAAAANSUhEUg... */
+            data: string
+          }
+        }
+      }
+      responses: {
+        /** @description 图标上传成功 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': {
+              /** @example true */
+              success?: boolean
+              /** @example /uploads/icon_1712912345.png */
+              url?: string
+            }
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/uploads': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 获取已上传文件列表 */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 成功返回上传文件 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': {
+              files?: components['schemas']['UploadedFile'][]
+            }
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/uploads/{filename}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /** 删除上传文件 */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          filename: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 删除成功 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': {
+              /** @example true */
+              success?: boolean
+            }
+          }
+        }
+        404: components['responses']['NotFound']
+      }
+    }
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/favicon': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 代理拉取站点 favicon */
+    get: {
+      parameters: {
+        query: {
+          url: string
+        }
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 返回 favicon 二进制内容 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'image/*': string
+          }
+        }
+        /** @description 未找到可用 favicon */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['Error']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/suggest': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 获取搜索建议 */
+    get: {
+      parameters: {
+        query: {
+          keyword: string
+          type?: 'baidu' | 'google' | 'bing' | 'duckduckgo' | 'brave'
+        }
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 返回建议词数组 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': string[]
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/check-links': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 批量检测公网链接可达性 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            urls: string[]
+          }
+        }
+      }
+      responses: {
+        /** @description 返回每个链接的检测结果 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': {
+              results?: components['schemas']['LinkCheckResult'][]
+            }
+          }
+        }
+        401: components['responses']['Unauthorized']
+        403: components['responses']['Forbidden']
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/visit': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * 记录一次访问
+     * @description 公开接口。根据请求头和可选的 `url`/referer 记录访问来源、UA 和 PV/UV，返回纯文本 `OK` 或 `Error`。
+     */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: {
+        content: {
+          'application/json': {
+            /**
+             * @description 可选，作为访问来源写入统计
+             * @example https://nav.example.com/
+             */
+            url?: string
+          }
+        }
+      }
+      responses: {
+        /** @description 成功接收访问记录请求 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'text/plain': 'OK' | 'Error'
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/data': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * 获取所有导航数据（书签和分类）
+     * @description 公开接口，未登录用户看到 level=0 的内容，登录用户看到符合权限的内容。成功响应统一返回 `{ success, message, data }`，其中 `data` 包含 `categories/items`。
+     */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        200: components['responses']['NavigationDataResponse']
+      }
+    }
+    put?: never
+    /**
+     * 全量导入/清理/替换导航数据
+     * @description 仅管理员可用。该接口仅用于全量导入、清理或替换导航数据，不作为日常增量写入口。须提供 `action=import|clear|replace`（兼容历史值 `数据导入/清理`）。接受直接 `categories/items`，也兼容 `content.categories/content.items` 包装格式。
+     */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            /**
+             * @description 全量写语义；日常 CRUD 请使用增量书签/分类接口
+             * @enum {string}
+             */
+            action: 'import' | 'clear' | 'replace' | '数据导入/清理'
+            categories?: components['schemas']['Category'][]
+            items?: components['schemas']['Bookmark'][]
+            /** @description 兼容旧客户端的包装字段 */
+            content?: {
+              categories?: components['schemas']['Category'][]
+              items?: components['schemas']['Bookmark'][]
+              action?: string
+            }
+          }
+        }
+      }
+      responses: {
+        200: components['responses']['SaveDataResponse']
+        /** @description 未认证 */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/bookmark': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 创建书签 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
             /** @example GitHub */
-            name?: string;
+            name: string
             /** @example https://github.com */
-            url?: string;
-            /** @example Code hosting platform */
-            description?: string;
+            url: string
             /** @example 1 */
-            categoryId?: number;
-            /** @example Development */
-            categoryName?: string;
+            categoryId: number
+            /** @example Code hosting */
+            description?: string
             /** @example 0 */
-            level?: number;
-            /** Format: date-time */
-            createdAt?: string;
-        };
-        User: {
+            minLevel?: number
+          }
+        }
+      }
+      responses: {
+        200: components['responses']['BookmarkResponse']
+        /** @description 请求参数错误 */
+        400: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+        /** @description URL 已存在 */
+        409: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/bookmark/search': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 搜索当前权限范围内的书签 */
+    get: {
+      parameters: {
+        query: {
+          /** @description Search query */
+          q: string
+          limit?: number
+        }
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        200: components['responses']['BookmarkSearchResponse']
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/bookmark/check': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 检查当前权限范围内书签 URL 是否已存在 */
+    get: {
+      parameters: {
+        query: {
+          /** @description 要检查的 URL */
+          url: string
+        }
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        200: components['responses']['BookmarkExistsResponse']
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/categories/simple': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 获取当前权限范围内的简化分类列表 */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        200: components['responses']['CategoriesResponse']
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/category': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 创建新分类 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            name: string
+            icon?: string
+            /** @default 0 */
+            minLevel?: number
+            parentId?: number
+          }
+        }
+      }
+      responses: {
+        200: components['responses']['CategoryResponse']
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/category/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** 更新分类 */
+    put: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          id: number
+        }
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            name?: string
+            icon?: string
+            /** @default 0 */
+            minLevel?: number
+            parentId?: number | null
+          }
+        }
+      }
+      responses: {
+        200: components['responses']['SuccessResponse']
+      }
+    }
+    post?: never
+    /**
+     * 删除分类
+     * @description 删除分类时，会将其子分类回挂到上级分类，并将该分类下的书签迁移到上级分类；若无上级分类则迁移到未分类。
+     */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          id: number
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        200: components['responses']['SuccessResponse']
+        /** @description 分类不存在 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+      }
+    }
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/bookmark/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** 更新书签 */
+    put: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          id: number
+        }
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            name?: string
+            url?: string
+            description?: string
+            categoryId?: number
+            icon?: string
+          }
+        }
+      }
+      responses: {
+        200: components['responses']['BookmarkResponse']
+      }
+    }
+    post?: never
+    /** 删除书签 */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          id: number
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        200: components['responses']['SuccessResponse']
+      }
+    }
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/sites/{id}/click': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 记录书签点击统计 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          id: number
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        200: components['responses']['BookmarkResponse']
+        /** @description 书签不存在 */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/login': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** User login */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
             /** @example admin */
-            username?: string;
-            /**
-             * @example admin
-             * @enum {string}
-             */
-            role?: "admin" | "user" | "guest";
-        };
-        HealthCheck: {
-            /**
-             * @example healthy
-             * @enum {string}
-             */
-            status?: "healthy" | "unhealthy";
-            /** @example 1.0.1 */
-            version?: string;
-            /** Format: date-time */
-            timestamp?: string;
-            checks?: {
-                /** @example 123 */
-                uptime?: number;
-                memory?: {
-                    /** @example 10MB */
-                    heapUsed?: string;
-                    /** @example 20MB */
-                    heapTotal?: string;
-                    /** @example 30MB */
-                    rss?: string;
-                };
-                database?: {
-                    /** @example true */
-                    ok?: boolean;
-                    /** @example 4096 */
-                    size?: number;
-                    /** @example 9 */
-                    tables?: number;
-                };
-                cache?: {
-                    /** @example 10 */
-                    hits?: number;
-                    /** @example 2 */
-                    misses?: number;
-                    /** @example 4 */
-                    keys?: number;
-                };
-            };
-        };
-        CacheStats: {
-            /** @example 10 */
-            hits?: number;
-            /** @example 2 */
-            misses?: number;
-            /** @example 4 */
-            keys?: number;
-            /** @example 4 */
-            ksize?: number;
-            /** @example 4 */
-            vsize?: number;
-        };
-        UploadedFile: {
-            /** @example icon_1234.png */
-            filename?: string;
-            /** @example /uploads/icon_1234.png */
-            url?: string;
-            /** @example 2048 */
-            size?: number;
-            /** Format: date-time */
-            uploadedAt?: string;
-        };
-        LinkCheckResult: {
-            /** @example https://github.com */
-            url?: string;
-            /**
-             * @example ok
-             * @enum {string}
-             */
-            status?: "ok" | "error";
-        };
-        SuccessEnvelope: {
-            /** @example true */
-            success?: boolean;
-            /** @example Success */
-            message?: string;
-        };
-        NavigationData: {
-            categories?: components["schemas"]["Category"][];
-            items?: components["schemas"]["Bookmark"][];
-        };
-        CategoriesData: {
-            categories?: components["schemas"]["Category"][];
-        };
-        BookmarkCollectionData: {
-            items?: components["schemas"]["Bookmark"][];
-        };
-        BookmarkMutationData: {
-            item?: components["schemas"]["Bookmark"];
-        };
-        CategoryMutationData: {
-            item?: components["schemas"]["Category"];
-        };
-        BookmarkExistenceData: {
-            exists?: boolean;
-            item?: components["schemas"]["Bookmark"] | null;
-        };
-    };
-    responses: {
-        /** @description Operation completed successfully */
-        SuccessResponse: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["SuccessEnvelope"];
-            };
-        };
-        /** @description Navigation data saved successfully */
-        SaveDataResponse: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "success": true,
-                 *       "message": "数据保存成功"
-                 *     }
-                 */
-                "application/json": components["schemas"]["SuccessEnvelope"];
-            };
-        };
-        /** @description Navigation data payload */
-        NavigationDataResponse: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["SuccessEnvelope"] & {
-                    data?: components["schemas"]["NavigationData"];
-                };
-            };
-        };
-        /** @description Category list payload */
-        CategoriesResponse: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["SuccessEnvelope"] & {
-                    data?: components["schemas"]["CategoriesData"];
-                };
-            };
-        };
-        /** @description Bookmark payload */
-        BookmarkResponse: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["SuccessEnvelope"] & {
-                    data?: components["schemas"]["BookmarkMutationData"];
-                };
-            };
-        };
-        /** @description Bookmark search payload */
-        BookmarkSearchResponse: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["SuccessEnvelope"] & {
-                    data?: components["schemas"]["BookmarkCollectionData"];
-                };
-            };
-        };
-        /** @description Bookmark existence payload */
-        BookmarkExistsResponse: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["SuccessEnvelope"] & {
-                    data?: components["schemas"]["BookmarkExistenceData"];
-                };
-            };
-        };
-        /** @description Category payload */
-        CategoryResponse: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["SuccessEnvelope"] & {
-                    data?: components["schemas"]["CategoryMutationData"];
-                };
-            };
-        };
-        /** @description Authentication required */
-        Unauthorized: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "success": false,
-                 *       "error": "Unauthorized",
-                 *       "code": "UNAUTHORIZED"
-                 *     }
-                 */
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Insufficient permissions */
-        Forbidden: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "success": false,
-                 *       "error": "Permission denied",
-                 *       "code": "FORBIDDEN"
-                 *     }
-                 */
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Resource not found */
-        NotFound: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "success": false,
-                 *       "error": "Resource not found",
-                 *       "code": "NOT_FOUND"
-                 *     }
-                 */
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-    };
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+            username: string
+            /** @example admin */
+            password: string
+          }
+        }
+      }
+      responses: {
+        /** @description Login successful */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': {
+              /** @example true */
+              success?: boolean
+              token?: string
+              user?: components['schemas']['User']
+            }
+          }
+        }
+        /** @description Invalid credentials */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['Error']
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/logout': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** User logout */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description Logout successful */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/register': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * 用户注册
+     * @description 需要系统设置允许注册
+     */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            username: string
+            password: string
+          }
+        }
+      }
+      responses: {
+        /** @description 注册成功 */
+        201: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/sessions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 获取当前用户的所有会话 */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: never
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/sessions/revoke-others': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 撤销除当前会话外的所有会话 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: never
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/sessions/{sessionId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /** 撤销指定会话 */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          sessionId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: never
+    }
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/admin/audit': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 获取审计日志 */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: never
+    }
+    put?: never
+    post?: never
+    /** 清空审计日志 */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: never
+    }
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/admin/users': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** 获取所有用户 */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: never
+    }
+    put?: never
+    /** 创建新用户 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: never
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/admin/users/{username}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /** 删除用户 */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          username: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: never
+    }
+    options?: never
+    head?: never
+    /** 更新用户 */
+    patch: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          username: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: never
+    }
+    trace?: never
+  }
 }
-export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export type webhooks = Record<string, never>
+export interface components {
+  schemas: {
+    Error: {
+      /** @example false */
+      success?: boolean
+      /** @example Error message */
+      error?: string
+      /** @example ERROR_CODE */
+      code?: string
+      /** @description Stack trace (dev only) */
+      details?: string
+    }
+    Category: {
+      /** @example 1 */
+      id?: number
+      /** @example Development */
+      name?: string
+      /** @example null */
+      parentId?: number | null
+      /** @example 0 */
+      level?: number
+      /** @example /uploads/icon_123.png */
+      icon?: string
+      /** @example 1 */
+      sortIndex?: number
+    }
+    Bookmark: {
+      /** @example 1 */
+      id?: number
+      /** @example GitHub */
+      name?: string
+      /** @example https://github.com */
+      url?: string
+      /** @example Code hosting platform */
+      description?: string
+      /** @example 1 */
+      categoryId?: number
+      /** @example Development */
+      categoryName?: string
+      /** @example 0 */
+      level?: number
+      /** Format: date-time */
+      createdAt?: string
+    }
+    User: {
+      /** @example admin */
+      username?: string
+      /**
+       * @example admin
+       * @enum {string}
+       */
+      role?: 'admin' | 'user' | 'guest'
+    }
+    HealthCheck: {
+      /**
+       * @example healthy
+       * @enum {string}
+       */
+      status?: 'healthy' | 'unhealthy'
+      /** @example 1.0.1 */
+      version?: string
+      /** Format: date-time */
+      timestamp?: string
+      checks?: {
+        /** @example 123 */
+        uptime?: number
+        memory?: {
+          /** @example 10MB */
+          heapUsed?: string
+          /** @example 20MB */
+          heapTotal?: string
+          /** @example 30MB */
+          rss?: string
+        }
+        database?: {
+          /** @example true */
+          ok?: boolean
+          /** @example 4096 */
+          size?: number
+          /** @example 9 */
+          tables?: number
+        }
+        cache?: {
+          /** @example 10 */
+          hits?: number
+          /** @example 2 */
+          misses?: number
+          /** @example 4 */
+          keys?: number
+        }
+      }
+    }
+    UploadedFile: {
+      /** @example icon_1234.png */
+      filename?: string
+      /** @example /uploads/icon_1234.png */
+      url?: string
+      /** @example 2048 */
+      size?: number
+      /** Format: date-time */
+      uploadedAt?: string
+    }
+    LinkCheckResult: {
+      /** @example https://github.com */
+      url?: string
+      /**
+       * @example ok
+       * @enum {string}
+       */
+      status?: 'ok' | 'error'
+    }
+    SuccessEnvelope: {
+      /** @example true */
+      success?: boolean
+      /** @example Success */
+      message?: string
+    }
+    NavigationData: {
+      categories?: components['schemas']['Category'][]
+      items?: components['schemas']['Bookmark'][]
+    }
+    CategoriesData: {
+      categories?: components['schemas']['Category'][]
+    }
+    BookmarkCollectionData: {
+      items?: components['schemas']['Bookmark'][]
+    }
+    BookmarkMutationData: {
+      item?: components['schemas']['Bookmark']
+    }
+    CategoryMutationData: {
+      item?: components['schemas']['Category']
+    }
+    BookmarkExistenceData: {
+      exists?: boolean
+      item?: components['schemas']['Bookmark'] | null
+    }
+  }
+  responses: {
+    /** @description Operation completed successfully */
+    SuccessResponse: {
+      headers: {
+        [name: string]: unknown
+      }
+      content: {
+        'application/json': components['schemas']['SuccessEnvelope']
+      }
+    }
+    /** @description Navigation data saved successfully */
+    SaveDataResponse: {
+      headers: {
+        [name: string]: unknown
+      }
+      content: {
+        /**
+         * @example {
+         *       "success": true,
+         *       "message": "数据保存成功"
+         *     }
+         */
+        'application/json': components['schemas']['SuccessEnvelope']
+      }
+    }
+    /** @description Navigation data payload */
+    NavigationDataResponse: {
+      headers: {
+        [name: string]: unknown
+      }
+      content: {
+        'application/json': components['schemas']['SuccessEnvelope'] & {
+          data?: components['schemas']['NavigationData']
+        }
+      }
+    }
+    /** @description Category list payload */
+    CategoriesResponse: {
+      headers: {
+        [name: string]: unknown
+      }
+      content: {
+        'application/json': components['schemas']['SuccessEnvelope'] & {
+          data?: components['schemas']['CategoriesData']
+        }
+      }
+    }
+    /** @description Bookmark payload */
+    BookmarkResponse: {
+      headers: {
+        [name: string]: unknown
+      }
+      content: {
+        'application/json': components['schemas']['SuccessEnvelope'] & {
+          data?: components['schemas']['BookmarkMutationData']
+        }
+      }
+    }
+    /** @description Bookmark search payload */
+    BookmarkSearchResponse: {
+      headers: {
+        [name: string]: unknown
+      }
+      content: {
+        'application/json': components['schemas']['SuccessEnvelope'] & {
+          data?: components['schemas']['BookmarkCollectionData']
+        }
+      }
+    }
+    /** @description Bookmark existence payload */
+    BookmarkExistsResponse: {
+      headers: {
+        [name: string]: unknown
+      }
+      content: {
+        'application/json': components['schemas']['SuccessEnvelope'] & {
+          data?: components['schemas']['BookmarkExistenceData']
+        }
+      }
+    }
+    /** @description Category payload */
+    CategoryResponse: {
+      headers: {
+        [name: string]: unknown
+      }
+      content: {
+        'application/json': components['schemas']['SuccessEnvelope'] & {
+          data?: components['schemas']['CategoryMutationData']
+        }
+      }
+    }
+    /** @description Authentication required */
+    Unauthorized: {
+      headers: {
+        [name: string]: unknown
+      }
+      content: {
+        /**
+         * @example {
+         *       "success": false,
+         *       "error": "Unauthorized",
+         *       "code": "UNAUTHORIZED"
+         *     }
+         */
+        'application/json': components['schemas']['Error']
+      }
+    }
+    /** @description Insufficient permissions */
+    Forbidden: {
+      headers: {
+        [name: string]: unknown
+      }
+      content: {
+        /**
+         * @example {
+         *       "success": false,
+         *       "error": "Permission denied",
+         *       "code": "FORBIDDEN"
+         *     }
+         */
+        'application/json': components['schemas']['Error']
+      }
+    }
+    /** @description Resource not found */
+    NotFound: {
+      headers: {
+        [name: string]: unknown
+      }
+      content: {
+        /**
+         * @example {
+         *       "success": false,
+         *       "error": "Resource not found",
+         *       "code": "NOT_FOUND"
+         *     }
+         */
+        'application/json': components['schemas']['Error']
+      }
+    }
+  }
+  parameters: never
+  requestBodies: never
+  headers: never
+  pathItems: never
+}
+export type $defs = Record<string, never>
+export type operations = Record<string, never>

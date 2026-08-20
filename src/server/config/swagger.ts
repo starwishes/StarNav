@@ -126,16 +126,6 @@ const options = {
             }
           }
         },
-        CacheStats: {
-          type: 'object',
-          properties: {
-            hits: { type: 'integer', example: 10 },
-            misses: { type: 'integer', example: 2 },
-            keys: { type: 'integer', example: 4 },
-            ksize: { type: 'integer', example: 4 },
-            vsize: { type: 'integer', example: 4 }
-          }
-        },
         UploadedFile: {
           type: 'object',
           properties: {

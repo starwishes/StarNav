@@ -12,7 +12,6 @@ export const CacheKeys = {
   data: (level: number | string) => `data:level:${level}`,
   search: (level: number | string, keyword: string, limit: number | string) =>
     `search:${level}:${keyword}:${limit}`,
-  statsSummary: () => 'stats:summary',
   userInfo: (username: string) => `user:${username}`,
   settings: () => 'settings:all',
   searchEngines: () => 'search_engines:all'

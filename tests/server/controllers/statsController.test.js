@@ -5,9 +5,7 @@ import { statsService } from '../../../src/server/services/system/statsService.j
 
 vi.mock('../../../src/server/services/system/statsService.js', () => ({
   statsService: {
-    getStats: vi.fn(),
-    recordVisit: vi.fn(),
-    getCacheStats: vi.fn()
+    recordVisit: vi.fn()
   }
 }))
 
@@ -33,36 +31,6 @@ describe('StatsController Unit Tests', () => {
     }
 
     vi.clearAllMocks()
-  })
-
-  it('should delegate getStats to statsService', async () => {
-    statsService.getStats.mockReturnValue({
-      success: true,
-      data: { total_pv: 10 }
-    })
-
-    await statsController.getStats(req, res)
-
-    expect(statsService.getStats).toHaveBeenCalled()
-    expect(res.json).toHaveBeenCalledWith({
-      success: true,
-      data: { total_pv: 10 }
-    })
-  })
-
-  it('should delegate getCacheStats to statsService', async () => {
-    statsService.getCacheStats.mockReturnValue({
-      success: true,
-      data: { keys: 2 }
-    })
-
-    await statsController.getCacheStats(req, res)
-
-    expect(statsService.getCacheStats).toHaveBeenCalled()
-    expect(res.json).toHaveBeenCalledWith({
-      success: true,
-      data: { keys: 2 }
-    })
   })
 
   it('should pass normalized visit context and preserve text response', async () => {
