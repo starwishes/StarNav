@@ -172,13 +172,6 @@ const UserTableStub = defineComponent({
   }
 })
 
-const StatsDashboardStub = defineComponent({
-  name: 'StatsDashboard',
-  setup() {
-    return () => h('div', { class: 'stats-dashboard-stub' }, 'stats')
-  }
-})
-
 const SystemHealthStub = defineComponent({
   name: 'SystemHealth',
   setup() {
@@ -298,8 +291,6 @@ vi.mock('@/components/admin/UserTable.vue', () => asMockModule(UserTableStub))
 vi.mock('@/components/admin/SystemSettings.vue', () => asMockModule(SystemSettingsStub))
 
 vi.mock('@/components/admin/AuditLog.vue', () => asMockModule(AuditLogStub))
-
-vi.mock('@/components/admin/StatsDashboard.vue', () => asMockModule(StatsDashboardStub))
 
 vi.mock('@/components/admin/SystemHealth.vue', () => asMockModule(SystemHealthStub))
 

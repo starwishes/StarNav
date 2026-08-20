@@ -8,13 +8,6 @@ const loadStatsModule = async () => {
   return import('../../../src/web/api/stats.ts')
 }
 
-const createJsonResponse = (payload: unknown, { ok = true, status = 200 } = {}) => ({
-  ok,
-  status,
-  json: vi.fn().mockResolvedValue(payload),
-  headers: new Headers()
-})
-
 const createTextResponse = (payload: string, { ok = true, status = 200 } = {}) => ({
   ok,
   status,
@@ -32,32 +25,6 @@ describe('stats api', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
-  })
-
-  it('unwraps stats summaries from the shared api envelope', async () => {
-    mockFetch.mockResolvedValue(
-      createJsonResponse({
-        success: true,
-        data: {
-          today_pv: 10,
-          today_uv: 5,
-          total_pv: 100,
-          total_uv: 50,
-          trend: [],
-          distribution: {
-            os: [],
-            browser: []
-          }
-        }
-      })
-    )
-
-    const { getStatsSummary } = await loadStatsModule()
-
-    await expect(getStatsSummary()).resolves.toMatchObject({
-      today_pv: 10,
-      total_uv: 50
-    })
   })
 
   it('posts visit records through the shared client helper', async () => {
