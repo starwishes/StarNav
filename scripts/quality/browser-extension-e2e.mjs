@@ -208,7 +208,7 @@ const seedRealisticDataset = async (api, token) => {
       Authorization: `Bearer ${token}`
     },
     data: {
-      action: 'extension-e2e-seed',
+      action: 'import',
       ...dataset
     }
   })
@@ -232,7 +232,7 @@ const loadExtensionContext = async (extensionDir) => {
   await fs.access(extensionDir)
 
   const userDataDir = await createTempDir('starnav-extension-e2e-')
-  const context = await chromium.launchPersistentContext(userDataDir, {
+  const launchOptions = {
     channel: 'chromium',
     headless: true,
     viewport: {
@@ -240,15 +240,52 @@ const loadExtensionContext = async (extensionDir) => {
       height: 1200
     },
     args: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`]
-  })
-
-  let serviceWorker = context.serviceWorkers()[0]
-  if (!serviceWorker) {
-    serviceWorker = await context.waitForEvent('serviceworker')
   }
 
-  const extensionId = new URL(serviceWorker.url()).host
+  const waitForServiceWorker = (context) => {
+    let serviceWorker = context.serviceWorkers()[0]
+    if (!serviceWorker) {
+      return context.waitForEvent('serviceworker')
+    }
+    return Promise.resolve(serviceWorker)
+  }
+
+  // Phase 1: launch once to resolve the extension id, then pre-grant the
+  // configured server origin as an optional host permission. Headless
+  // Chromium cannot answer chrome.permissions.request() prompts (the call
+  // hangs forever), so granting it through the profile is the only reliable
+  // way for the options-page flows to proceed without a browser UI.
+  const firstContext = await chromium.launchPersistentContext(userDataDir, launchOptions)
+  const firstServiceWorker = await waitForServiceWorker(firstContext)
+  const extensionId = new URL(firstServiceWorker.url()).host
   assert(extensionId, 'failed to resolve extension id')
+  await firstContext.close()
+
+  const serverOriginPattern = (() => {
+    try {
+      return `${new URL(baseUrl).origin}/*`
+    } catch {
+      return ''
+    }
+  })()
+  if (serverOriginPattern) {
+    const prefsPath = path.join(userDataDir, 'Default', 'Preferences')
+    const prefs = JSON.parse(await fs.readFile(prefsPath, 'utf8'))
+    const setting = prefs.extensions?.settings?.[extensionId]
+    if (setting) {
+      for (const key of ['granted_permissions', 'active_permissions']) {
+        setting[key] = setting[key] || {}
+        setting[key].explicit_host = setting[key].explicit_host || []
+        if (!setting[key].explicit_host.includes(serverOriginPattern)) {
+          setting[key].explicit_host.push(serverOriginPattern)
+        }
+      }
+      await fs.writeFile(prefsPath, JSON.stringify(prefs))
+    }
+  }
+
+  const context = await chromium.launchPersistentContext(userDataDir, launchOptions)
+  const serviceWorker = await waitForServiceWorker(context)
 
   return {
     context,
