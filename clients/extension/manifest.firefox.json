@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "StarNav",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Quickly add bookmarks and search your StarNav navigation site",
   "permissions": ["activeTab", "storage", "tabs", "contextMenus"],
   "browser_action": {

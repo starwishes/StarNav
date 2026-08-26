@@ -39,7 +39,7 @@ import SidebarItem from './SidebarItem.vue'
 const configStore = useConfigStore()
 const { categoryTree } = useSiteProjection()
 
-const isCollapsed = ref(false)
+const isCollapsed = ref(true)
 const expandedIds = reactive(new Set<number>())
 const activeCategoryId = ref<number | null>(null)
 const activeTag = ref<string | null>(null)
@@ -258,4 +258,3 @@ defineExpose({ toggleSidebar })
   }
 }
 </style>
-

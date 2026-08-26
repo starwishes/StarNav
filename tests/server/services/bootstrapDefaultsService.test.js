@@ -12,7 +12,7 @@ const categoryCountGet = vi.fn()
 const insertSettingsRun = vi.fn()
 const insertCategoryRun = vi.fn()
 const insertItemRun = vi.fn()
-
+const selectTimezoneGet = vi.fn()
 const deleteLegacySettingsRun = vi.fn()
 
 const prepareMock = vi.fn((sql) => {
@@ -33,6 +33,9 @@ const prepareMock = vi.fn((sql) => {
   }
   if (sql.includes('INSERT INTO items')) {
     return { run: insertItemRun }
+  }
+  if (sql.includes('SELECT value FROM settings WHERE key =')) {
+    return { get: selectTimezoneGet }
   }
   throw new Error(`Unexpected SQL: ${sql}`)
 })
@@ -95,5 +98,56 @@ describe('BootstrapDefaultsService', () => {
 
     expect(categoryCountGet).not.toHaveBeenCalled()
     expect(insertCategoryRun).not.toHaveBeenCalled()
+  })
+
+  it('should log the env timezone when seeding empty settings', () => {
+    process.env.TZ = 'Asia/Shanghai'
+    settingsCountGet.mockReturnValue({ count: 0 })
+
+    bootstrapDefaultsService.initSettings()
+
+    expect(insertSettingsRun).toHaveBeenCalledWith('timezone', '"Asia/Shanghai"')
+    expect(logger.info).toHaveBeenCalledWith('已初始化默认系统设置（时区: Asia/Shanghai）')
+  })
+
+  it('should fill an empty timezone on an existing database from the environment', () => {
+    process.env.TZ = 'America/New_York'
+    settingsCountGet.mockReturnValue({ count: 5 })
+    selectTimezoneGet.mockReturnValue({ value: '""' })
+
+    bootstrapDefaultsService.initSettings()
+
+    expect(insertSettingsRun).toHaveBeenCalledWith('timezone', '"America/New_York"')
+    expect(logger.info).toHaveBeenCalledWith('已从环境变量写入空缺时区: America/New_York')
+  })
+
+  it('should leave an existing timezone untouched', () => {
+    process.env.TZ = 'America/New_York'
+    settingsCountGet.mockReturnValue({ count: 5 })
+    selectTimezoneGet.mockReturnValue({ value: '"Asia/Shanghai"' })
+
+    bootstrapDefaultsService.initSettings()
+
+    expect(insertSettingsRun).not.toHaveBeenCalled()
+  })
+
+  it('should do nothing when existing settings and no env timezone', () => {
+    delete process.env.TZ
+    settingsCountGet.mockReturnValue({ count: 5 })
+    selectTimezoneGet.mockReturnValue({ value: '""' })
+
+    bootstrapDefaultsService.initSettings()
+
+    expect(insertSettingsRun).not.toHaveBeenCalled()
+    expect(selectTimezoneGet).not.toHaveBeenCalled()
+  })
+
+  it('should skip seeding default category and item when categories exist', () => {
+    categoryCountGet.mockReturnValue({ count: 3 })
+
+    bootstrapDefaultsService.initDefaultData()
+
+    expect(insertCategoryRun).not.toHaveBeenCalled()
+    expect(insertItemRun).not.toHaveBeenCalled()
   })
 })

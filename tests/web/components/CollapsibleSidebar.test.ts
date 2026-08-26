@@ -123,12 +123,23 @@ describe('CollapsibleSidebar', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders branding and clears expanded state when the exposed toggle collapses the sidebar', async () => {
+  it('starts collapsed by default and expands via the exposed toggle, clearing expanded state on collapse', async () => {
     const wrapper = createWrapper()
 
+    // Collapsed by default: logo still shows, branding text hidden.
     expect(wrapper.find('.site-logo').attributes('src')).toBe('/brand.svg')
     expect(wrapper.find('.site-logo').attributes('alt')).toBe('StarNav')
+    expect(wrapper.find('.site-title').exists()).toBe(false)
+    expect(wrapper.classes()).toContain('collapsed')
+    expect(wrapper.find('.collapsed-state-1').text()).toBe('true')
+    ;(wrapper.vm as { toggleSidebar: () => void }).toggleSidebar()
+    await nextTick()
+
+    expect(wrapper.classes()).not.toContain('collapsed')
+    expect(wrapper.emitted('collapse-change')).toEqual([[false]])
+    expect(wrapper.find('.site-title').exists()).toBe(true)
     expect(wrapper.find('.site-title').text()).toBe('StarNav')
+    expect(wrapper.find('.collapsed-state-1').text()).toBe('false')
 
     await wrapper.find('.toggle-expand-1').trigger('click')
     await nextTick()
@@ -137,19 +148,10 @@ describe('CollapsibleSidebar', () => {
     await nextTick()
 
     expect(wrapper.classes()).toContain('collapsed')
-    expect(wrapper.emitted('collapse-change')).toEqual([[true]])
+    expect(wrapper.emitted('collapse-change')).toEqual([[false], [true]])
     expect(wrapper.find('.site-title').exists()).toBe(false)
     expect(wrapper.find('.expanded-state-1').text()).toBe('false')
     expect(wrapper.find('.collapsed-state-1').text()).toBe('true')
-
-    await wrapper.find('.toggle-expand-1').trigger('click')
-    await nextTick()
-    expect(wrapper.find('.expanded-state-1').text()).toBe('false')
-    ;(wrapper.vm as { toggleSidebar: () => void }).toggleSidebar()
-    await nextTick()
-
-    expect(wrapper.emitted('collapse-change')).toEqual([[true], [false]])
-    expect(wrapper.classes()).not.toContain('collapsed')
   })
 
   it('emits filter events and scrolls to the projected category anchor', async () => {

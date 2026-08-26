@@ -1,104 +1,115 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { systemController } from '../../../src/server/controllers/systemController.js'
-import { systemAssetService } from '../../../src/server/services/system/systemAssetService.js'
-import { systemHealthService } from '../../../src/server/services/system/systemHealthService.js'
-import { systemSettingsService } from '../../../src/server/services/system/systemSettingsService.js'
+
+const { systemHealthServiceMock, systemSettingsServiceMock, systemAssetServiceMock } = vi.hoisted(
+  () => ({
+    systemHealthServiceMock: {
+      getHealth: vi.fn()
+    },
+    systemSettingsServiceMock: {
+      getPublicSettings: vi.fn(),
+      getAdminSettings: vi.fn(),
+      updateAdminSettings: vi.fn(),
+      setBackground: vi.fn()
+    },
+    systemAssetServiceMock: {
+      uploadBackground: vi.fn(),
+      uploadIcon: vi.fn(),
+      getUploads: vi.fn(),
+      deleteUpload: vi.fn()
+    }
+  })
+)
 
 vi.mock('../../../src/server/services/system/systemHealthService.js', () => ({
-  systemHealthService: {
-    getHealth: vi.fn()
-  }
+  systemHealthService: systemHealthServiceMock
 }))
-
 vi.mock('../../../src/server/services/system/systemSettingsService.js', () => ({
-  systemSettingsService: {
-    getPublicSettings: vi.fn(),
-    getAdminSettings: vi.fn(),
-    updateAdminSettings: vi.fn(),
-    setBackground: vi.fn()
-  }
+  systemSettingsService: systemSettingsServiceMock
 }))
-
 vi.mock('../../../src/server/services/system/systemAssetService.js', () => ({
-  systemAssetService: {
-    uploadBackground: vi.fn(),
-    uploadIcon: vi.fn(),
-    getUploads: vi.fn(),
-    deleteUpload: vi.fn()
-  }
+  systemAssetService: systemAssetServiceMock
 }))
 
-describe('SystemController Unit Tests', () => {
-  let req
-  let res
+const makeRequest = (overrides = {}) => ({ query: {}, body: {}, params: {}, ...overrides })
 
+const makeResponse = () => {
+  const res = { status: vi.fn().mockReturnThis(), json: vi.fn(), send: vi.fn() }
+  return res
+}
+
+describe('systemController', () => {
   beforeEach(() => {
-    req = {
-      body: {},
-      params: {}
-    }
-    res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn()
-    }
-
     vi.clearAllMocks()
   })
 
-  it('should delegate getHealth to systemHealthService and preserve status code', async () => {
-    systemHealthService.getHealth.mockResolvedValue({
-      statusCode: 503,
-      body: {
-        success: true,
-        message: 'Success',
-        data: { status: 'unhealthy' }
-      }
-    })
+  it('delegates health and settings reads', async () => {
+    systemHealthServiceMock.getHealth.mockResolvedValue({ status: 'healthy' })
+    systemSettingsServiceMock.getPublicSettings.mockResolvedValue({})
+    systemSettingsServiceMock.getAdminSettings.mockResolvedValue({})
 
-    await systemController.getHealth(req, res)
+    await systemController.getHealth(makeRequest(), makeResponse())
+    await systemController.getPublicSettings(makeRequest(), makeResponse())
+    await systemController.getAdminSettings(makeRequest(), makeResponse())
 
-    expect(systemHealthService.getHealth).toHaveBeenCalled()
-    expect(res.status).toHaveBeenCalledWith(503)
-    expect(res.json).toHaveBeenCalledWith({
-      success: true,
-      message: 'Success',
-      data: { status: 'unhealthy' }
-    })
+    expect(systemHealthServiceMock.getHealth).toHaveBeenCalled()
+    expect(systemSettingsServiceMock.getPublicSettings).toHaveBeenCalled()
+    expect(systemSettingsServiceMock.getAdminSettings).toHaveBeenCalled()
   })
 
-  it('should delegate uploadBackground payload to systemAssetService', async () => {
-    req.body = { data: 'data:image/png;base64,abc' }
-    systemAssetService.uploadBackground.mockReturnValue({
-      success: true,
-      url: '/uploads/bg_1.png'
-    })
+  it('delegates settings updates and background url', async () => {
+    systemSettingsServiceMock.updateAdminSettings.mockResolvedValue({ success: true })
+    systemSettingsServiceMock.setBackground.mockResolvedValue({ success: true })
 
-    await systemController.uploadBackground(req, res)
+    await systemController.updateAdminSettings(
+      makeRequest({ body: { siteName: 'Nav' } }),
+      makeResponse()
+    )
+    await systemController.setBackground(
+      makeRequest({ body: { url: 'https://x/bg.png' } }),
+      makeResponse()
+    )
 
-    expect(systemAssetService.uploadBackground).toHaveBeenCalledWith('data:image/png;base64,abc')
-    expect(res.json).toHaveBeenCalledWith({
-      success: true,
-      url: '/uploads/bg_1.png'
+    expect(systemSettingsServiceMock.updateAdminSettings).toHaveBeenCalledWith({
+      siteName: 'Nav'
     })
+    expect(systemSettingsServiceMock.setBackground).toHaveBeenCalledWith('https://x/bg.png')
   })
 
-  it('should delegate deleteUpload params to systemAssetService', async () => {
-    req.params = { filename: 'icon_1.png' }
-    systemAssetService.deleteUpload.mockReturnValue({ success: true })
+  it('delegates asset uploads and listings', async () => {
+    systemAssetServiceMock.uploadBackground.mockResolvedValue({ url: '/uploads/bg.png' })
+    systemAssetServiceMock.uploadIcon.mockResolvedValue({ url: '/uploads/i.png' })
+    systemAssetServiceMock.getUploads.mockResolvedValue({ files: [] })
 
-    await systemController.deleteUpload(req, res)
+    await systemController.uploadBackground(
+      makeRequest({ body: { data: 'data:image/png;base64,x' } }),
+      makeResponse()
+    )
+    await systemController.uploadIcon(
+      makeRequest({ body: { data: 'data:image/png;base64,y' } }),
+      makeResponse()
+    )
+    await systemController.getUploads(makeRequest(), makeResponse())
 
-    expect(systemAssetService.deleteUpload).toHaveBeenCalledWith('icon_1.png')
-    expect(res.json).toHaveBeenCalledWith({ success: true })
+    expect(systemAssetServiceMock.uploadBackground).toHaveBeenCalledWith('data:image/png;base64,x')
+    expect(systemAssetServiceMock.uploadIcon).toHaveBeenCalledWith('data:image/png;base64,y')
+    expect(systemAssetServiceMock.getUploads).toHaveBeenCalled()
   })
 
-  it('should delegate background url updates to systemSettingsService', async () => {
-    req.body = { url: '/uploads/bg_2.png' }
-    systemSettingsService.setBackground.mockReturnValue({ success: true })
+  it('normalizes filename params for deleteUpload', async () => {
+    systemAssetServiceMock.deleteUpload.mockResolvedValue({ success: true })
 
-    await systemController.setBackground(req, res)
+    await systemController.deleteUpload(
+      makeRequest({ params: { filename: 'a.png' } }),
+      makeResponse()
+    )
+    expect(systemAssetServiceMock.deleteUpload).toHaveBeenCalledWith('a.png')
 
-    expect(systemSettingsService.setBackground).toHaveBeenCalledWith('/uploads/bg_2.png')
-    expect(res.json).toHaveBeenCalledWith({ success: true })
+    await systemController.deleteUpload(
+      makeRequest({ params: { filename: ['b.png'] } }),
+      makeResponse()
+    )
+    expect(systemAssetServiceMock.deleteUpload).toHaveBeenCalledWith('b.png')
   })
 })

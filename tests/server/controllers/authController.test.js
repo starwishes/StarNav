@@ -80,4 +80,70 @@ describe('AuthController Unit Tests', () => {
     )
     expect(res.set.mock.calls[0][1]).toContain('Secure')
   })
+
+  it('extends the session cookie to 90 days when remember is requested', async () => {
+    req.body = { username: 'alice', password: 'Secret123!', remember: true }
+    authLifecycleService.login.mockReturnValue({
+      token: 'remember-token',
+      user: { login: 'alice', name: 'alice', level: 1 },
+      sessionId: 'session-1'
+    })
+
+    await authController.login(req, res)
+
+    // 90 days = 7776000 seconds in Max-Age
+    expect(res.set.mock.calls[0][1]).toContain('Max-Age=7776000')
+  })
+
+  it('honours an explicit expiresInDays returned by the login service', async () => {
+    authLifecycleService.login.mockReturnValue({
+      token: 'token-custom',
+      user: { login: 'alice', name: 'alice', level: 1 },
+      sessionId: 'session-1',
+      expiresInDays: 14
+    })
+
+    await authController.login(req, res)
+
+    expect(res.set.mock.calls[0][1]).toContain('Max-Age=1209600')
+  })
+
+  it('rejects login requests from untrusted cross-site origins', async () => {
+    req.headers.origin = 'https://evil.example.com'
+    authLifecycleService.login.mockReturnValue({
+      token: 'should-not-happen',
+      user: { login: 'alice', name: 'alice', level: 1 },
+      sessionId: 'session-1'
+    })
+
+    await authController.login(req, res)
+
+    expect(authLifecycleService.login).not.toHaveBeenCalled()
+    expect(res.status).toHaveBeenCalledWith(403)
+  })
+
+  it('clears the auth cookie on logout', async () => {
+    authLifecycleService.logout.mockResolvedValue({})
+
+    await authController.logout(req, res)
+
+    expect(authLifecycleService.logout).toHaveBeenCalledWith(req.user, {
+      ip: '127.0.0.1',
+      userAgent: 'Vitest'
+    })
+    expect(res.set).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('starnav_auth='))
+    expect(res.set.mock.calls[0][1]).toMatch(/Max-Age=0|Expires=/)
+  })
+
+  it('delegates register to the auth lifecycle service', async () => {
+    authLifecycleService.register.mockReturnValue({ success: true, user: { login: 'bob' } })
+
+    await authController.register(req, res)
+
+    expect(authLifecycleService.register).toHaveBeenCalledWith(req.body, {
+      ip: '127.0.0.1',
+      userAgent: 'Vitest'
+    })
+    expect(res.status).toHaveBeenCalledWith(200)
+  })
 })

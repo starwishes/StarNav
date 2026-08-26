@@ -95,7 +95,8 @@ describe('SystemAssetService', () => {
     mockSettings.backgroundUrl = '/uploads/old-bg.png'
     mockSettings.logoUrl = '/uploads/icon_1.png'
     mockSettings.faviconUrl = '/uploads/icon_1.png'
-    ;({ systemAssetService } = await import('../../../src/server/services/system/systemAssetService.js'))
+    ;({ systemAssetService } =
+      await import('../../../src/server/services/system/systemAssetService.js'))
   })
 
   afterEach(async () => {
@@ -156,5 +157,35 @@ describe('SystemAssetService', () => {
     expect(fs.existsSync(filePath)).toBe(false)
     expect(settingsService.set).toHaveBeenCalledWith('logoUrl', '')
     expect(settingsService.set).toHaveBeenCalledWith('faviconUrl', '')
+  })
+
+  it('should upload a plain png icon', () => {
+    const result = systemAssetService.uploadIcon(buildDataUri('png', buildPngBytes()))
+
+    expect(result.url).toMatch(/^\/uploads\/icon_.*\.png$/)
+  })
+
+  it('should list uploads with url, size and uploadedAt', () => {
+    fs.writeFileSync(path.join(uploadsDir, 'a.png'), 'aaa')
+    fs.writeFileSync(path.join(uploadsDir, 'b.txt'), 'not-an-image')
+
+    const { files } = systemAssetService.getUploads()
+
+    expect(files).toHaveLength(1)
+    expect(files[0]).toMatchObject({
+      filename: 'a.png',
+      url: '/uploads/a.png',
+      size: 3
+    })
+    expect(new Date(files[0].uploadedAt).getTime()).not.toBeNaN()
+  })
+
+  it('should reject path-traversal filenames on delete', () => {
+    expect(() => systemAssetService.deleteUpload('../secret.png')).toThrow('无效的文件名')
+    expect(() => systemAssetService.deleteUpload('a/b.png')).toThrow('无效的文件名')
+  })
+
+  it('should report not found when deleting a missing file', () => {
+    expect(() => systemAssetService.deleteUpload('missing.png')).toThrow('文件不存在')
   })
 })

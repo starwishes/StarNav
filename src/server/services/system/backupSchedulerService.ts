@@ -1,9 +1,9 @@
 import { backupDatabase } from '../database/database.js'
 import { logger } from '../../utils/logger.js'
 
-let cronPromise: Promise<typeof import("node-cron")> | null = null
+let cronPromise: Promise<typeof import('node-cron').default> | null = null
 
-const getCron = async () => {
+const getCron = (): Promise<typeof import('node-cron').default> => {
   if (!cronPromise) {
     cronPromise = import('node-cron')
       .then(({ default: cron }) => cron)

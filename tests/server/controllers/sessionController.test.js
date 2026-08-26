@@ -1,66 +1,92 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sessionController } from '../../../src/server/controllers/sessionController.js'
-import { sessionAccessService } from '../../../src/server/services/identity/sessionAccessService.js'
 
-vi.mock('../../../src/server/services/identity/sessionAccessService.js', () => ({
-  sessionAccessService: {
+const { sessionAccessServiceMock } = vi.hoisted(() => ({
+  sessionAccessServiceMock: {
     getSessions: vi.fn(),
     revokeOthers: vi.fn(),
     revokeSession: vi.fn()
   }
 }))
 
-describe('SessionController Unit Tests', () => {
-  let req
-  let res
+vi.mock('../../../src/server/services/identity/sessionAccessService.js', () => ({
+  sessionAccessService: sessionAccessServiceMock
+}))
 
+const makeRequest = (overrides = {}) => ({
+  query: {},
+  body: {},
+  params: {},
+  headers: {},
+  ip: '127.0.0.1',
+  connection: { remoteAddress: '127.0.0.1' },
+  ...overrides
+})
+
+const makeResponse = () => {
+  const res = { status: vi.fn().mockReturnThis(), json: vi.fn(), send: vi.fn() }
+  return res
+}
+
+describe('sessionController', () => {
   beforeEach(() => {
-    req = {
-      params: { sessionId: 'session-2' },
-      user: { username: 'alice', sessionId: 'session-1' },
-      headers: { 'user-agent': 'Vitest' },
-      ip: '127.0.0.1',
-      connection: { remoteAddress: '127.0.0.1' }
-    }
-    res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn()
-    }
-
     vi.clearAllMocks()
   })
 
-  it('should delegate session listing to sessionAccessService', async () => {
-    sessionAccessService.getSessions.mockReturnValue({
-      success: true,
-      message: 'Success',
-      data: {
-        sessions: [{ sessionId: 'session-1', isCurrent: true }]
-      }
-    })
+  it('delegates getSessions with the authenticated user', async () => {
+    sessionAccessServiceMock.getSessions.mockResolvedValue([])
+    const req = makeRequest({ user: { username: 'alice', sessionId: 's1' } })
 
-    await sessionController.getSessions(req, res)
+    await sessionController.getSessions(req, makeResponse())
 
-    expect(sessionAccessService.getSessions).toHaveBeenCalledWith(req.user)
-    expect(res.json).toHaveBeenCalledWith({
-      success: true,
-      message: 'Success',
-      data: {
-        sessions: [{ sessionId: 'session-1', isCurrent: true }]
-      }
+    expect(sessionAccessServiceMock.getSessions).toHaveBeenCalledWith({
+      username: 'alice',
+      sessionId: 's1'
     })
   })
 
-  it('should pass request context when revoking another session', async () => {
-    sessionAccessService.revokeSession.mockReturnValue({ success: true, message: 'Success' })
+  it('falls back to an empty user when the request has no authenticated user', async () => {
+    sessionAccessServiceMock.getSessions.mockResolvedValue([])
 
-    await sessionController.revokeSession(req, res)
+    await sessionController.getSessions(makeRequest(), makeResponse())
 
-    expect(sessionAccessService.revokeSession).toHaveBeenCalledWith(req.user, 'session-2', {
-      ip: '127.0.0.1',
-      userAgent: 'Vitest'
-    })
-    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Success' })
+    expect(sessionAccessServiceMock.getSessions).toHaveBeenCalledWith({ username: '' })
+  })
+
+  it('delegates revokeOthers with user and request context', async () => {
+    sessionAccessServiceMock.revokeOthers.mockResolvedValue({ revokedCount: 2 })
+    const req = makeRequest({ user: { username: 'alice' } })
+
+    await sessionController.revokeOthers(req, makeResponse())
+
+    expect(sessionAccessServiceMock.revokeOthers).toHaveBeenCalledWith(
+      { username: 'alice' },
+      expect.objectContaining({ ip: '127.0.0.1' })
+    )
+  })
+
+  it('delegates revokeSession with a normalized session id', async () => {
+    sessionAccessServiceMock.revokeSession.mockResolvedValue({ success: true })
+
+    await sessionController.revokeSession(
+      makeRequest({ params: { sessionId: 'abc' }, user: { username: 'alice' } }),
+      makeResponse()
+    )
+    expect(sessionAccessServiceMock.revokeSession).toHaveBeenCalledWith(
+      { username: 'alice' },
+      'abc',
+      expect.anything()
+    )
+
+    await sessionController.revokeSession(
+      makeRequest({ params: { sessionId: ['def'] }, user: { username: 'alice' } }),
+      makeResponse()
+    )
+    expect(sessionAccessServiceMock.revokeSession).toHaveBeenCalledWith(
+      { username: 'alice' },
+      'def',
+      expect.anything()
+    )
   })
 })

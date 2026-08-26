@@ -1,7 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const createLoadMainModule = async () => {
+const createLoadMainModule = async (options: { themeMode?: string } = {}) => {
   vi.resetModules()
+
+  const applyThemeModeMock = vi.fn()
+  const getStoredThemeModeMock = vi.fn(() => options.themeMode ?? 'light')
+  const recoverFromStaleAssetsMock = vi.fn().mockResolvedValue('recovered')
+  const clearStaleAssetRecoveryFlagMock = vi.fn()
+  let swOptions: Record<string, unknown> | undefined
+  const registerSWMock = vi.fn((options: Record<string, unknown>) => {
+    swOptions = options
+    return vi.fn()
+  })
+  const loggerMock = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }
+  const swEventListenerMock = vi.fn()
 
   const useMock = vi.fn().mockReturnThis()
   const mountMock = vi.fn()
@@ -35,6 +47,20 @@ const createLoadMainModule = async () => {
   vi.doMock('../../src/web/App.vue', () => ({
     default: appStub
   }))
+  vi.doMock('../../src/web/utils/theme.ts', () => ({
+    applyThemeMode: applyThemeModeMock,
+    getStoredThemeMode: getStoredThemeModeMock
+  }))
+  vi.doMock('../../src/web/utils/staleAssetRecovery.ts', () => ({
+    recoverFromStaleAssets: recoverFromStaleAssetsMock,
+    clearStaleAssetRecoveryFlag: clearStaleAssetRecoveryFlagMock
+  }))
+  vi.doMock('virtual:pwa-register', () => ({
+    registerSW: registerSWMock
+  }))
+  vi.doMock('../../src/shared/logger.js', () => ({
+    createScopedLogger: () => loggerMock
+  }))
 
   await import('../../src/web/main.ts')
 
@@ -45,7 +71,15 @@ const createLoadMainModule = async () => {
     piniaUseMock,
     routerStub,
     i18nStub,
-    appStub
+    appStub,
+    applyThemeModeMock,
+    getStoredThemeModeMock,
+    recoverFromStaleAssetsMock,
+    clearStaleAssetRecoveryFlagMock,
+    registerSWMock,
+    swOptions,
+    loggerMock,
+    swEventListenerMock
   }
 }
 
@@ -79,4 +113,126 @@ describe('frontend main bootstrap', () => {
     expect(localStorage.getItem('admin_user')).toBeNull()
     expect(runtime.mountMock).toHaveBeenCalledWith('#app')
   })
+
+  it('applies the stored theme mode on bootstrap', { timeout: 15_000 }, async () => {
+    const runtime = await createLoadMainModule({ themeMode: 'dark' })
+
+    expect(runtime.getStoredThemeModeMock).toHaveBeenCalled()
+    expect(runtime.applyThemeModeMock).toHaveBeenCalledWith('dark')
+  })
+
+  it('registers the service worker through virtual:pwa-register', { timeout: 15_000 }, async () => {
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: { addEventListener: vi.fn() }
+    })
+    const runtime = await createLoadMainModule()
+
+    expect(runtime.registerSWMock).toHaveBeenCalledWith(
+      expect.objectContaining({ immediate: true })
+    )
+    delete (navigator as any).serviceWorker
+  })
+
+  it(
+    'clears the stale-asset recovery flag after a successful boot',
+    { timeout: 15_000 },
+    async () => {
+      vi.useFakeTimers()
+      const runtime = await createLoadMainModule()
+
+      vi.advanceTimersByTime(3_000)
+      expect(runtime.clearStaleAssetRecoveryFlagMock).toHaveBeenCalled()
+      vi.useRealTimers()
+    }
+  )
+
+  it('warns and recovers on a vite preload error', { timeout: 15_000 }, async () => {
+    const runtime = await createLoadMainModule()
+
+    const event = new Event('vite:preloadError') as Event & { payload?: unknown }
+    ;(event as { payload?: unknown }).payload = new Error('chunk failed')
+    let prevented = false
+    Object.defineProperty(event, 'preventDefault', { value: () => (prevented = true) })
+    window.dispatchEvent(event)
+
+    expect(prevented).toBe(true)
+    expect(runtime.loggerMock.warn).toHaveBeenCalled()
+    expect(runtime.recoverFromStaleAssetsMock).toHaveBeenCalledWith()
+  })
+
+  it('logs a loop warning when stale-asset recovery is skipped', { timeout: 15_000 }, async () => {
+    const runtime = await createLoadMainModule()
+    runtime.recoverFromStaleAssetsMock.mockResolvedValue('skipped')
+
+    const event = new Event('vite:preloadError') as Event & { payload?: unknown }
+    ;(event as { payload?: unknown }).payload = new Error('chunk')
+    Object.defineProperty(event, 'preventDefault', { value: () => {} })
+    window.dispatchEvent(event)
+
+    await vi.waitFor(() => {
+      expect(runtime.loggerMock.error).toHaveBeenCalledWith(
+        expect.stringContaining('Stale asset recovery already attempted')
+      )
+    })
+  })
+
+  it('reloads the page when the service worker takes control', { timeout: 15_000 }, async () => {
+    let controllerListener: (() => void) | null = null
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: {
+        addEventListener: vi.fn((_type: string, cb: () => void) => {
+          controllerListener = cb
+        })
+      }
+    })
+    const reloadMock = vi.fn()
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { reload: reloadMock }
+    })
+
+    await createLoadMainModule()
+    const getListener = () => controllerListener
+    getListener()?.()
+
+    expect(reloadMock).toHaveBeenCalled()
+    delete (navigator as any).serviceWorker
+  })
+
+  it(
+    'handles service worker registration, refresh and error callbacks',
+    { timeout: 15_000 },
+    async () => {
+      Object.defineProperty(navigator, 'serviceWorker', {
+        configurable: true,
+        value: { addEventListener: vi.fn() }
+      })
+      const updateMock = vi.fn().mockResolvedValue(undefined)
+      const registration = { update: updateMock }
+      const runtime = await createLoadMainModule()
+
+      const options = runtime.swOptions as {
+        onRegisteredSW: (url: string, registration: { update: () => Promise<unknown> }) => void
+        onNeedRefresh: () => void
+        onRegisterError: (error: unknown) => void
+      }
+      options.onRegisteredSW('/sw.js', registration)
+      expect(updateMock).toHaveBeenCalled()
+
+      options.onNeedRefresh()
+      expect(runtime.loggerMock.info).toHaveBeenCalledWith(
+        expect.stringContaining('fresh service worker')
+      )
+
+      options.onRegisterError(new Error('failed'))
+      expect(runtime.loggerMock.error).toHaveBeenCalledWith(
+        'Failed to register the service worker.',
+        expect.any(Error)
+      )
+
+      delete (navigator as any).serviceWorker
+    }
+  )
 })
