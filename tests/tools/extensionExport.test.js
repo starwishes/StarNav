@@ -48,7 +48,7 @@ describe('extension export bundles', () => {
     expect(firefoxManifest.browser_specific_settings?.gecko?.id).toBe('starnav@example.com')
 
     await expect(exists(path.join(chromeDir, 'popup', 'popup.html'))).resolves.toBe(true)
-    await expect(exists(path.join(firefoxDir, 'options', 'options.html'))).resolves.toBe(true)
+    await expect(exists(path.join(firefoxDir, 'options'))).resolves.toBe(false)
     await expect(exists(path.join(chromeDir, 'manifest.firefox.json'))).resolves.toBe(false)
     await expect(exists(path.join(firefoxDir, 'manifest.firefox.json'))).resolves.toBe(false)
     await expect(exists(path.join(chromeDir, 'README.md'))).resolves.toBe(false)

@@ -91,7 +91,7 @@ describe('extension package bundles', () => {
     // Never nest previously built archives (recursive package bloat)
     expect([...chromeEntries.keys()].some((name) => name.startsWith('packages/'))).toBe(false)
     expect(firefoxEntries.has('manifest.json')).toBe(true)
-    expect(firefoxEntries.has('options/options.html')).toBe(true)
+    expect(firefoxEntries.has('options/options.html')).toBe(false)
     expect([...firefoxEntries.keys()].some((name) => name.startsWith('packages/'))).toBe(false)
 
     expect(JSON.parse(chromeEntries.get('manifest.json').toString('utf8'))).toMatchObject({

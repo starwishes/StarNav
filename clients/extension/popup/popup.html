@@ -31,14 +31,6 @@
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
           </svg>
         </button>
-        <button id="openSettings" class="icon-btn" data-open-settings title="Settings">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path
-              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z">
-            </path>
-          </svg>
-        </button>
         <button id="i18nToggle" class="icon-btn lang-toggle-btn" title="Switch Language">
           <span class="main-char">A</span>
           <span class="badge-char">文</span>
@@ -47,17 +39,14 @@
     </header>
 
     <section id="notConnected" class="not-connected" style="display: none">
-      <div id="notConnectedSetup" class="not-connected-card">
+      <div id="connectCard" class="not-connected-card">
         <div class="not-connected-eyebrow">StarNav</div>
-        <h1 class="not-connected-title">StarNav</h1>
-        <p class="not-connected-copy" data-i18n="notConnectedTip">Please configure the server URL first</p>
-        <button class="primary-btn" type="button" data-open-settings data-i18n="goToSettings">Go to Settings</button>
-      </div>
-
-      <div id="notConnectedReconnect" class="not-connected-card reconnect-card" style="display: none">
-        <div class="not-connected-eyebrow">StarNav</div>
-        <h1 class="not-connected-title" data-i18n="reconnectTitle">Session expired</h1>
-        <p class="not-connected-copy" data-i18n="reconnectTip">Re-enter your password to reconnect. Your username is filled in.</p>
+        <h1 class="not-connected-title">Connect to StarNav</h1>
+        <p class="not-connected-copy">Enter your server URL and credentials to connect.</p>
+        <div class="form-group">
+          <label data-i18n="serverUrl">Server URL</label>
+          <input type="url" id="reconnectServerUrl" class="form-input" autocomplete="url" />
+        </div>
         <div class="form-group">
           <label data-i18n="username">Username</label>
           <input type="text" id="reconnectUsername" class="form-input" autocomplete="username" />
@@ -72,8 +61,7 @@
             <span data-i18n="rememberLogin">Keep me signed in (90 days)</span>
           </label>
         </div>
-        <button id="reconnectBtn" class="primary-btn" type="button" data-i18n="reconnect">Reconnect</button>
-        <button id="reconnectOpenSettings" class="link-btn" type="button" data-open-settings data-i18n="goToSettings">Go to Settings</button>
+        <button id="reconnectBtn" class="primary-btn" type="button" data-i18n="connect">Connect</button>
       </div>
     </section>
 

@@ -40,7 +40,7 @@ describe('requestOrigin', () => {
     })
 
     it('允许扩展 Referer 来源(开启扩展豁免时)', () => {
-      const req = makeRequest(null, 'chrome-extension://abcdefghijklmnop/options/options.html')
+      const req = makeRequest(null, 'chrome-extension://abcdefghijklmnop/popup/popup.html')
       expect(validateTrustedWriteOrigin(req, { allowExtensionOrigins: true })).toMatchObject({
         source: 'referer',
         trusted: true

@@ -3,7 +3,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createUiHelpers, openOptionsPage } from '../../clients/extension/popup/modules/ui.js'
+import { createUiHelpers } from '../../clients/extension/popup/modules/ui.js'
 
 const i18n = {
   zh: {
@@ -51,7 +51,6 @@ const renderDom = () => {
     <textarea id="bookmarkDesc"></textarea>
     <input id="newCategoryName" />
     <button id="openSite"></button>
-    <button id="openSettings"></button>
     <button id="addCategoryBtn"></button>
     <button id="i18nToggle"><span class="main-char"></span><span class="badge-char"></span></button>
     <button id="addCurrentBtn" data-i18n="addCurrent">Add Current</button>
@@ -74,7 +73,6 @@ const getElements = () => ({
   bookmarkDesc: document.getElementById('bookmarkDesc'),
   newCategoryName: document.getElementById('newCategoryName'),
   openSite: document.getElementById('openSite'),
-  openSettings: document.getElementById('openSettings'),
   addCategoryBtn: document.getElementById('addCategoryBtn'),
   i18nToggle: document.getElementById('i18nToggle')
 })
@@ -107,32 +105,12 @@ describe('browser extension ui helpers', () => {
     delete global.chrome
   })
 
-  it('opens the extension options page through runtime helpers with a window fallback', () => {
-    global.chrome = {
-      runtime: {
-        openOptionsPage: vi.fn(),
-        getURL: vi.fn(() => 'chrome-extension://id/options/options.html')
-      }
-    }
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-
-    openOptionsPage()
-    expect(global.chrome.runtime.openOptionsPage).toHaveBeenCalledTimes(1)
-
-    global.chrome.runtime.openOptionsPage = undefined
-    openOptionsPage()
-
-    expect(global.chrome.runtime.getURL).toHaveBeenCalledWith('options/options.html')
-    expect(openSpy).toHaveBeenCalledWith('chrome-extension://id/options/options.html')
-  })
-
   it('updates localized UI text, placeholders, and language toggle badges', () => {
     ui.updateUI()
 
     expect(document.getElementById('addCurrentBtn').textContent).toBe('添加当前页面')
     expect(document.getElementById('searchBtn').textContent).toBe('搜索书签...')
     expect(elements.openSite.title).toBe('打开导航站')
-    expect(elements.openSettings.title).toBe('设置')
     expect(elements.addCategoryBtn.title).toBe('新建分类')
     expect(elements.searchInput.placeholder).toBe('搜索书签...')
     expect(elements.bookmarkDesc.placeholder).toBe('描述...')

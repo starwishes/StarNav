@@ -11,7 +11,7 @@ import { createCategoryController } from './modules/categories.js'
 import { createPopupState, elements, i18n } from './modules/constants.js'
 import { createSearchController } from './modules/search.js'
 import { getMergedStorage, removeStorage, setStorage } from './modules/storage.js'
-import { createUiHelpers, openOptionsPage } from './modules/ui.js'
+import { createUiHelpers } from './modules/ui.js'
 
 const state = createPopupState()
 window.__STARNAV_POPUP_READY = false
@@ -81,15 +81,6 @@ async function consumePendingCapture() {
 }
 
 async function init() {
-  const settingsTriggers = new Set(document.querySelectorAll('[data-open-settings]'))
-  if (elements.openSettings) {
-    settingsTriggers.add(elements.openSettings)
-  }
-
-  settingsTriggers.forEach((button) => {
-    button.addEventListener('click', openOptionsPage)
-  })
-
   if (elements.i18nToggle) {
     elements.i18nToggle.addEventListener('click', toggleLanguage)
   }
@@ -113,21 +104,28 @@ async function init() {
   ui.updateUI()
 
   if (!state.config.serverUrl || !state.config.token) {
-    // 已有服务器+用户名但 token 缺失/失效 → 显示内联重连卡片,
-    // 避免每次都要打开 options 页。token 校验在后续 API 调用时由 server 端拒绝。
+    // 未连接或会话失效:内联连接卡片(服务器地址+用户名+密码)。
+    // 已保存的网址/用户名自动预填,用户只需补密码即可重连。
     const stored = await getMergedStorage(['serverUrl', 'savedUsername', 'rememberLogin'])
     const serverUrl = normalizeServerUrl(stored.serverUrl || state.config.serverUrl)
     const savedUsername = stored.savedUsername || ''
-    if (serverUrl && savedUsername && elements.reconnectUsername) {
+    if (elements.reconnectServerUrl) {
+      elements.reconnectServerUrl.value = serverUrl
+    }
+    if (elements.reconnectUsername) {
       elements.reconnectUsername.value = savedUsername
-      if (elements.reconnectPassword) elements.reconnectPassword.value = ''
-      if (elements.reconnectRemember) {
-        elements.reconnectRemember.checked = stored.rememberLogin === true
-      }
-      ui.showNotConnected('tokenExpired', 'reconnect')
-      setTimeout(() => elements.reconnectPassword?.focus(), 0)
+    }
+    if (elements.reconnectRemember) {
+      elements.reconnectRemember.checked = stored.rememberLogin === true
+    }
+    const mode = serverUrl && savedUsername ? 'reconnect' : 'setup'
+    ui.showNotConnected(mode === 'reconnect' ? 'tokenExpired' : '', mode)
+    if (!serverUrl) {
+      setTimeout(() => elements.reconnectServerUrl?.focus(), 0)
+    } else if (!savedUsername) {
+      setTimeout(() => elements.reconnectUsername?.focus(), 0)
     } else {
-      ui.showNotConnected()
+      setTimeout(() => elements.reconnectPassword?.focus(), 0)
     }
     setupEventListeners()
     window.__STARNAV_POPUP_READY = true
@@ -177,12 +175,15 @@ function setupEventListeners() {
   elements.closeCategoryModal?.addEventListener('click', categoryController.hideCategoryModal)
   elements.submitCategory?.addEventListener('click', categoryController.createCategory)
   elements.reconnectBtn?.addEventListener('click', handleReconnect)
-  elements.reconnectPassword?.addEventListener('keydown', (event) => {
+  const reconnectEnterHandler = (event) => {
     if (event.key === 'Enter') {
       event.preventDefault()
       void handleReconnect()
     }
-  })
+  }
+  elements.reconnectPassword?.addEventListener('keydown', reconnectEnterHandler)
+  elements.reconnectServerUrl?.addEventListener('keydown', reconnectEnterHandler)
+  elements.reconnectUsername?.addEventListener('keydown', reconnectEnterHandler)
 }
 
 async function handleAuthError(errorMessage) {
@@ -197,48 +198,42 @@ async function handleAuthError(errorMessage) {
       ? 'tokenExpired'
       : 'tokenInvalid'
 
-  // 如果已配置过服务器且保存了用户名,直接在内联重连卡片里让用户重新输入密码,
-  // 避免每次会话失效都要打开 options 页。
+  // 会话失效时在内联连接卡片里预填网址/用户名,用户只需补密码。
   const stored = await getMergedStorage(['serverUrl', 'savedUsername', 'rememberLogin'])
   const serverUrl = normalizeServerUrl(stored.serverUrl || state.config.serverUrl)
   const savedUsername = stored.savedUsername || ''
-  if (serverUrl && savedUsername && elements.reconnectUsername) {
-    elements.reconnectUsername.value = savedUsername
-    if (elements.reconnectPassword) {
-      elements.reconnectPassword.value = ''
-    }
-    if (elements.reconnectRemember) {
-      elements.reconnectRemember.checked = stored.rememberLogin === true
-    }
-    ui.showNotConnected(reasonKey, 'reconnect')
-    // 聚焦密码框,Enter 提交
-    setTimeout(() => elements.reconnectPassword?.focus(), 0)
-    return
+  if (elements.reconnectServerUrl) {
+    elements.reconnectServerUrl.value = serverUrl
   }
-
-  ui.showNotConnected(reasonKey)
+  if (elements.reconnectUsername) {
+    elements.reconnectUsername.value = savedUsername
+  }
+  if (elements.reconnectRemember) {
+    elements.reconnectRemember.checked = stored.rememberLogin === true
+  }
+  ui.showNotConnected(reasonKey, 'reconnect')
+  // 聚焦密码框,Enter 提交
+  setTimeout(() => elements.reconnectPassword?.focus(), 0)
 }
 
 async function handleReconnect() {
+  const texts = i18n[state.currentLang] || i18n.zh
   const stored = await getMergedStorage(['serverUrl'])
-  const serverUrl = normalizeServerUrl(stored.serverUrl || state.config.serverUrl)
+  const serverUrl = normalizeServerUrl(
+    elements.reconnectServerUrl?.value.trim() || stored.serverUrl || state.config.serverUrl
+  )
   const username = elements.reconnectUsername?.value.trim() || ''
   const password = elements.reconnectPassword?.value || ''
   const remember = elements.reconnectRemember?.checked === true
 
-  if (!serverUrl) {
-    openOptionsPage()
-    return
-  }
-  if (!username || !password) {
-    ui.showToast(texts.reconnectMissingCredentials || 'Please enter username and password', 'error')
+  if (!serverUrl || !username || !password) {
+    ui.showToast(texts.connectMissingCredentials, 'error')
     return
   }
 
-  const texts = i18n[state.currentLang] || i18n.zh
   if (elements.reconnectBtn) {
     elements.reconnectBtn.disabled = true
-    elements.reconnectBtn.textContent = texts.reconnecting || 'Reconnecting…'
+    elements.reconnectBtn.textContent = texts.connecting
   }
   ui.showLoading()
 
@@ -251,16 +246,16 @@ async function handleReconnect() {
     state.config.token = result.token
     state.config.serverUrl = serverUrl
     ui.showMainContent()
-    ui.showToast(texts.reconnected || 'Reconnected', 'success')
+    ui.showToast(texts.connected, 'success')
     await categoryController.loadCategories()
     await searchController.loadRecentBookmarks()
   } catch (error) {
-    const message = error?.message || texts.reconnectFailed || 'Reconnect failed'
+    const message = error?.message || texts.connectFailed
     ui.showToast(message, 'error')
   } finally {
     if (elements.reconnectBtn) {
       elements.reconnectBtn.disabled = false
-      elements.reconnectBtn.textContent = texts.reconnect || 'Reconnect'
+      elements.reconnectBtn.textContent = texts.connect
     }
     ui.hideLoading()
   }

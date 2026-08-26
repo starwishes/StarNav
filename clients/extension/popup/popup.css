@@ -215,6 +215,16 @@ body {
   line-height: 1.55;
 }
 
+/* The connect card is always dark (both themes); keep form labels readable
+   in light mode where --text-secondary is dark-on-dark. */
+.not-connected-card .form-group label {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.not-connected-card .checkbox-label {
+  color: rgba(255, 255, 255, 0.72);
+}
+
 .popup-main {
   display: flex;
   flex-direction: column;

@@ -13,7 +13,6 @@ const mocks = vi.hoisted(() => ({
   setStorage: vi.fn(),
   getMergedStorage: vi.fn(),
   removeStorage: vi.fn(),
-  openOptionsPage: vi.fn(),
   bookmarkShowAddForm: vi.fn(),
   bookmarkShowAddFormFromCapture: vi.fn(),
   bookmarkSubmitBookmark: vi.fn(),
@@ -40,7 +39,6 @@ const mocks = vi.hoisted(() => ({
 
 const renderDom = () => {
   document.body.innerHTML = `
-    <button id="openSettings"></button>
     <button id="i18nToggle"></button>
     <input id="searchInput" />
     <button id="clearSearch"></button>
@@ -58,8 +56,8 @@ const renderDom = () => {
     <div id="addSection"></div>
     <div id="addForm"></div>
     <div id="notConnected"></div>
-    <div id="notConnectedSetup"></div>
-    <div id="notConnectedReconnect"></div>
+    <div id="connectCard"></div>
+    <input id="reconnectServerUrl" />
     <input id="reconnectUsername" />
     <input id="reconnectPassword" />
     <input id="reconnectRemember" type="checkbox" />
@@ -109,10 +107,9 @@ const getElements = () => ({
   i18nToggle: document.getElementById('i18nToggle'),
   toast: document.getElementById('toast'),
   openSite: document.getElementById('openSite'),
-  openSettings: document.getElementById('openSettings'),
   notConnected: document.getElementById('notConnected'),
-  notConnectedSetup: document.getElementById('notConnectedSetup'),
-  notConnectedReconnect: document.getElementById('notConnectedReconnect'),
+  connectCard: document.getElementById('connectCard'),
+  reconnectServerUrl: document.getElementById('reconnectServerUrl'),
   reconnectUsername: document.getElementById('reconnectUsername'),
   reconnectPassword: document.getElementById('reconnectPassword'),
   reconnectRemember: document.getElementById('reconnectRemember'),
@@ -139,7 +136,6 @@ vi.mock('../../clients/extension/popup/modules/storage.js', () => ({
 }))
 
 vi.mock('../../clients/extension/popup/modules/ui.js', () => ({
-  openOptionsPage: (...args) => mocks.openOptionsPage(...args),
   createUiHelpers: () => ({
     updateUI: (...args) => mocks.uiUpdateUI(...args),
     showNotConnected: (...args) => mocks.uiShowNotConnected(...args),
@@ -251,7 +247,6 @@ describe('browser extension popup bootstrap', () => {
     mocks.removeStorage.mockReset()
     mocks.getMergedStorage.mockResolvedValue({})
     mocks.removeStorage.mockResolvedValue(undefined)
-    mocks.openOptionsPage.mockReset()
     mocks.bookmarkShowAddForm.mockReset()
     mocks.bookmarkShowAddFormFromCapture.mockReset()
     mocks.bookmarkSubmitBookmark.mockReset()
@@ -331,7 +326,6 @@ describe('browser extension popup bootstrap', () => {
     expect(mocks.categoryLoadCategories).toHaveBeenCalledTimes(1)
     expect(mocks.searchLoadRecentBookmarks).toHaveBeenCalledTimes(1)
 
-    elements.openSettings.click()
     elements.i18nToggle.click()
     elements.searchInput.dispatchEvent(new Event('input', { bubbles: true }))
     elements.clearSearch.click()
@@ -345,7 +339,6 @@ describe('browser extension popup bootstrap', () => {
 
     await Promise.resolve()
 
-    expect(mocks.openOptionsPage).toHaveBeenCalledTimes(1)
     expect(mocks.setStorage).toHaveBeenCalledWith({ lang: 'zh', locale: 'zh-CN' })
     expect(popupState.currentLang).toBe('zh')
     expect(mocks.uiUpdateUI).toHaveBeenCalledTimes(2)
@@ -373,7 +366,7 @@ describe('browser extension popup bootstrap', () => {
     expect(popupState.config.token).toBe('')
     expect(mocks.removeStorage).toHaveBeenCalledWith(['token', 'user'], 'local')
     expect(mocks.removeStorage).toHaveBeenCalledWith(['token', 'user'], 'sync')
-    expect(mocks.uiShowNotConnected).toHaveBeenCalledWith('tokenExpired')
+    expect(mocks.uiShowNotConnected).toHaveBeenCalledWith('tokenExpired', 'reconnect')
   })
 
   it('shows the inline reconnect card and reconnects without opening settings', async () => {
@@ -395,11 +388,11 @@ describe('browser extension popup bootstrap', () => {
 
     await loadPopup()
 
-    // Reconnect card is shown with the saved username pre-filled.
+    // Connect card is shown with the saved URL and username pre-filled.
     expect(mocks.uiShowNotConnected).toHaveBeenCalledWith('tokenExpired', 'reconnect')
+    expect(document.getElementById('reconnectServerUrl').value).toBe('https://nav.example.com')
     expect(document.getElementById('reconnectUsername').value).toBe('alice')
     expect(document.getElementById('reconnectRemember').checked).toBe(true)
-    expect(mocks.openOptionsPage).not.toHaveBeenCalled()
 
     document.getElementById('reconnectPassword').value = 'secret'
     document.getElementById('reconnectBtn').click()

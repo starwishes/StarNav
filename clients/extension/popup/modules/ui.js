@@ -17,15 +17,6 @@ const setDisplay = (element, value) => {
   }
 }
 
-export function openOptionsPage() {
-  if (chrome.runtime.openOptionsPage) {
-    chrome.runtime.openOptionsPage()
-    return
-  }
-
-  window.open(chrome.runtime.getURL('options/options.html'))
-}
-
 export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
   let toastTimer = null
 
@@ -65,10 +56,6 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
       elements.openSite.title = texts.openSite
     }
 
-    if (elements.openSettings) {
-      elements.openSettings.title = texts.settings
-    }
-
     if (elements.themeToggle) {
       elements.themeToggle.title = texts.toggleTheme
     }
@@ -103,7 +90,7 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
 
   const showNotConnected = (reasonKey, mode = 'setup') => {
     const texts = getTexts()
-    const message = reasonKey && texts[reasonKey] ? texts[reasonKey] : texts.notConnectedTip
+    const message = reasonKey && texts[reasonKey] ? texts[reasonKey] : texts.connectTip
 
     showToast(message, 'error')
 
@@ -113,13 +100,18 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
 
     setDisplay(elements.notConnected, 'flex')
     setDisplay(elements.mainContent, 'none')
-    // mode='reconnect' 显示内联重连卡片(用户名+密码+记住我);
-    // mode='setup' 显示简单的"前往设置"提示(尚未配置服务器)。
-    if (elements.notConnectedSetup) {
-      setDisplay(elements.notConnectedSetup, mode === 'setup' ? 'block' : 'none')
-    }
-    if (elements.notConnectedReconnect) {
-      setDisplay(elements.notConnectedReconnect, mode === 'reconnect' ? 'block' : 'none')
+
+    // 单一连接卡片:首次连接(空白)与会话过期(预填)共用同一表单,
+    // 仅标题与提示随模式切换。
+    if (elements.connectCard) {
+      const title = elements.connectCard.querySelector('.not-connected-title')
+      const tip = elements.connectCard.querySelector('.not-connected-copy')
+      if (title) {
+        title.textContent = mode === 'reconnect' ? texts.reconnectTitle : texts.connectTitle
+      }
+      if (tip) {
+        tip.textContent = mode === 'reconnect' ? texts.reconnectTip : texts.connectTip
+      }
     }
   }
 
