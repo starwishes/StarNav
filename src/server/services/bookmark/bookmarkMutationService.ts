@@ -1,4 +1,5 @@
-import { getDb, forceCheckpoint, backupDatabase } from '../database/database.js'
+import { getDb, forceCheckpoint } from '../database/database.js'
+import { backupDatabaseThrottled } from '../database/backupThrottle.js'
 import { logger } from '../../utils/logger.js'
 import { bookmarkWriteService } from './bookmarkWriteService.js'
 import { categoryWriteService } from './categoryWriteService.js'
@@ -23,7 +24,9 @@ export const bookmarkMutationService = {
     const db = getDb()
     const { categories = [], items = [] } = content
 
-    backupDatabase()
+    // 整库备份 5s 节流（见 backupThrottle.ts）：整树替换可能被高频触发，
+    // 每次都同步复制整库会阻塞事件循环。
+    backupDatabaseThrottled()
 
     const transaction = db.transaction(() => {
       db.prepare('DELETE FROM items').run()
@@ -104,11 +107,7 @@ export const bookmarkMutationService = {
     return result
   },
 
-  updateItem(
-    _username: string | null | undefined,
-    itemId: IdLike,
-    updateData: BookmarkPayload
-  ) {
+  updateItem(_username: string | null | undefined, itemId: IdLike, updateData: BookmarkPayload) {
     const result = bookmarkWriteService.update(itemId, updateData)
     if (result) {
       invalidateBookmarkCaches()

@@ -21,6 +21,9 @@ const faviconLimiter = vi.fn(function faviconLimiter(req, res, next) {
 const healthLimiter = vi.fn(function healthLimiter(req, res, next) {
   next?.()
 })
+const clickLimiter = vi.fn(function clickLimiter(req, res, next) {
+  next?.()
+})
 
 const authController = {
   login: vi.fn(),
@@ -94,7 +97,8 @@ vi.mock('../../../src/server/middleware/limiter.js', () => ({
   loginLimiter,
   dataUpdateLimiter,
   faviconLimiter,
-  healthLimiter
+  healthLimiter,
+  clickLimiter
 }))
 
 vi.mock('../../../src/server/controllers/authController.js', () => ({
@@ -273,7 +277,7 @@ describe('route mounting', () => {
       bookmarkController.deleteBookmark
     ])
     expect(getHandlers(bookmarkRoutes, 'post', '/sites/:id/click')).toEqual([
-      dataUpdateLimiter,
+      clickLimiter,
       bookmarkController.trackClick
     ])
   })

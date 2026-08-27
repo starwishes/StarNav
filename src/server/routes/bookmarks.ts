@@ -1,7 +1,7 @@
 import express from 'express'
 import { bookmarkController } from '../controllers/bookmarkController.js'
 import { authenticate, optionalAuth, requireAdmin } from '../middleware/auth.js'
-import { dataUpdateLimiter } from '../middleware/limiter.js'
+import { clickLimiter, dataUpdateLimiter } from '../middleware/limiter.js'
 const router = express.Router()
 
 /**
@@ -303,6 +303,6 @@ router.delete('/bookmark/:id', authenticate, requireAdmin, bookmarkController.de
  *       404:
  *         description: 书签不存在
  */
-router.post('/sites/:id/click', dataUpdateLimiter, bookmarkController.trackClick)
+router.post('/sites/:id/click', clickLimiter, bookmarkController.trackClick)
 
 export default router

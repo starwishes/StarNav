@@ -103,8 +103,11 @@ gh release delete v1.0.0 --repo starwishes/StarNav --yes
 
 1. 改 `package.json` / `package-lock.json` 顶层 `version`（例如 `1.0.0` → `1.0.1`）
 2. `npm run versions:sync`（同步 README / 扩展 manifest 等）
-3. `npm run versions:check`
-4. 合并进 `main` → CI 绿 → Release 工作流发现版本变了 → 自动 Docker Publish
+3. `npm run openapi:types`（重新生成 OpenAPI 客户端类型——`openapi.generated.ts` 内含版本标记，漏跑会导致 CI 的 OpenAPI 漂移检查失败）
+4. `npm run versions:check` + `npm run openapi:types:check`（本地预检）
+5. 合并进 `main` → CI 绿 → Release 工作流发现版本变了 → 自动 Docker Publish
+
+> `AGENTS.md` 开头的产品版本号需手动同步（无自动检查，已漂移过一次）。
 
 同版本修 bug、不改 `package.json` version → **不会**自动重打镜像；需要时 Actions → Release / Docker Publish 手动跑。
 

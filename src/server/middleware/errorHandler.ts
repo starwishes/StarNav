@@ -16,12 +16,24 @@ interface ErrorLike {
 }
 
 /**
- * Standard error response format
+ * 5xx 错误对外暴露的通用文案。
+ * 内部异常的原始 message 可能包含 SQL、文件路径等敏感信息，
+ * 生产环境一律替换，避免通过 500 响应泄露实现细节。
  */
-export const formatError = (error: ErrorLike, isDevelopment = false) => {
+const GENERIC_SERVER_ERROR = '服务器内部错误'
+
+/**
+ * Standard error response format
+ * - 4xx：业务校验类信息本来就面向调用方，保留原始 message/code
+ * - 5xx 且非开发环境：message 与 code 均替换为通用值，不透传内部信息；
+ *   开发环境全量返回便于排查
+ */
+export const formatError = (error: ErrorLike, isDevelopment = false, statusCode = 500) => {
+  const isServerError = statusCode >= 500
+  const exposeDetails = isDevelopment || !isServerError
   return buildErrorBody(
-    error.message || 'An error occurred',
-    error.code || 'INTERNAL_ERROR',
+    exposeDetails ? error.message || 'An error occurred' : GENERIC_SERVER_ERROR,
+    exposeDetails ? error.code || 'INTERNAL_ERROR' : 'INTERNAL_ERROR',
     isDevelopment ? error.stack : undefined
   )
 }
@@ -45,7 +57,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
 
   // Send formatted error response
   const statusCode = err.statusCode || 500
-  res.status(statusCode).json(formatError(err, isDevelopment))
+  res.status(statusCode).json(formatError(err, isDevelopment, statusCode))
 }
 
 /**

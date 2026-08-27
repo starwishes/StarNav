@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "StarNav",
-  "version": "1.0.3",
-  "version_name": "v1.0.3",
+  "version": "1.0.5",
+  "version_name": "v1.0.5",
   "description": "Quickly add bookmarks and search your StarNav navigation site",
   "background": {
     "service_worker": "background/service-worker.js",

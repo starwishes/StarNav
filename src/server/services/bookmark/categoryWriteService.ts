@@ -1,4 +1,5 @@
-import { forceCheckpoint, backupDatabase, getDb } from '../database/database.js'
+import { forceCheckpoint, getDb } from '../database/database.js'
+import { backupDatabaseThrottled } from '../database/backupThrottle.js'
 import { logger } from '../../utils/logger.js'
 import { mapCategoryRow, normalizeDbParentId } from './recordTransforms.js'
 import type { CategoryPayload, IdLike } from '../../types/domain.js'
@@ -64,8 +65,9 @@ export const categoryWriteService = {
     const id = Number(categoryId)
 
     try {
-      // 整库文件备份（copyFileSync）为同步阻塞操作，刻意为换取可恢复性；本轮不异步化。
-      backupDatabase()
+      // 写前整库备份已改为 5s 节流，避免频繁写操作时同步 copyFileSync 阻塞事件循环；
+      // 被节流跳过的备份由后续写操作补上，保证最终一致。
+      backupDatabaseThrottled()
       const fields: string[] = []
       const values: unknown[] = []
 
@@ -115,7 +117,7 @@ export const categoryWriteService = {
         return null
       }
 
-      backupDatabase()
+      backupDatabaseThrottled()
 
       const parentId = normalizeDbParentId(category.parent_id)
       const targetCategoryId = parentId ?? 0
@@ -158,8 +160,8 @@ export const categoryWriteService = {
     }
 
     try {
-      // 整库文件备份（copyFileSync）为同步阻塞操作，刻意为换取可恢复性；本轮不异步化。
-      backupDatabase()
+      // 整库备份已改为 5s 节流（见 backupThrottle.ts）。
+      backupDatabaseThrottled()
 
       const existingIds = selectCategoryIds(db)
       const seenIds = new Set(existingIds)

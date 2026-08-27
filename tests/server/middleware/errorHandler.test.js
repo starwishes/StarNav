@@ -22,15 +22,35 @@ describe('errorHandler middleware', () => {
     error.code = 'BROKEN'
     error.stack = 'stack-trace'
 
-    expect(formatError(error, false)).toEqual({
+    // 5xx in production: generic message and code, no internal details leaked
+    expect(formatError(error, false, 500)).toEqual({
       success: false,
-      error: 'boom',
-      code: 'BROKEN'
+      error: '服务器内部错误',
+      code: 'INTERNAL_ERROR'
     })
-    expect(formatError(error, true)).toEqual({
+    // 5xx in development: full message + stack for debugging
+    expect(formatError(error, true, 500)).toEqual({
       success: false,
       error: 'boom',
       code: 'BROKEN',
+      details: 'stack-trace'
+    })
+  })
+
+  it('keeps original messages for 4xx client errors regardless of environment', () => {
+    const error = new Error('nope')
+    error.code = 'NOT_FOUND'
+    error.stack = 'stack-trace'
+
+    expect(formatError(error, false, 404)).toEqual({
+      success: false,
+      error: 'nope',
+      code: 'NOT_FOUND'
+    })
+    expect(formatError(error, true, 400)).toEqual({
+      success: false,
+      error: 'nope',
+      code: 'NOT_FOUND',
       details: 'stack-trace'
     })
   })
@@ -85,6 +105,21 @@ describe('errorHandler middleware', () => {
       throw errors.badRequest('bad')
     })({}, {}, next)
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ message: 'bad', statusCode: 400 }))
+
+    // Production (NODE_ENV unset): unexpected 500 must not leak internal messages
+    process.env.NODE_ENV = ''
+    const prodRes = { status: vi.fn().mockReturnThis(), json: vi.fn() }
+    errorHandler(
+      new Error('SQLITE_CANTOPEN: /data/starnav.db'),
+      { path: '/boom', method: 'GET' },
+      prodRes,
+      vi.fn()
+    )
+    expect(prodRes.json).toHaveBeenCalledWith({
+      success: false,
+      error: '服务器内部错误',
+      code: 'INTERNAL_ERROR'
+    })
   })
 
   it('creates ApiError instances through helpers with the current status/code mapping', () => {

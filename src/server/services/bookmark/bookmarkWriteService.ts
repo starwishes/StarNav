@@ -1,6 +1,7 @@
 import type { BookmarkPayload, DbRow, IdLike } from '../../types/domain.js'
 import type { BookmarkItemRow, ItemCategoryRefRow, MaxIdRow } from '../../types/sqliteRows.js'
-import { getDb, forceCheckpoint, backupDatabase } from '../database/database.js'
+import { getDb, forceCheckpoint } from '../database/database.js'
+import { backupDatabaseThrottled } from '../database/backupThrottle.js'
 import { logger } from '../../utils/logger.js'
 import {
   mapBookmarkRow,
@@ -73,9 +74,9 @@ export const bookmarkWriteService = {
     const id = Number(itemId)
 
     try {
-      // 注意：每次更新前做整库文件备份（copyFileSync）会阻塞事件循环。
-      // 这是刻意的取舍——保证故障时能恢复数据；本轮不改为异步以免引入并发风险。
-      backupDatabase()
+      // 注意：写前整库备份（copyFileSync）为同步阻塞操作，已改为 5s 节流
+      //（见 backupThrottle.ts），在保留可恢复性的同时降低高频写操作的阻塞影响。
+      backupDatabaseThrottled()
 
       const currentItem = db.prepare<BookmarkItemRow>('SELECT * FROM items WHERE id = ?').get(id)
       if (!currentItem) {
@@ -147,8 +148,8 @@ export const bookmarkWriteService = {
   delete(itemId: IdLike) {
     try {
       const db = getDb()
-      // 整库文件备份（copyFileSync）为同步阻塞操作，刻意为换取可恢复性；本轮不异步化。
-      backupDatabase()
+      // 整库备份已改为 5s 节流（见 backupThrottle.ts）。
+      backupDatabaseThrottled()
 
       const result = db.prepare('DELETE FROM items WHERE id = ?').run(itemId)
 
@@ -242,8 +243,8 @@ export const bookmarkWriteService = {
     }
 
     try {
-      // 整库文件备份（copyFileSync）为同步阻塞操作，刻意为换取可恢复性；本轮不异步化。
-      backupDatabase()
+      // 整库备份已改为 5s 节流（见 backupThrottle.ts）。
+      backupDatabaseThrottled()
 
       const placeholders = buildPlaceholders(normalizedIds)
       const existingItems = db
@@ -316,8 +317,8 @@ export const bookmarkWriteService = {
     }
 
     try {
-      // 整库文件备份（copyFileSync）为同步阻塞操作，刻意为换取可恢复性；本轮不异步化。
-      backupDatabase()
+      // 整库备份已改为 5s 节流（见 backupThrottle.ts）。
+      backupDatabaseThrottled()
 
       const placeholders = buildPlaceholders(normalizedIds)
       const existingItems = db

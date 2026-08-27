@@ -6,7 +6,7 @@ vi.mock('express-rate-limit', () => ({
   default: rateLimit
 }))
 
-const { dataUpdateLimiter, faviconLimiter, healthLimiter, loginLimiter } =
+const { clickLimiter, dataUpdateLimiter, faviconLimiter, healthLimiter, loginLimiter } =
   await import('../../../src/server/middleware/limiter.js')
 
 describe('limiter middleware config', () => {
@@ -38,6 +38,16 @@ describe('limiter middleware config', () => {
     expect(keyFor('203.0.113.7', 'admin')).toBe('203.0.113.7:admin')
     expect(keyFor('203.0.113.7', 'alice')).toBe('203.0.113.7:alice')
     expect(keyFor('203.0.113.7')).toBe('203.0.113.7:')
+  })
+
+  it('degrades to a pure-IP key when the request has no readable body', () => {
+    // 固化退化行为：请求缺少 body 属性（如中间件未解析 JSON）时，
+    // 所有用户名共享同一个 IP 计数桶，不会绕过限流。
+    const { keyGenerator } = loginLimiter.options
+
+    expect(keyGenerator({ ip: '203.0.113.7' })).toBe('203.0.113.7:')
+    expect(keyGenerator({ ip: '203.0.113.7', body: { username: 123 } })).toBe('203.0.113.7:123')
+    expect(keyGenerator({ ip: '203.0.113.9', body: null })).toBe('203.0.113.9:')
   })
 
   it('registers the current data update limiter configuration', () => {
@@ -78,5 +88,20 @@ describe('limiter middleware config', () => {
     process.env.NODE_ENV = 'test'
     expect(faviconLimiter.options.skip()).toBe(true)
     expect(healthLimiter.options.skip()).toBe(true)
+  })
+
+  it('registers a stricter per-IP click limiter for the public click endpoint', () => {
+    expect(rateLimit).toHaveBeenNthCalledWith(5, {
+      windowMs: 60 * 1000,
+      max: 30,
+      skip: expect.any(Function),
+      message: { error: '操作过于频繁，请稍后再试' },
+      standardHeaders: true,
+      legacyHeaders: false
+    })
+
+    expect(clickLimiter.options.skip()).toBe(false)
+    process.env.NODE_ENV = 'test'
+    expect(clickLimiter.options.skip()).toBe(true)
   })
 })
