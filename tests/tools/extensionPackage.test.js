@@ -96,7 +96,7 @@ describe('extension package bundles', () => {
 
     expect(JSON.parse(chromeEntries.get('manifest.json').toString('utf8'))).toMatchObject({
       manifest_version: 3,
-      version_name: 'v1.0.5'
+      version_name: 'v1.0.6'
     })
     expect(JSON.parse(firefoxEntries.get('manifest.json').toString('utf8'))).toMatchObject({
       manifest_version: 2

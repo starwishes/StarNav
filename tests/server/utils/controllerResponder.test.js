@@ -56,6 +56,54 @@ describe('controllerResponder', () => {
     })
   })
 
+  it('should sanitize 5xx response bodies in production (message and code)', async () => {
+    const res = createResponse()
+    const previousEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
+
+    try {
+      await respondWithService(res, () => {
+        const error = new Error('SQLITE_CANTOPEN: /data/starnav.db')
+        error.statusCode = 500
+        error.code = 'SQLITE_CANTOPEN'
+        throw error
+      })
+    } finally {
+      process.env.NODE_ENV = previousEnv
+    }
+
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      error: '服务器内部错误',
+      code: 'INTERNAL_ERROR'
+    })
+  })
+
+  it('should keep 4xx messages and codes intact in production', async () => {
+    const res = createResponse()
+    const previousEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
+
+    try {
+      await respondWithService(res, () => {
+        const error = new Error('资源未找到')
+        error.statusCode = 404
+        error.code = 'NOT_FOUND'
+        throw error
+      })
+    } finally {
+      process.env.NODE_ENV = previousEnv
+    }
+
+    expect(res.status).toHaveBeenCalledWith(404)
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      error: '资源未找到',
+      code: 'NOT_FOUND'
+    })
+  })
+
   it('should normalize plain values into success envelopes', async () => {
     const res = createResponse()
 

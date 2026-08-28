@@ -26,6 +26,8 @@ CSP_UPGRADE_INSECURE_REQUESTS=true
   2. 转发 `X-Forwarded-Proto`
   3. `CORS_ORIGINS` 配置为实际访问域名，而不是 `*`；未配置时生产环境不会再回退 `localhost` 跨域白名单
 
+- **反向代理场景务必开启 `TRUST_PROXY=true`**：限流（登录、写操作、公开点击接口）默认按 `req.ip` 计数，关闭时所有访客共享反代出口 IP，会被当成同一个客户端互相挤占限流额度。开启后请确认代理正确透传 `X-Forwarded-For`。
+
 ## 2. 启动方式
 
 ### 本地 / WSL
@@ -82,14 +84,14 @@ npm run admin:bootstrap-password
 
 交付或升级后，按从轻到重选择：
 
-| 顺序 | 命令 | 覆盖 |
-|------|------|------|
-| 1 | `npm run docker:smoke` | 镜像构建 + 容器内健康/基本可用性 |
-| 2 | `curl http://127.0.0.1:8080/api/health` | 运行中实例存活 |
-| 3 | `npm run admin:bootstrap-password`（仅首登且未设 `ADMIN_PASSWORD`） | 取出并销毁一次性管理员密码 |
-| 4 | `npm run test:smoke` | 隔离进程 API 冒烟（登录/会话/书签/上传） |
-| 5 | `npm run db:backup` / `npm run db:restore -- --input <path>` | 备份恢复演练（变更前建议先 4） |
-| 6 | `npm run test:browser`（可选） | 主站 Playwright 回归 |
+| 顺序 | 命令                                                                | 覆盖                                     |
+| ---- | ------------------------------------------------------------------- | ---------------------------------------- |
+| 1    | `npm run docker:smoke`                                              | 镜像构建 + 容器内健康/基本可用性         |
+| 2    | `curl http://127.0.0.1:8080/api/health`                             | 运行中实例存活                           |
+| 3    | `npm run admin:bootstrap-password`（仅首登且未设 `ADMIN_PASSWORD`） | 取出并销毁一次性管理员密码               |
+| 4    | `npm run test:smoke`                                                | 隔离进程 API 冒烟（登录/会话/书签/上传） |
+| 5    | `npm run db:backup` / `npm run db:restore -- --input <path>`        | 备份恢复演练（变更前建议先 4）           |
+| 6    | `npm run test:browser`（可选）                                      | 主站 Playwright 回归                     |
 
 CI 已覆盖 typecheck、audit:prod、coverage、runtime smoke、build、docker:smoke；本地改动优先 `npm run typecheck` + `npm run test:fast`。
 

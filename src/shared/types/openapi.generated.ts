@@ -1020,6 +1020,8 @@ export interface paths {
             username: string
             /** @example admin */
             password: string
+            /** @description 记住登录（延长令牌有效期） */
+            remember?: boolean
           }
         }
       }
@@ -1386,7 +1388,7 @@ export interface components {
        * @enum {string}
        */
       status?: 'healthy' | 'unhealthy'
-      /** @example 1.0.5 */
+      /** @example 1.0.6 */
       version?: string
       /** Format: date-time */
       timestamp?: string

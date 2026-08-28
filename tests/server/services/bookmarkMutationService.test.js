@@ -73,6 +73,7 @@ const { bookmarkMutationService } =
 describe('BookmarkMutationService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.backupDatabase.mockReturnValue({ success: true })
   })
 
   it('should replace all bookmark data in a single transaction', () => {
@@ -131,11 +132,7 @@ describe('BookmarkMutationService', () => {
     const result = bookmarkMutationService.trackClick('3')
 
     expect(mocks.bookmarkTrackClick).toHaveBeenCalledWith('3')
-    expect(mocks.patchItemClickInCache).toHaveBeenCalledWith(
-      3,
-      2,
-      '2026-07-26T00:00:00.000Z'
-    )
+    expect(mocks.patchItemClickInCache).toHaveBeenCalledWith(3, 2, '2026-07-26T00:00:00.000Z')
     expect(mocks.invalidateBookmarkCaches).toHaveBeenCalledWith(undefined, {
       includeSnapshot: false,
       includeSearch: false

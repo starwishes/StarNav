@@ -1,8 +1,8 @@
 import type { Response } from 'express'
 
 import { logger } from './logger.js'
+import { formatError } from '../middleware/errorHandler.js'
 import {
-  errorPayload,
   isApiEnvelope,
   isStructuredResponse,
   successPayload,
@@ -66,15 +66,13 @@ export const respondWithService = (
     })
     .catch((error: ServiceErrorLike) => {
       const statusCode = error.statusCode || 500
-      const payload = errorPayload(
-        error.message || '服务器内部错误',
-        statusCode,
-        error.code || 'INTERNAL_ERROR',
-        process.env.NODE_ENV === 'development' ? error.stack : undefined
-      )
+      const isDevelopment = process.env.NODE_ENV === 'development'
+      // 复用 errorHandler 的脱敏策略：5xx 且非开发环境时 message/code 均归一，
+      // 避免业务异常把内部实现细节（SQL、路径等）泄露到响应。
+      const body = formatError(error, isDevelopment, statusCode)
 
       logServiceFailure(statusCode, error)
 
-      res.status(statusCode).json(payload.body)
+      res.status(statusCode).json(body)
     })
 }

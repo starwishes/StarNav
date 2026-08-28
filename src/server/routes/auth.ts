@@ -24,6 +24,7 @@ const router = express.Router()
  *             properties:
  *               username: { type: string, example: admin }
  *               password: { type: string, example: admin }
+ *               remember: { type: boolean, description: 记住登录（延长令牌有效期） }
  *     responses:
  *       200:
  *         description: Login successful

@@ -68,16 +68,23 @@ async function clearPendingCaptureBadge() {
   }
 }
 
-async function consumePendingCapture() {
+// 读取待捕获项但不删除：展示成功后再清理，失败则保留待下次重试，避免内容丢失
+async function peekPendingCapture() {
   const stored = await getMergedStorage(['pendingCapture'])
   const capture = stored.pendingCapture
-  if (!capture?.url) {
-    return null
-  }
+  return capture?.url ? capture : null
+}
 
+// 仅当存储中仍是同一个捕获（按 ts 校验）时才删除，
+// 避免展示表单期间用户又捕获了新页面导致误删新条目
+async function discardPendingCapture(capture) {
+  const stored = await getMergedStorage(['pendingCapture'])
+  const current = stored.pendingCapture
+  if (!current || current.ts !== capture?.ts) {
+    return
+  }
   await removeStorage(['pendingCapture'], 'local')
   await clearPendingCaptureBadge()
-  return capture
 }
 
 async function init() {
@@ -137,9 +144,10 @@ async function init() {
   await searchController.loadRecentBookmarks()
   setupEventListeners()
 
-  const pendingCapture = await consumePendingCapture()
+  const pendingCapture = await peekPendingCapture()
   if (pendingCapture) {
     await bookmarkController.showAddFormFromCapture(pendingCapture)
+    await discardPendingCapture(pendingCapture)
   }
 
   window.__STARNAV_POPUP_READY = true
@@ -249,6 +257,18 @@ async function handleReconnect() {
     ui.showToast(texts.connected, 'success')
     await categoryController.loadCategories()
     await searchController.loadRecentBookmarks()
+
+    // 离线期间通过右键菜单/快捷键捕获的页面，重连成功后立即消化并补全表单。
+    // 展示失败只保留捕获待下次重试，不能把已成功的连接误报成失败。
+    try {
+      const pendingCapture = await peekPendingCapture()
+      if (pendingCapture) {
+        await bookmarkController.showAddFormFromCapture(pendingCapture)
+        await discardPendingCapture(pendingCapture)
+      }
+    } catch (captureError) {
+      console.warn('展示待捕获表单失败，已保留待重试', captureError)
+    }
   } catch (error) {
     const message = error?.message || texts.connectFailed
     ui.showToast(message, 'error')

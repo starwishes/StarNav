@@ -19,8 +19,26 @@ const setDisplay = (element, value) => {
 
 export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
   let toastTimer = null
+  let currentNotConnectedMode = 'setup'
 
   const getTexts = () => i18n[state.currentLang]
+
+  // 连接卡片标题/提示按模式（首次连接 vs 会话过期）切换，且需随语言切换更新
+  const syncConnectCardTexts = (texts) => {
+    if (!elements.connectCard) {
+      return
+    }
+    const title = elements.connectCard.querySelector('.not-connected-title')
+    const tip = elements.connectCard.querySelector('.not-connected-copy')
+    if (title) {
+      title.textContent =
+        currentNotConnectedMode === 'reconnect' ? texts.reconnectTitle : texts.connectTitle
+    }
+    if (tip) {
+      tip.textContent =
+        currentNotConnectedMode === 'reconnect' ? texts.reconnectTip : texts.connectTip
+    }
+  }
 
   const showToast = (message, type = 'info') => {
     if (!elements.toast) {
@@ -51,6 +69,8 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
 
       element.textContent = texts[key]
     })
+
+    syncConnectCardTexts(texts)
 
     if (elements.openSite) {
       elements.openSite.title = texts.openSite
@@ -103,16 +123,8 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
 
     // 单一连接卡片:首次连接(空白)与会话过期(预填)共用同一表单,
     // 仅标题与提示随模式切换。
-    if (elements.connectCard) {
-      const title = elements.connectCard.querySelector('.not-connected-title')
-      const tip = elements.connectCard.querySelector('.not-connected-copy')
-      if (title) {
-        title.textContent = mode === 'reconnect' ? texts.reconnectTitle : texts.connectTitle
-      }
-      if (tip) {
-        tip.textContent = mode === 'reconnect' ? texts.reconnectTip : texts.connectTip
-      }
-    }
+    currentNotConnectedMode = mode
+    syncConnectCardTexts(texts)
   }
 
   const showMainContent = () => {

@@ -6,8 +6,14 @@ vi.mock('express-rate-limit', () => ({
   default: rateLimit
 }))
 
-const { clickLimiter, dataUpdateLimiter, faviconLimiter, healthLimiter, loginLimiter } =
-  await import('../../../src/server/middleware/limiter.js')
+const {
+  clickIpLimiter,
+  clickLimiter,
+  dataUpdateLimiter,
+  faviconLimiter,
+  healthLimiter,
+  loginLimiter
+} = await import('../../../src/server/middleware/limiter.js')
 
 describe('limiter middleware config', () => {
   beforeEach(() => {
@@ -38,6 +44,18 @@ describe('limiter middleware config', () => {
     expect(keyFor('203.0.113.7', 'admin')).toBe('203.0.113.7:admin')
     expect(keyFor('203.0.113.7', 'alice')).toBe('203.0.113.7:alice')
     expect(keyFor('203.0.113.7')).toBe('203.0.113.7:')
+  })
+
+  it('normalizes username case and whitespace in the login limiter key', () => {
+    // 大小写/首尾空格变体应落到同一计数桶，避免绕过“每账号”限额
+    const { keyGenerator } = loginLimiter.options
+
+    expect(keyGenerator({ ip: '203.0.113.7', body: { username: ' Admin ' } })).toBe(
+      '203.0.113.7:admin'
+    )
+    expect(keyGenerator({ ip: '203.0.113.7', body: { username: 'ADMIN' } })).toBe(
+      '203.0.113.7:admin'
+    )
   })
 
   it('degrades to a pure-IP key when the request has no readable body', () => {
@@ -95,6 +113,7 @@ describe('limiter middleware config', () => {
       windowMs: 60 * 1000,
       max: 30,
       skip: expect.any(Function),
+      keyGenerator: expect.any(Function),
       message: { error: '操作过于频繁，请稍后再试' },
       standardHeaders: true,
       legacyHeaders: false
@@ -103,5 +122,47 @@ describe('limiter middleware config', () => {
     expect(clickLimiter.options.skip()).toBe(false)
     process.env.NODE_ENV = 'test'
     expect(clickLimiter.options.skip()).toBe(true)
+  })
+
+  it('keys the click limiter by IP plus a user-agent fingerprint to avoid proxy-wide sharing', () => {
+    const { keyGenerator } = clickLimiter.options
+    const get = (ua) => (name) => (name === 'user-agent' ? ua : undefined)
+
+    const keyFor = (ip, ua) => keyGenerator({ ip, get: get(ua) })
+
+    expect(keyFor('203.0.113.7', 'Mozilla/5.0 Chrome')).toBe(
+      keyFor('203.0.113.7', 'Mozilla/5.0 Chrome')
+    )
+    expect(keyFor('203.0.113.7', 'Mozilla/5.0 Chrome')).not.toBe(keyFor('203.0.113.7', 'curl/8.0'))
+    expect(keyFor('203.0.113.7', 'Mozilla/5.0 Chrome')).not.toBe(
+      keyFor('198.51.100.2', 'Mozilla/5.0 Chrome')
+    )
+  })
+
+  it('falls back to a stable per-IP key when the click request has no user-agent', () => {
+    const { keyGenerator } = clickLimiter.options
+    const get = (ua) => (name) => (name === 'user-agent' ? ua : undefined)
+
+    expect(keyGenerator({ ip: '203.0.113.7', get: get(undefined) })).toBe(
+      keyGenerator({ ip: '203.0.113.7', get: get('') })
+    )
+    expect(keyGenerator({ ip: '203.0.113.7', get: get(undefined) })).not.toBe(
+      keyGenerator({ ip: '198.51.100.2', get: get(undefined) })
+    )
+  })
+
+  it('registers a second-tier per-IP cap for the click endpoint (UA-rotation fuse)', () => {
+    expect(rateLimit).toHaveBeenNthCalledWith(6, {
+      windowMs: 60 * 1000,
+      max: 180,
+      skip: expect.any(Function),
+      message: { error: '操作过于频繁，请稍后再试' },
+      standardHeaders: true,
+      legacyHeaders: false
+    })
+
+    expect(clickIpLimiter.options.skip()).toBe(false)
+    process.env.NODE_ENV = 'test'
+    expect(clickIpLimiter.options.skip()).toBe(true)
   })
 })

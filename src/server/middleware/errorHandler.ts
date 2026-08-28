@@ -21,6 +21,7 @@ interface ErrorLike {
  * 生产环境一律替换，避免通过 500 响应泄露实现细节。
  */
 const GENERIC_SERVER_ERROR = '服务器内部错误'
+const GENERIC_CLIENT_ERROR = '请求错误'
 
 /**
  * Standard error response format
@@ -32,7 +33,7 @@ export const formatError = (error: ErrorLike, isDevelopment = false, statusCode 
   const isServerError = statusCode >= 500
   const exposeDetails = isDevelopment || !isServerError
   return buildErrorBody(
-    exposeDetails ? error.message || 'An error occurred' : GENERIC_SERVER_ERROR,
+    exposeDetails ? error.message || GENERIC_CLIENT_ERROR : GENERIC_SERVER_ERROR,
     exposeDetails ? error.code || 'INTERNAL_ERROR' : 'INTERNAL_ERROR',
     isDevelopment ? error.stack : undefined
   )
@@ -42,8 +43,12 @@ export const formatError = (error: ErrorLike, isDevelopment = false, statusCode 
  * Global error handling middleware
  * Should be added as the last middleware in Express app
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
+  // 响应头已发出（如流式/已提交），无法再写错误响应，交给 Express 兜底
+  if (res.headersSent) {
+    return next(err)
+  }
+
   // Log error details
   logger.error('API Error:', {
     path: req.path,

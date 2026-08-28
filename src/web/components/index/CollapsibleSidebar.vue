@@ -32,6 +32,7 @@
 <script setup lang="ts">
 import { ref, provide, reactive, unref } from 'vue'
 import { useConfigStore } from '@/store/config'
+import { onMounted } from 'vue'
 import { useSiteProjection } from '@/composables/useSiteProjection'
 import type { Category } from '@/types'
 import SidebarItem from './SidebarItem.vue'
@@ -67,6 +68,11 @@ const toggleSidebar = () => {
     expandedIds.clear()
   }
 }
+
+// 挂载时同步初始折叠状态给父容器，避免父容器按“展开”默认宽度渲染导致首次偏右
+onMounted(() => {
+  emit('collapse-change', isCollapsed.value)
+})
 
 const toggleExpand = (categoryId: number) => {
   if (isCollapsed.value) {

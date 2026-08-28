@@ -55,6 +55,17 @@ describe('errorHandler middleware', () => {
     })
   })
 
+  it('falls back to a Chinese generic message when a client error has no message', () => {
+    const error = new Error('')
+    error.code = 'BAD_REQUEST'
+
+    expect(formatError(error, false, 400)).toEqual({
+      success: false,
+      error: '请求错误',
+      code: 'BAD_REQUEST'
+    })
+  })
+
   it('logs request context and sends formatted api errors', () => {
     const req = {
       path: '/api/test',
@@ -120,6 +131,22 @@ describe('errorHandler middleware', () => {
       error: '服务器内部错误',
       code: 'INTERNAL_ERROR'
     })
+  })
+
+  it('forwards to next without writing a response when headers are already sent', () => {
+    const res = {
+      headersSent: true,
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn()
+    }
+    const next = vi.fn()
+    const error = new Error('boom')
+
+    errorHandler(error, { path: '/boom', method: 'GET' }, res, next)
+
+    expect(next).toHaveBeenCalledWith(error)
+    expect(res.status).not.toHaveBeenCalled()
+    expect(res.json).not.toHaveBeenCalled()
   })
 
   it('creates ApiError instances through helpers with the current status/code mapping', () => {

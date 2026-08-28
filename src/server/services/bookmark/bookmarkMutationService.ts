@@ -24,9 +24,9 @@ export const bookmarkMutationService = {
     const db = getDb()
     const { categories = [], items = [] } = content
 
-    // 整库备份 5s 节流（见 backupThrottle.ts）：整树替换可能被高频触发，
-    // 每次都同步复制整库会阻塞事件循环。
-    backupDatabaseThrottled()
+    // 整库备份：整树替换是破坏性最大的操作（DELETE 全部后重建），
+    // 强制备份（忽略 5s 节流窗口），确保删除前始终有写前快照。
+    backupDatabaseThrottled(true)
 
     const transaction = db.transaction(() => {
       db.prepare('DELETE FROM items').run()

@@ -136,7 +136,8 @@ describe('CollapsibleSidebar', () => {
     await nextTick()
 
     expect(wrapper.classes()).not.toContain('collapsed')
-    expect(wrapper.emitted('collapse-change')).toEqual([[false]])
+    // 首次挂载会同步一次初始折叠状态，切换后再发出变化
+    expect(wrapper.emitted('collapse-change')).toEqual([[true], [false]])
     expect(wrapper.find('.site-title').exists()).toBe(true)
     expect(wrapper.find('.site-title').text()).toBe('StarNav')
     expect(wrapper.find('.collapsed-state-1').text()).toBe('false')
@@ -148,7 +149,7 @@ describe('CollapsibleSidebar', () => {
     await nextTick()
 
     expect(wrapper.classes()).toContain('collapsed')
-    expect(wrapper.emitted('collapse-change')).toEqual([[false], [true]])
+    expect(wrapper.emitted('collapse-change')).toEqual([[true], [false], [true]])
     expect(wrapper.find('.site-title').exists()).toBe(false)
     expect(wrapper.find('.expanded-state-1').text()).toBe('false')
     expect(wrapper.find('.collapsed-state-1').text()).toBe('true')
