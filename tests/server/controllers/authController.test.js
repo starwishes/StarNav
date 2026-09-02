@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { authController } from '../../../src/server/controllers/authController.js'
@@ -38,7 +39,8 @@ describe('AuthController Unit Tests', () => {
     authLifecycleService.login.mockReturnValue({
       token: 'token-1',
       user: { login: 'alice', name: 'alice', level: 1 },
-      sessionId: 'session-1'
+      sessionId: 'session-1',
+      expiresInDays: 30
     })
 
     await authController.login(req, res)
@@ -59,9 +61,72 @@ describe('AuthController Unit Tests', () => {
       data: {
         token: 'token-1',
         user: { login: 'alice', name: 'alice', level: 1 },
-        sessionId: 'session-1'
+        sessionId: 'session-1',
+        expiresInDays: 30
       }
     })
+  })
+
+  it('strips the JWT from the login response for browser web origins', async () => {
+    req.headers.origin = 'http://localhost:8080'
+    authLifecycleService.login.mockReturnValue({
+      token: 'token-web',
+      user: { login: 'alice', name: 'alice', level: 1 },
+      sessionId: 'session-1',
+      expiresInDays: 90
+    })
+
+    await authController.login(req, res)
+
+    const body = res.json.mock.calls[0][0]
+    expect(body.data).not.toHaveProperty('token')
+    expect(body.data).toEqual({
+      user: { login: 'alice', name: 'alice', level: 1 },
+      sessionId: 'session-1',
+      expiresInDays: 90
+    })
+    // 会话仍通过 HttpOnly Cookie 下发
+    expect(res.set).toHaveBeenCalledWith(
+      'Set-Cookie',
+      expect.stringContaining('starnav_auth=token-web')
+    )
+  })
+
+  it('keeps the token in the login response for browser extension origins', async () => {
+    req.headers.origin = 'chrome-extension://abcdefghijklmnop'
+    authLifecycleService.login.mockReturnValue({
+      token: 'token-ext',
+      user: { login: 'alice', name: 'alice', level: 1 },
+      sessionId: 'session-1',
+      expiresInDays: 30
+    })
+
+    await authController.login(req, res)
+
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: 'Success',
+      data: {
+        token: 'token-ext',
+        user: { login: 'alice', name: 'alice', level: 1 },
+        sessionId: 'session-1',
+        expiresInDays: 30
+      }
+    })
+  })
+
+  it('keeps the token in the login response for moz-extension origins', async () => {
+    req.headers.origin = 'moz-extension://fedcba0987654321'
+    authLifecycleService.login.mockReturnValue({
+      token: 'token-moz',
+      user: { login: 'alice', name: 'alice', level: 1 },
+      sessionId: 'session-1',
+      expiresInDays: 30
+    })
+
+    await authController.login(req, res)
+
+    expect(res.json.mock.calls[0][0].data.token).toBe('token-moz')
   })
 
   it('should mark auth cookies as Secure for https requests', async () => {

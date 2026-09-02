@@ -28,7 +28,10 @@ const CategoryTableStub = defineComponent({
     return () =>
       h('div', { class: 'category-table-stub' }, [
         h('button', { class: 'emit-edit-category', onClick: () => emit('edit', { id: 7 }) }),
-        h('button', { class: 'emit-delete-category', onClick: () => emit('delete', 9) }),
+        h('button', {
+          class: 'emit-delete-category',
+          onClick: () => emit('delete', { id: 9, name: 'Docs' })
+        }),
         h('button', { class: 'emit-move-category', onClick: () => emit('move', 1, 'down') })
       ])
   }
@@ -66,6 +69,7 @@ const createWrapper = (overrides: Record<string, unknown> = {}) =>
       ],
       filterCategory: 0,
       searchKeyword: '',
+      loadError: '',
       ...overrides
     },
     global: {
@@ -98,7 +102,7 @@ describe('DataManager', () => {
     await wrapper.find('.emit-move-category').trigger('click')
 
     expect(wrapper.emitted('edit-category')).toEqual([[{ id: 7 }]])
-    expect(wrapper.emitted('delete-category')).toEqual([[9]])
+    expect(wrapper.emitted('delete-category')).toEqual([[{ id: 9, name: 'Docs' }]])
     expect(wrapper.emitted('move-category')).toEqual([[1, 'down']])
   })
 
@@ -148,6 +152,8 @@ describe('DataManager', () => {
     expect(anchor.download).toBe('starnav-backup-2026-04-13T10-11-12.json')
     expect(anchor.href).toBe('blob:test')
     expect(anchorClick).toHaveBeenCalledTimes(1)
+    // revokeObjectURL 延迟到 setTimeout(0) 之后执行，规避 Firefox 同 tick 撤销取消下载
+    vi.advanceTimersByTime(0)
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:test')
     expect(mocks.messageSuccess).toHaveBeenCalledWith('manage.exportSuccess')
   })

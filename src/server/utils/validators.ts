@@ -6,23 +6,19 @@
 /**
  * URL 格式验证
  * @param url - 待验证的 URL
- * @returns 是否为有效的 HTTP/HTTPS URL
+ * @returns 是否为有效的 HTTP/HTTPS URL（要求可解析且有实际主机，拒绝空主机/畸形输入）
  */
 function isValidUrl(url: unknown): boolean {
-  return (
-    typeof url === 'string' &&
-    Boolean(url) &&
-    (url.startsWith('http://') || url.startsWith('https://'))
-  )
-}
+  if (typeof url !== 'string' || !url) {
+    return false
+  }
 
-/**
- * 用户名格式验证
- * @param username - 用户名
- * @returns 是否为有效用户名 (3-20字符，仅含字母、数字、下划线、连字符)
- */
-function isValidUsername(username: unknown): boolean {
-  return typeof username === 'string' && Boolean(username) && /^[a-zA-Z0-9_-]{3,20}$/.test(username)
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -101,7 +97,6 @@ function isValidJSON(str: unknown): boolean {
 
 export const validators = {
   isValidUrl,
-  isValidUsername,
   isStrongPassword,
   isNonEmptyString,
   isIntegerInRange,

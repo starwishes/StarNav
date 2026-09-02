@@ -14,7 +14,7 @@ import { normalizeUrl } from '@common/url'
 export function useDataManagement() {
   const { t } = useI18n()
   const dataStore = useDataStore()
-  const { categories, items, loading } = storeToRefs(dataStore)
+  const { categories, items, loading, loadError } = storeToRefs(dataStore)
 
   // Dialog状态
   const categoryDialogVisible = ref(false)
@@ -22,6 +22,8 @@ export function useDataManagement() {
   const isEdit = ref(false)
   const categoryForm = ref<Partial<Category>>({})
   const itemForm = ref<Partial<Item>>({})
+  /** 书签保存 in-flight 标记：防止双击重复提交（对齐分类保存的 savingCat）。 */
+  const savingItem = ref(false)
 
   // 筛选状态 - 使用防抖优化搜索性能
   const searchKeyword = useDebounce('', 300) // 300ms 防抖
@@ -112,7 +114,11 @@ export function useDataManagement() {
    */
   const moveCategory = async (index: number, direction: 'up' | 'down') => {
     const target = direction === 'up' ? index - 1 : index + 1
-    await dataStore.moveCategory(index, target)
+    try {
+      await dataStore.moveCategory(index, target)
+    } catch {
+      // Error handled in store
+    }
   }
 
   // ==================== 书签操作 ====================
@@ -146,6 +152,7 @@ export function useDataManagement() {
    * 保存书签
    */
   const saveItem = async (incomingData?: Partial<Item>) => {
+    if (savingItem.value) return
     const payload = incomingData && incomingData.name ? incomingData : itemForm.value
 
     if (!payload.name || !payload.url) {
@@ -160,6 +167,7 @@ export function useDataManagement() {
     }
     payload.url = cleanedUrl
 
+    savingItem.value = true
     try {
       if (isEdit.value) {
         await dataStore.updateItem(payload)
@@ -171,6 +179,8 @@ export function useDataManagement() {
       itemDialogVisible.value = false
     } catch {
       // Error handled in store
+    } finally {
+      savingItem.value = false
     }
   }
 
@@ -191,16 +201,24 @@ export function useDataManagement() {
    * 批量删除
    */
   const handleBatchDelete = async (ids: number[]) => {
-    await dataStore.batchDeleteItems(ids)
-    ElMessage.success(t('table.deleteSuccess'))
+    try {
+      await dataStore.batchDeleteItems(ids)
+      ElMessage.success(t('table.deleteSuccess'))
+    } catch {
+      // Error handled in store
+    }
   }
 
   /**
    * 批量移动
    */
   const handleBatchMove = async (ids: number[], categoryId: number) => {
-    await dataStore.batchMoveItems(ids, categoryId)
-    ElMessage.success(t('table.moveSuccess'))
+    try {
+      await dataStore.batchMoveItems(ids, categoryId)
+      ElMessage.success(t('table.moveSuccess'))
+    } catch {
+      // Error handled in store
+    }
   }
 
   return {
@@ -208,6 +226,7 @@ export function useDataManagement() {
     categories,
     items,
     loading,
+    loadError,
     filteredItems,
 
     // 对话框状态
@@ -216,6 +235,7 @@ export function useDataManagement() {
     isEdit,
     categoryForm,
     itemForm,
+    savingItem,
 
     // 筛选状态
     searchKeyword,

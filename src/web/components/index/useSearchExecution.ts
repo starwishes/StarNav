@@ -1,4 +1,5 @@
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { toolApi } from '@/api'
 import { useDebounce } from '@/composables/useDebounce'
@@ -35,6 +36,7 @@ export const useSearchExecution = ({
   currentEngine
 }: UseSearchExecutionOptions) => {
   const logger = createScopedLogger('web:search')
+  const { t } = useI18n()
   const adminStore = useAdminStore()
   const dataStore = useDataStore()
 
@@ -49,7 +51,12 @@ export const useSearchExecution = ({
   const latestSearchRequestId = ref(0)
   const suggestionAbortController = ref<AbortController | null>(null)
 
-  const placeholder = computed(() => buildSearchPlaceholder(searchMode.value, currentEngine.value))
+  // 延迟关闭搜索面板的定时器；组件卸载时统一清理，避免对已卸载组件写状态
+  const blurTimers: number[] = []
+
+  const placeholder = computed(() =>
+    buildSearchPlaceholder(searchMode.value, currentEngine.value, t)
+  )
 
   const invalidateSearchRequests = () => {
     latestSearchRequestId.value += 1
@@ -102,7 +109,7 @@ export const useSearchExecution = ({
       )
         .map((item) => ({
           ...item,
-          name: item.name || item.url || '未命名书签',
+          name: item.name || item.url || t('search.unnamedBookmark'),
           description: item.description || '',
           url: item.url || ''
         }))
@@ -179,9 +186,11 @@ export const useSearchExecution = ({
     const target = event.relatedTarget as HTMLElement | null
     const isClickInsideSearch = searchContainerRef.value?.contains(target)
     if (!isClickInsideSearch) {
-      window.setTimeout(() => {
-        isActive.value = false
-      }, 200)
+      blurTimers.push(
+        window.setTimeout(() => {
+          isActive.value = false
+        }, 200)
+      )
     }
   }
 
@@ -209,13 +218,58 @@ export const useSearchExecution = ({
   const handleSuggestionClick = (suggestion: string) => {
     searchText.value = suggestion
     suggestions.value = []
+    activeSuggestionIndex.value = -1
     handleEnter()
   }
 
+  // 在线联想列表的键盘导航：↑/↓ 移动高亮，Enter 选中高亮项。
+  // Enter 选中时不同步执行 handleEnter —— 同一按键的 keyup.enter
+  // 会照常触发 handleEnter 打开搜索引擎，避免重复打开。
+  const selectActiveSuggestion = () => {
+    const suggestion = suggestions.value[activeSuggestionIndex.value]
+    if (suggestion === undefined) {
+      return
+    }
+    searchText.value = suggestion
+    suggestions.value = []
+    activeSuggestionIndex.value = -1
+  }
+
+  const handleSearchKeydown = (event: KeyboardEvent): void => {
+    if (searchMode.value !== 'online' || suggestions.value.length === 0) {
+      return
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      activeSuggestionIndex.value =
+        activeSuggestionIndex.value >= suggestions.value.length - 1
+          ? 0
+          : activeSuggestionIndex.value + 1
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      activeSuggestionIndex.value =
+        activeSuggestionIndex.value <= 0
+          ? suggestions.value.length - 1
+          : activeSuggestionIndex.value - 1
+      return
+    }
+
+    if (event.key === 'Enter' && activeSuggestionIndex.value >= 0) {
+      event.preventDefault()
+      selectActiveSuggestion()
+    }
+  }
+
   const handleItemClick = (url: string) => {
-    window.setTimeout(() => {
-      isActive.value = false
-    }, 100)
+    blurTimers.push(
+      window.setTimeout(() => {
+        isActive.value = false
+      }, 100)
+    )
     openUrl(url)
   }
 
@@ -266,6 +320,8 @@ export const useSearchExecution = ({
 
   onUnmounted(() => {
     cancelSuggestionRequest()
+    blurTimers.forEach((timer) => window.clearTimeout(timer))
+    blurTimers.length = 0
   })
 
   return {
@@ -281,6 +337,7 @@ export const useSearchExecution = ({
     handleBlur,
     clearSearch,
     handleEnter,
+    handleSearchKeydown,
     handleSuggestionClick,
     handleItemClick
   }

@@ -1,16 +1,26 @@
 import { DIALOG_ICONS, DIALOG_ROOT_ID } from './constants'
 import { ensureRoot, ensureStyles, hasDOM, normalizeText, onNextFrame } from './dom'
+import { feedbackText } from './locale'
 import type { DialogController, DialogKind, DialogOptions, MessageType } from './types'
 
 const dialogStack: DialogController[] = []
+
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])'
+].join(',')
 
 const normalizeDialogOptions = (input: unknown) => {
   if (typeof input === 'object' && input !== null && !Array.isArray(input)) {
     const options = input as DialogOptions
     return {
       type: options.type || 'info',
-      confirmButtonText: options.confirmButtonText || '确定',
-      cancelButtonText: options.cancelButtonText || '取消',
+      confirmButtonText: options.confirmButtonText || feedbackText('feedback.confirm'),
+      cancelButtonText: options.cancelButtonText || feedbackText('feedback.cancel'),
       showClose: Boolean(options.showClose),
       closeOnClickModal: options.closeOnClickModal !== false,
       inputValue: typeof options.inputValue === 'string' ? options.inputValue : '',
@@ -22,8 +32,8 @@ const normalizeDialogOptions = (input: unknown) => {
 
   return {
     type: 'info' as MessageType,
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
+    confirmButtonText: feedbackText('feedback.confirm'),
+    cancelButtonText: feedbackText('feedback.cancel'),
     showClose: false,
     closeOnClickModal: true,
     inputValue: '',
@@ -56,7 +66,9 @@ export const openDialog = (
   }
 
   const normalized = normalizeDialogOptions(options)
-  const dialogTitle = normalizeText(title) || (kind === 'alert' ? '提示' : '确认操作')
+  const dialogTitle =
+    normalizeText(title) ||
+    feedbackText(kind === 'alert' ? 'feedback.alert' : 'feedback.confirmAction')
   const dialogMessage = normalizeText(message)
 
   return new Promise((resolve, reject) => {
@@ -98,7 +110,7 @@ export const openDialog = (
       closeButton = document.createElement('button')
       closeButton.type = 'button'
       closeButton.className = 'sn-feedback-dialog-close'
-      closeButton.setAttribute('aria-label', '关闭对话框')
+      closeButton.setAttribute('aria-label', feedbackText('feedback.close'))
       closeButton.textContent = '×'
       head.appendChild(closeButton)
     }
@@ -121,7 +133,8 @@ export const openDialog = (
     const cancelButton = document.createElement('button')
     cancelButton.type = 'button'
     cancelButton.className = 'sn-feedback-dialog-button ghost'
-    cancelButton.textContent = kind === 'alert' ? '关闭' : normalized.cancelButtonText
+    cancelButton.textContent =
+      kind === 'alert' ? feedbackText('feedback.close') : normalized.cancelButtonText
 
     const confirmButton = document.createElement('button')
     confirmButton.type = 'button'
@@ -139,16 +152,21 @@ export const openDialog = (
     root.appendChild(overlay)
 
     let settled = false
+    // 记录打开前的焦点元素，关闭后归还（焦点陷阱的一部分）。
+    const triggerToRestore =
+      hasDOM() && document.activeElement instanceof HTMLElement ? document.activeElement : null
 
     const finish = (resolver: (value: unknown) => void, value: unknown) => {
       if (settled) return
       settled = true
-      document.removeEventListener('keydown', handleKeydown)
+      document.removeEventListener('keydown', handleKeydown, true)
+      dialog.removeEventListener('keydown', trapFocus)
       const stackIndex = dialogStack.indexOf(controller)
       if (stackIndex > -1) {
         dialogStack.splice(stackIndex, 1)
       }
       removeDialog(overlay)
+      triggerToRestore?.focus()
       resolver(value)
     }
 
@@ -176,14 +194,42 @@ export const openDialog = (
       finish(resolve, 'confirm')
     }
 
+    // 捕获阶段监听 + 只让栈顶弹层消费 Esc：下层弹窗/页面级 Esc 处理器
+    // 不会在同一事件里被触发，避免"反馈弹层 Esc 连带关闭表单弹窗"。
     const handleKeydown = (event: KeyboardEvent) => {
+      if (dialogStack[dialogStack.length - 1] !== controller) {
+        return
+      }
       if (event.key === 'Escape') {
         event.preventDefault()
+        event.stopPropagation()
         dismiss()
       }
       if (event.key === 'Enter' && kind === 'prompt' && event.target === inputEl) {
         event.preventDefault()
         confirm()
+      }
+    }
+
+    // 焦点陷阱：Tab/Shift+Tab 只在弹层内循环。
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return
+      const focusables = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+      if (focusables.length === 0) {
+        event.preventDefault()
+        return
+      }
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      const active = document.activeElement
+      if (event.shiftKey) {
+        if (active === first || (active && !dialog.contains(active))) {
+          event.preventDefault()
+          last.focus()
+        }
+      } else if (active === last || (active && !dialog.contains(active))) {
+        event.preventDefault()
+        first.focus()
       }
     }
 
@@ -195,7 +241,8 @@ export const openDialog = (
         dismiss()
       }
     })
-    document.addEventListener('keydown', handleKeydown)
+    dialog.addEventListener('keydown', trapFocus)
+    document.addEventListener('keydown', handleKeydown, true)
 
     onNextFrame(() => {
       overlay.classList.add('is-visible')

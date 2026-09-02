@@ -37,6 +37,12 @@ export const normalizeUrl = (url: string | null | undefined): string => {
     u.pathname = pathname
 
     // 5. 移除跟踪参数 (参数黑名单)
+    // 注意：这会在导入/去重时静默改写用户粘贴的 URL。列表分为两类——
+    //   - 明确跟踪参数：utm_*、gclid、fbclid 等，删除几乎无副作用；
+    //   - 功能参数：from/ref/source/ts/feature/aid/iid 等，部分站点用作
+    //     承载状态（如 ?ref=product 深链、?ts= 缓存键），删除会改变链接含义。
+    // 为保持「同一 URL 归一化后一致去重」的核心目标，暂统一删除；如后续
+    // 需要保留功能参数，请在此分层处理（STRIP 与 PRESERVE 分开）。
     const trackingParams = [
       'utm_source',
       'utm_medium',

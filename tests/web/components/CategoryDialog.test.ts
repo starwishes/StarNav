@@ -9,6 +9,12 @@ vi.mock('vue-i18n', () => ({
   })
 }))
 
+vi.mock('@/utils/feedback', () => ({
+  ElMessage: {
+    warning: vi.fn()
+  }
+}))
+
 const mountedWrappers: Array<ReturnType<typeof mount>> = []
 const CategoryDialog = (await import('@/components/CategoryDialog.vue')).default
 
@@ -104,5 +110,29 @@ describe('CategoryDialog', () => {
     expect((inputs[0].element as HTMLInputElement).value).toBe('2')
     expect((inputs[1].element as HTMLInputElement).value).toBe('Fresh Draft')
     expect(getAppSelectValue(wrapper, '.dialog-select')).toBe('3')
+  })
+
+  it('blocks empty category names with aria-invalid on the name input', async () => {
+    const wrapper = createWrapper({
+      form: {
+        id: 1,
+        name: '',
+        level: 0
+      }
+    })
+
+    const nameInput = wrapper.findAll('input')[1]
+    expect(nameInput.attributes('aria-invalid')).toBeUndefined()
+
+    await wrapper.find('form').trigger('submit')
+
+    expect(nameInput.attributes('aria-invalid')).toBe('true')
+    expect(wrapper.emitted('save')).toBeUndefined()
+
+    await nameInput.setValue('Docs')
+    expect(nameInput.attributes('aria-invalid')).toBeUndefined()
+
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('save')).toHaveLength(1)
   })
 })

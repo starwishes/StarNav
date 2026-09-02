@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../src/server/services/bookmark/bookmarkSnapshotService.js', () => ({
@@ -15,7 +16,7 @@ vi.mock('../../../src/server/services/bookmark/bookmarkLookupService.js', () => 
 }))
 
 vi.mock('../../../src/server/services/cache/cacheService.js', () => ({
-  default: {
+  cacheService: {
     get: vi.fn(),
     set: vi.fn()
   }
@@ -27,7 +28,7 @@ const { bookmarkSnapshotService } =
   await import('../../../src/server/services/bookmark/bookmarkSnapshotService.js')
 const { bookmarkLookupService } =
   await import('../../../src/server/services/bookmark/bookmarkLookupService.js')
-const cache = (await import('../../../src/server/services/cache/cacheService.js')).default
+const cache = (await import('../../../src/server/services/cache/cacheService.js')).cacheService
 
 describe('BookmarkQueryService', () => {
   beforeEach(() => {
@@ -62,9 +63,9 @@ describe('BookmarkQueryService', () => {
     cache.get.mockReturnValue(undefined)
     bookmarkLookupService.searchItems.mockReturnValue(items)
 
-    const result = bookmarkQueryService.searchBookmarks('alice', 1, 'git', '0')
+    const result = bookmarkQueryService.searchBookmarks(1, 'git', '0')
 
-    expect(bookmarkLookupService.searchItems).toHaveBeenCalledWith('alice', 'git', 10, 1)
+    expect(bookmarkLookupService.searchItems).toHaveBeenCalledWith('git', 10, 1)
     expect(cache.set).toHaveBeenCalledWith('search:1:git:10', items, 60)
     expect(result).toEqual({ items })
   })
@@ -74,9 +75,9 @@ describe('BookmarkQueryService', () => {
     cache.get.mockReturnValue(undefined)
     bookmarkLookupService.searchItems.mockReturnValue(items)
 
-    bookmarkQueryService.searchBookmarks('alice', 1, '  GitHub  ', '9999')
+    bookmarkQueryService.searchBookmarks(1, '  GitHub  ', '9999')
 
-    expect(bookmarkLookupService.searchItems).toHaveBeenCalledWith('alice', 'github', 100, 1)
+    expect(bookmarkLookupService.searchItems).toHaveBeenCalledWith('github', 100, 1)
     expect(cache.set).toHaveBeenCalledWith('search:1:github:100', items, 60)
   })
 
@@ -86,9 +87,9 @@ describe('BookmarkQueryService', () => {
     bookmarkLookupService.searchItems.mockReturnValue(items)
 
     const longKeyword = 'x'.repeat(5000)
-    bookmarkQueryService.searchBookmarks('alice', 1, longKeyword, '5')
+    bookmarkQueryService.searchBookmarks(1, longKeyword, '5')
 
-    expect(bookmarkLookupService.searchItems).toHaveBeenCalledWith('alice', 'x'.repeat(100), 5, 1)
+    expect(bookmarkLookupService.searchItems).toHaveBeenCalledWith('x'.repeat(100), 5, 1)
     expect(cache.set).toHaveBeenCalledWith(`search:1:${'x'.repeat(100)}:5`, items, 60)
   })
 
@@ -109,13 +110,9 @@ describe('BookmarkQueryService', () => {
     const item = { id: 1, url: 'https://example.com' }
     bookmarkLookupService.checkUrlItem.mockReturnValue(item)
 
-    const result = bookmarkQueryService.checkBookmark('alice', 1, 'https://example.com')
+    const result = bookmarkQueryService.checkBookmark(1, 'https://example.com')
 
-    expect(bookmarkLookupService.checkUrlItem).toHaveBeenCalledWith(
-      'alice',
-      'https://example.com',
-      1
-    )
+    expect(bookmarkLookupService.checkUrlItem).toHaveBeenCalledWith('https://example.com', 1)
     expect(result).toEqual({
       exists: true,
       item
@@ -124,7 +121,7 @@ describe('BookmarkQueryService', () => {
 
   it('should reject empty bookmark checks', () => {
     expect(() => {
-      bookmarkQueryService.checkBookmark('alice', 1, '')
+      bookmarkQueryService.checkBookmark(1, '')
     }).toThrow('URL 不能为空')
   })
 })

@@ -1,11 +1,20 @@
 <template>
-  <aside class="admin-sidebar" :class="{ 'mobile-visible': sidebarVisible }">
+  <aside id="admin-sidebar" class="admin-sidebar" :class="{ 'mobile-visible': sidebarVisible }">
     <div class="sidebar-header">
-      <div class="logo-group" @click="$router.push('/')">
+      <div
+        class="logo-group"
+        role="button"
+        tabindex="0"
+        :aria-label="t('nav.home')"
+        @click="$router.push('/')"
+        @keydown.enter.prevent="$router.push('/')"
+        @keydown.space.prevent="$router.push('/')"
+      >
         <img
           v-if="configStore.siteConfig.logoUrl"
           :src="configStore.siteConfig.logoUrl"
           class="logo-img"
+          alt=""
         />
         <div v-else class="logo-icon gradient-bg">N</div>
         <div class="logo-copy">
@@ -15,22 +24,31 @@
           </h1>
         </div>
       </div>
-      <button v-if="isMobile" type="button" class="icon-button" @click="$emit('close-sidebar')">
+      <button
+        v-if="isMobile"
+        type="button"
+        class="icon-button"
+        :aria-label="t('admin.closeSidebar')"
+        aria-controls="admin-sidebar"
+        @click="$emit('close-sidebar')"
+      >
         <AppIcon name="icon-md-close" class="button-icon" />
       </button>
     </div>
 
     <nav class="sidebar-menu">
-      <div
+      <button
         v-for="item in menuItems"
         :key="item.id"
+        type="button"
         class="menu-item hover-scale"
         :class="{ active: currentView === item.id }"
+        :aria-current="currentView === item.id ? 'page' : undefined"
         @click="$emit('menu-click', item.id)"
       >
         <AppIcon :name="item.icon" class="menu-icon" />
         <span class="menu-label">{{ t('menu.' + getMenuKey(item.id)) }}</span>
-      </div>
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -39,7 +57,7 @@
           v-if="adminStore.user?.avatar_url"
           :src="adminStore.user?.avatar_url"
           class="user-avatar"
-          alt="User avatar"
+          alt=""
         />
         <div v-else class="user-avatar fallback">
           {{ adminStore.user?.login?.charAt(0).toUpperCase() }}
@@ -262,9 +280,14 @@ const getMenuKey = (id: string) => {
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
   min-height: 48px;
   padding: 0 16px;
+  border: none;
   border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
   color: var(--admin-sidebar-muted);
   transition:
@@ -276,6 +299,11 @@ const getMenuKey = (id: string) => {
     background: var(--admin-sidebar-hover-bg);
     color: var(--admin-sidebar-text);
     transform: translateX(2px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--ui-theme-rgb), 0.35);
+    outline-offset: -2px;
   }
 
   &.active {
@@ -303,83 +331,6 @@ const getMenuKey = (id: string) => {
   gap: 14px;
   padding-top: 20px;
   border-top: 1px solid var(--admin-sidebar-border);
-}
-
-.extension-menu {
-  position: relative;
-}
-
-.extension-btn {
-  width: 100%;
-  min-height: 46px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 0 16px;
-  border: 1px solid var(--admin-sidebar-button-border);
-  border-radius: 999px;
-  background: var(--admin-sidebar-soft-bg);
-  color: var(--admin-sidebar-text);
-  cursor: pointer;
-}
-
-.extension-btn-label {
-  flex: 1;
-  text-align: left;
-}
-
-.chevron {
-  transition: transform 0.18s ease;
-
-  &.open {
-    transform: rotate(180deg);
-  }
-}
-
-.extension-dropdown {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(100% + 10px);
-  padding: 8px;
-  border-radius: 22px;
-  background: var(--admin-sidebar-dropdown-bg);
-  border: 1px solid var(--admin-sidebar-border);
-  box-shadow: 0 24px 48px rgba(var(--ui-theme-rgb), 0.14);
-}
-
-.dropdown-option {
-  width: 100%;
-  padding: 12px 14px;
-  border: none;
-  border-radius: 16px;
-  background: transparent;
-  color: color-mix(in srgb, var(--admin-sidebar-text) 84%, transparent);
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 0.18s ease;
-
-  &:hover {
-    background: var(--admin-sidebar-hover-bg);
-  }
-}
-
-.dropdown-item-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.item-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--admin-sidebar-text);
-}
-
-.item-desc {
-  font-size: 12px;
-  color: var(--admin-sidebar-muted);
 }
 
 .user-block {
@@ -457,4 +408,3 @@ const getMenuKey = (id: string) => {
   }
 }
 </style>
-

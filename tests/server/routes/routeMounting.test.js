@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const authenticate = vi.fn(function authenticate(req, res, next) {
@@ -9,7 +10,15 @@ const requireAdmin = vi.fn(function requireAdmin(req, res, next) {
 const optionalAuth = vi.fn(function optionalAuth(req, res, next) {
   next?.()
 })
+const ensureTrustedCookieWriteOriginMiddleware = vi.fn(
+  function ensureTrustedCookieWriteOriginMiddleware(req, res, next) {
+    next?.()
+  }
+)
 const loginLimiter = vi.fn(function loginLimiter(req, res, next) {
+  next?.()
+})
+const loginIpLimiter = vi.fn(function loginIpLimiter(req, res, next) {
   next?.()
 })
 const dataUpdateLimiter = vi.fn(function dataUpdateLimiter(req, res, next) {
@@ -19,6 +28,9 @@ const faviconLimiter = vi.fn(function faviconLimiter(req, res, next) {
   next?.()
 })
 const healthLimiter = vi.fn(function healthLimiter(req, res, next) {
+  next?.()
+})
+const suggestLimiter = vi.fn(function suggestLimiter(req, res, next) {
   next?.()
 })
 const clickLimiter = vi.fn(function clickLimiter(req, res, next) {
@@ -86,21 +98,20 @@ const toolController = {
   checkLinks: vi.fn()
 }
 
-const statsController = {
-  recordVisit: vi.fn()
-}
-
 vi.mock('../../../src/server/middleware/auth.js', () => ({
   authenticate,
   requireAdmin,
-  optionalAuth
+  optionalAuth,
+  ensureTrustedCookieWriteOriginMiddleware
 }))
 
 vi.mock('../../../src/server/middleware/limiter.js', () => ({
   loginLimiter,
+  loginIpLimiter,
   dataUpdateLimiter,
   faviconLimiter,
   healthLimiter,
+  suggestLimiter,
   clickLimiter,
   clickIpLimiter
 }))
@@ -129,14 +140,9 @@ vi.mock('../../../src/server/controllers/toolController.js', () => ({
   toolController
 }))
 
-vi.mock('../../../src/server/controllers/statsController.js', () => ({
-  statsController
-}))
-
 const authRoutes = (await import('../../../src/server/routes/auth.js')).default
 const bookmarkRoutes = (await import('../../../src/server/routes/bookmarks.js')).default
 const systemRoutes = (await import('../../../src/server/routes/system.js')).default
-const statsRoutes = (await import('../../../src/server/routes/stats.js')).default
 
 const getHandlers = (router, method, path) => {
   const layer = router.stack.find(
@@ -154,12 +160,17 @@ describe('route mounting', () => {
   })
 
   it('wires auth routes with the expected middleware chain', () => {
-    expect(getHandlers(authRoutes, 'post', '/login')).toEqual([loginLimiter, authController.login])
+    expect(getHandlers(authRoutes, 'post', '/login')).toEqual([
+      loginIpLimiter,
+      loginLimiter,
+      authController.login
+    ])
     expect(getHandlers(authRoutes, 'post', '/logout')).toEqual([
       authenticate,
       authController.logout
     ])
     expect(getHandlers(authRoutes, 'post', '/register')).toEqual([
+      loginIpLimiter,
       loginLimiter,
       authController.register
     ])
@@ -281,6 +292,8 @@ describe('route mounting', () => {
       bookmarkController.deleteBookmark
     ])
     expect(getHandlers(bookmarkRoutes, 'post', '/sites/:id/click')).toEqual([
+      optionalAuth,
+      ensureTrustedCookieWriteOriginMiddleware,
       clickLimiter,
       clickIpLimiter,
       bookmarkController.trackClick
@@ -334,18 +347,14 @@ describe('route mounting', () => {
       faviconLimiter,
       toolController.getFavicon
     ])
-    expect(getHandlers(systemRoutes, 'get', '/suggest')).toEqual([toolController.getSuggestions])
+    expect(getHandlers(systemRoutes, 'get', '/suggest')).toEqual([
+      suggestLimiter,
+      toolController.getSuggestions
+    ])
     expect(getHandlers(systemRoutes, 'post', '/check-links')).toEqual([
       authenticate,
       requireAdmin,
       toolController.checkLinks
-    ])
-  })
-
-  it('wires stats routes with the expected guards', () => {
-    expect(getHandlers(statsRoutes, 'post', '/visit')).toEqual([
-      dataUpdateLimiter,
-      statsController.recordVisit
     ])
   })
 })

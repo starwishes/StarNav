@@ -12,7 +12,7 @@ const i18n = {
     unknownCategory: '未知分类',
     fillRequired: '请填写必要信息',
     addFailed: '添加失败',
-    duplicateIn: '已存在于',
+    duplicateWithName: '已存在于“{name}”，添加失败',
     updateSuccess: '更新成功',
     updateFailed: '更新失败',
     catAddSuccess: '分类创建成功',

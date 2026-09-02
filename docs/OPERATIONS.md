@@ -26,7 +26,8 @@ CSP_UPGRADE_INSECURE_REQUESTS=true
   2. 转发 `X-Forwarded-Proto`
   3. `CORS_ORIGINS` 配置为实际访问域名，而不是 `*`；未配置时生产环境不会再回退 `localhost` 跨域白名单
 
-- **反向代理场景务必开启 `TRUST_PROXY=true`**：限流（登录、写操作、公开点击接口）默认按 `req.ip` 计数，关闭时所有访客共享反代出口 IP，会被当成同一个客户端互相挤占限流额度。开启后请确认代理正确透传 `X-Forwarded-For`。
+- **`TRUST_PROXY` 默认开启（信任一层反向代理）**：限流（登录、写操作、公开点击接口）与会话/审计日志均按 `req.ip` 计数，默认从 `X-Forwarded-For` 读取真实客户端 IP。请确认反代正确透传 `X-Forwarded-For`。**仅当应用端口直连公网（无受信任反代）时**，建议显式设置 `TRUST_PROXY=false`，避免客户端伪造 `X-Forwarded-For` 头绕过按 IP 的限流。
+- **多跳代理（如 Cloudflare → Nginx → 应用）**：当前 `trust proxy` 固定为 `1`（`server.ts` 中 `app.set('trust proxy', ...)`），只信任一跳——`req.ip` 会取 `X-Forwarded-For` 里**倒数第二跳**的地址（即离应用最近的那个反代出口，而不是真正的客户端 IP）。如需精确真实 IP，Express 支持把 `trust proxy` 配置为可信代理 IP 列表/子网（当前实现未做区分）；在保持现状的前提下，请至少确认离应用最近的一跳反代由你方可信控制并正确透传 `X-Forwarded-For`，否则基于 IP 的限流/审计仍可能被间接污染。
 
 ## 2. 启动方式
 
@@ -50,7 +51,7 @@ docker-compose logs -f nav
 启动后优先检查：
 
 - `GET /api/health`
-- `GET /api-docs.json`
+- `GET /api-docs.json`（生产默认 404——需设 `API_DOCS_PUBLIC=true` 才公开；本地开发环境不受此限）
 
 如果要先验证镜像本身，而不是直接启动正式容器：
 

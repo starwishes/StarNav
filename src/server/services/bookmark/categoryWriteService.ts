@@ -1,18 +1,92 @@
 import { forceCheckpoint, getDb } from '../database/database.js'
 import { backupDatabaseThrottled } from '../database/backupThrottle.js'
 import { logger } from '../../utils/logger.js'
+import { ApiError, errors } from '../../utils/errors.js'
 import { mapCategoryRow, normalizeDbParentId } from './recordTransforms.js'
 import type { CategoryPayload, IdLike } from '../../types/domain.js'
-import type { CategoryIdRow, CategoryRow, CountRow, MaxIdRow } from '../../types/sqliteRows.js'
+import type { CategoryIdRow, CategoryRow, CountRow } from '../../types/sqliteRows.js'
 
 type SqliteDb = ReturnType<typeof getDb>
 type IdList = IdLike[]
+type ParentIdRow = { parent_id?: number | null }
 
 const selectCategoryIds = (db: SqliteDb) =>
   db
     .prepare<CategoryIdRow>('SELECT id FROM categories ORDER BY sort_order, id')
     .all()
     .map((row) => Number(row.id))
+
+/**
+ * 单分类 parentId 环校验：候选父分类不能是自身，也不能是自己的子孙。
+ * 沿候选父分类的祖先链向上查，一旦遇到 categoryId 说明候选父分类在其子树内，
+ * 形成环会令 buildCategoryTree 无法把环上节点挂到任何根，导致整棵子树（含书签）静默消失。
+ */
+const assertValidCategoryParent = (db: SqliteDb, categoryId: number, parentId: number | null) => {
+  if (parentId === null) {
+    return
+  }
+  if (parentId === categoryId) {
+    throw errors.badRequest('分类不能将自身设为父分类')
+  }
+
+  const seen = new Set<number>()
+  let cursor: number = parentId
+  while (cursor > 0) {
+    if (cursor === categoryId) {
+      throw errors.badRequest('分类不能移动到自己的子孙分类下（会形成环）')
+    }
+    // 历史脏数据可能已存在环：遇到重复节点即停止，不再继续深入
+    if (seen.has(cursor)) {
+      return
+    }
+    seen.add(cursor)
+    const row = db.prepare<ParentIdRow>('SELECT parent_id FROM categories WHERE id = ?').get(cursor)
+    if (!row) {
+      return
+    }
+    const nextCursor = normalizeDbParentId(row.parent_id)
+    if (nextCursor === null) {
+      return
+    }
+    cursor = nextCursor
+  }
+}
+
+/**
+ * 导入（bulkInsert）的整组分类环校验：在内存中对 parentId 引用图做 DFS，
+ * 检测自引用与 A→B→A 式环。导入是全量替换（saveData 先 DELETE 再 INSERT），
+ * 环数据入库后同样会导致前端树构建丢子树，因此在写入前拒绝。
+ */
+const assertNoCategoryCycle = (categories: Array<CategoryPayload & { id?: IdLike }>) => {
+  const parentById = new Map<number, number | null>()
+  for (const category of categories) {
+    const id = Number(category.id)
+    if (!Number.isInteger(id) || id <= 0) {
+      continue
+    }
+    parentById.set(id, normalizeDbParentId(category.parentId))
+  }
+
+  const visiting = new Set<number>()
+  const visit = (id: number) => {
+    if (visiting.has(id)) {
+      throw errors.badRequest('导入的分类数据存在父分类环引用（分类互为父子）')
+    }
+    const parent = parentById.get(id)
+    if (parent == null) {
+      return
+    }
+    visiting.add(id)
+    if (parentById.has(parent)) {
+      visit(parent)
+    }
+    visiting.delete(id)
+  }
+
+  for (const id of parentById.keys()) {
+    visit(id)
+  }
+}
 
 const resequenceCategories = (db: SqliteDb, categoryIds: number[]) => {
   const updateCategoryPosition = db.prepare('UPDATE categories SET sort_order = ? WHERE id = ?')
@@ -31,18 +105,20 @@ export const categoryWriteService = {
     const parentId = normalizeDbParentId(categoryData.parentId)
 
     try {
-      const maxId =
-        db.prepare<MaxIdRow>('SELECT MAX(id) as maxId FROM categories').get()?.maxId || 0
-      const newId = maxId + 1
+      // categories.id 为 INTEGER PRIMARY KEY（无 AUTOINCREMENT），SQLite 自动分配 rowid，
+      // 无需手动 SELECT MAX(id)+1（后者在并发写下还有重复 id 风险），与 bookmarkWriteService 一致。
       const sortOrder =
         db.prepare<CountRow>('SELECT COUNT(*) as count FROM categories').get()?.count ?? 0
 
-      db.prepare(
+      const result = db
+        .prepare(
+          `
+          INSERT INTO categories (name, icon, level, sort_order, parent_id)
+          VALUES (?, ?, ?, ?, ?)
         `
-          INSERT INTO categories (id, name, icon, level, sort_order, parent_id)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `
-      ).run(newId, name, icon, level, sortOrder, parentId)
+        )
+        .run(name, icon, level, sortOrder, parentId)
+      const newId = Number(result.lastInsertRowid)
 
       const newCategory = {
         id: newId,
@@ -65,7 +141,7 @@ export const categoryWriteService = {
     const id = Number(categoryId)
 
     try {
-      // 写前整库备份已改为 5s 节流，避免频繁写操作时同步 copyFileSync 阻塞事件循环；
+      // 写前整库备份（VACUUM INTO 一致快照）已改为 5s 节流，避免频繁写操作时同步阻塞事件循环；
       // 被节流跳过的备份由后续写操作补上，保证最终一致。
       backupDatabaseThrottled()
       const fields: string[] = []
@@ -84,8 +160,11 @@ export const categoryWriteService = {
         values.push(Number(updateData.level))
       }
       if (updateData.parentId !== undefined) {
+        const parentId = normalizeDbParentId(updateData.parentId)
+        // 环校验依赖当前库内祖先链，无法用 Joi 纯 schema 表达，放在服务层做领域校验
+        assertValidCategoryParent(db, id, parentId)
         fields.push('parent_id = ?')
-        values.push(normalizeDbParentId(updateData.parentId))
+        values.push(parentId)
       }
 
       if (fields.length === 0) return null
@@ -101,6 +180,8 @@ export const categoryWriteService = {
       }
       return null
     } catch (error) {
+      // 领域校验错误（400）直接透传，不按“更新失败”记日志
+      if (error instanceof ApiError) throw error
       // 真实数据库异常向上抛出（500），不要误报为“未找到”
       logger.error(`分类更新失败: ID ${id}`, error)
       throw error
@@ -194,6 +275,9 @@ export const categoryWriteService = {
   },
 
   bulkInsert(categories: Array<CategoryPayload & { id?: IdLike }>, db: SqliteDb) {
+    // 导入为全量替换语义，先拒绝环数据，避免成环节点从首页静默消失
+    assertNoCategoryCycle(categories)
+
     const insertCategory = db.prepare(`
       INSERT INTO categories (id, name, icon, level, sort_order, parent_id)
       VALUES (?, ?, ?, ?, ?, ?)

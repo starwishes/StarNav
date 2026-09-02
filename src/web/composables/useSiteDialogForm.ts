@@ -1,6 +1,7 @@
-import { ref, computed, watch, nextTick, onMounted, onUnmounted, type Ref } from 'vue'
+import { ref, computed, watch, reactive, onMounted, onUnmounted, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from '@/utils/feedback'
+import { useDialogA11y } from '@/composables/useDialogA11y'
 import type { Item, Category } from '@/types'
 import { getErrorMessage } from '@/utils/errors'
 import { normalizeUrl } from '@common/url'
@@ -70,6 +71,29 @@ export const useSiteDialogForm = (
   const localForm = ref<Partial<Item>>({})
   const savingCat = ref(false)
 
+  // 校验失败标记：供 BookmarkForm/CategoryForm 绑定 aria-invalid。
+  // aria-describedby 暂不关联——错误以瞬态 toast 呈现，DOM 中无常驻错误文本元素可指向。
+  const invalidFields = reactive<{
+    name?: boolean
+    url?: boolean
+    categoryName?: boolean
+  }>({})
+
+  const clearInvalidFields = () => {
+    invalidFields.name = false
+    invalidFields.url = false
+    invalidFields.categoryName = false
+  }
+
+  // 用户开始编辑后清除对应校验标记，恢复 aria-invalid 为正常状态
+  watch(
+    () => [localForm.value.name, localForm.value.url],
+    ([name, url]) => {
+      if (name) invalidFields.name = false
+      if (url) invalidFields.url = false
+    }
+  )
+
   const createDefaultCategoryDraft = (): Partial<Category> => ({
     name: '',
     parentId: null,
@@ -100,6 +124,14 @@ export const useSiteDialogForm = (
 
   const catEditForm: Ref<Partial<Category>> = ref(createDefaultCategoryDraft())
 
+  // 用户开始编辑后清除分类名校验标记
+  watch(
+    () => catEditForm.value.name,
+    (name) => {
+      if (name) invalidFields.categoryName = false
+    }
+  )
+
   const categoryTree = computed(() => buildCategoryTree(props.categories))
 
   watch(
@@ -108,6 +140,7 @@ export const useSiteDialogForm = (
       if (visibleState) {
         localForm.value = cloneItemDraft(newForm || {})
         internalMode.value = null
+        clearInvalidFields()
 
         if (mode === 'category' || mode === 'subcategory') {
           catEditForm.value = resolveCategoryDraft(newCategoryForm || {})
@@ -119,17 +152,16 @@ export const useSiteDialogForm = (
     { immediate: true, deep: true }
   )
 
-  watch(visible, (isOpen) => {
-    if (isOpen) {
-      nextTick(() => {
-        dialogPanelRef.value?.focus()
-      })
-    }
-  })
-
   const handleClose = () => {
     visible.value = false
   }
+
+  // 打开聚焦、Tab 焦点陷阱、Esc 关闭、关闭后焦点归还触发元素。
+  useDialogA11y({
+    isOpen: visible,
+    getDialog: () => dialogPanelRef.value,
+    onClose: handleClose
+  })
 
   const handleAddSubCategory = () => {
     catEditForm.value = {
@@ -148,10 +180,12 @@ export const useSiteDialogForm = (
     const categoryName = String(catEditForm.value.name || '').trim()
 
     if (!categoryName) {
+      invalidFields.categoryName = true
       ElMessage.warning(t('category.nameRequired'))
       return
     }
 
+    invalidFields.categoryName = false
     catEditForm.value.name = categoryName
     savingCat.value = true
     try {
@@ -181,6 +215,8 @@ export const useSiteDialogForm = (
 
   const handleSave = () => {
     if (!localForm.value.name || !localForm.value.url) {
+      invalidFields.name = !localForm.value.name
+      invalidFields.url = !localForm.value.url
       ElMessage.warning(t('common.tips'))
       return
     }
@@ -188,10 +224,13 @@ export const useSiteDialogForm = (
     const cleanedUrl = normalizeUrl(localForm.value.url)
 
     if (!cleanedUrl) {
+      invalidFields.url = true
       ElMessage.error(t('site.invalidUrl'))
       return
     }
 
+    invalidFields.name = false
+    invalidFields.url = false
     localForm.value.url = cleanedUrl
 
     const duplicate = dataStore.findDuplicateItem(
@@ -244,6 +283,7 @@ export const useSiteDialogForm = (
     dialogKicker,
     dialogPanelRef,
     localForm,
+    invalidFields,
     savingCat,
     catEditForm,
     categoryTree,

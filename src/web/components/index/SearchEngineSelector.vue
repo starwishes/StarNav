@@ -5,14 +5,15 @@
       type="button"
       class="mode-btn engine-btn"
       :class="{ active: searchMode === 'online' }"
-      :title="currentEngine?.name || '在线搜索'"
+      :title="currentEngine?.name || t('engine.onlineSearchTitle')"
+      :aria-expanded="menuOpen"
       @click.stop="toggleMenu"
     >
       <img
         v-if="currentEngine?.url && getEngineIcon(currentEngine.url)"
         :src="getEngineIcon(currentEngine.url)"
         class="engine-icon"
-        alt="icon"
+        alt=""
         @error="markEngineIconBroken(currentEngine.url)"
       />
       <div v-else-if="currentEngine?.name" class="engine-icon-badge">
@@ -38,7 +39,7 @@
                   v-if="getEngineIcon(engine.url)"
                   :src="getEngineIcon(engine.url)"
                   class="engine-icon-list"
-                  alt="icon"
+                  alt=""
                   loading="lazy"
                   decoding="async"
                   @error="markEngineIconBroken(engine.url)"
@@ -50,46 +51,58 @@
                 <span
                   v-if="engine.url && !isSuggestionSupported(engine)"
                   class="search-capability-badge"
-                  title="当前仅支持直接搜索，不提供联想词"
+                  :title="t('engine.searchOnlyBadgeTitle')"
                 >
-                  仅搜索
+                  {{ t('engine.searchOnlyBadge') }}
                 </span>
               </div>
               <AppIcon v-if="isCurrentEngine(engine)" name="icon-md-checkmark" class="check-icon" />
 
               <div v-if="showActions" class="action-group">
-                <AppIcon
-                  name="icon-md-arrow-round-up"
+                <button
+                  type="button"
                   class="action-icon move"
-                  :class="{ disabled: index === 0 }"
-                  title="上移"
+                  :disabled="index === 0"
+                  :title="t('engine.moveUp')"
+                  :aria-label="t('engine.moveUp')"
                   @click.stop="handleMove(index, -1)"
-                />
-                <AppIcon
-                  name="icon-md-arrow-round-down"
+                >
+                  <AppIcon name="icon-md-arrow-round-up" class="action-icon-svg" />
+                </button>
+                <button
+                  type="button"
                   class="action-icon move"
-                  :class="{ disabled: index === engines.length - 1 }"
-                  title="下移"
+                  :disabled="index === engines.length - 1"
+                  :title="t('engine.moveDown')"
+                  :aria-label="t('engine.moveDown')"
                   @click.stop="handleMove(index, 1)"
-                />
-                <AppIcon
-                  name="icon-bianji"
+                >
+                  <AppIcon name="icon-md-arrow-round-down" class="action-icon-svg" />
+                </button>
+                <button
+                  type="button"
                   class="action-icon edit"
-                  title="编辑"
+                  :title="t('engine.edit')"
+                  :aria-label="t('engine.edit')"
                   @click.stop="handleEdit(engine, index)"
-                />
-                <AppIcon
-                  name="icon-md-trash"
+                >
+                  <AppIcon name="icon-bianji" class="action-icon-svg" />
+                </button>
+                <button
+                  type="button"
                   class="action-icon delete"
-                  title="删除"
+                  :title="t('engine.delete')"
+                  :aria-label="t('engine.delete')"
                   @click.stop="handleDelete(index)"
-                />
+                >
+                  <AppIcon name="icon-md-trash" class="action-icon-svg" />
+                </button>
               </div>
             </button>
 
             <button v-if="showActions" type="button" class="engine-item add-btn" @click="handleAdd">
               <AppIcon name="icon-tianjia" class="action-icon" />
-              <span>添加搜索引擎</span>
+              <span>{{ t('engine.addEngine') }}</span>
             </button>
           </div>
         </div>
@@ -101,6 +114,7 @@
 <script setup lang="ts">
 import AppIcon from '@/components/AppIcon.vue'
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { type SearchEngineOption } from './searchUtils'
 import {
   advanceBrokenEngineIcon,
@@ -110,6 +124,7 @@ import {
   resolveEngineIcon
 } from './searchEngineSelectorHelpers'
 
+const { t } = useI18n()
 const props = defineProps<{
   engines: SearchEngineOption[]
   currentEngine: SearchEngineOption | null
@@ -191,8 +206,12 @@ const updatePanelPosition = () => {
 }
 
 const toggleMenu = () => {
-  emit('update:searchMode', 'online')
-  menuOpen.value = !menuOpen.value
+  const willOpen = !menuOpen.value
+  if (willOpen) {
+    // 仅在真正打开引擎列表时切到在线搜索；点图标关闭菜单不应改变搜索模式
+    emit('update:searchMode', 'online')
+  }
+  menuOpen.value = willOpen
 }
 
 const handleSelect = (engine: SearchEngineOption) => {
@@ -339,7 +358,8 @@ const panelStyle = computed(() => ({
   position: relative;
   text-align: left;
 
-  &:hover {
+  &:hover,
+  &:focus-within {
     background-color: rgba(var(--ui-theme-rgb), 0.08);
 
     .action-group {
@@ -431,31 +451,45 @@ const panelStyle = computed(() => ({
 }
 
 .action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 28px;
   height: 28px;
-  padding: 6px;
+  padding: 0;
+  border: none;
   border-radius: 8px;
+  background-color: rgba(148, 163, 184, 0.1);
   color: #606266;
   font-size: 16px;
   cursor: pointer;
-  background-color: rgba(148, 163, 184, 0.1);
   transition: all 0.2s;
 
-  &:hover:not(.disabled) {
+  &:hover:not(:disabled) {
     background-color: rgba(var(--ui-theme-rgb), 0.16);
     color: var(--ui-theme);
     transform: scale(1.08);
   }
 
-  &.disabled {
+  &:focus-visible {
+    outline: 2px solid rgba(var(--ui-theme-rgb), 0.4);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
     opacity: 0.3;
     cursor: not-allowed;
   }
 
-  &.delete:hover {
+  &.delete:hover:not(:disabled) {
     background-color: rgba(239, 68, 68, 0.14);
     color: #dc2626;
   }
+}
+
+.action-icon-svg {
+  width: 16px;
+  height: 16px;
 }
 
 .engine-menu-enter-active,

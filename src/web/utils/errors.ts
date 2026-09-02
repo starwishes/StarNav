@@ -1,4 +1,6 @@
-export const getErrorMessage = (error: unknown, fallback = '操作失败') => {
+// 工具函数无 i18n 上下文，默认兜底文案使用中性英文；
+// 所有调用方均显式传入本地化 fallback（见各 composable/组件），此值仅在漏传时兜底。
+export const getErrorMessage = (error: unknown, fallback = 'Operation failed') => {
   if (typeof error === 'string') {
     return error || fallback
   }

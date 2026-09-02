@@ -26,8 +26,25 @@ const CLASSIC_ACCENT_RGB = '64, 158, 255'
 export const normalizeThemeMode = (value: unknown): ThemeMode =>
   value === 'dark' ? 'dark' : 'light'
 
-export const getStoredThemeMode = (storage: Storage = localStorage): ThemeMode =>
-  normalizeThemeMode(storage.getItem(THEME_MODE_STORAGE_KEY))
+const prefersDarkScheme = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+  try {
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches === true
+  } catch {
+    return false
+  }
+}
+
+export const getStoredThemeMode = (storage: Storage = localStorage): ThemeMode => {
+  const stored = storage.getItem(THEME_MODE_STORAGE_KEY)
+  if (stored === 'light' || stored === 'dark') {
+    return stored
+  }
+  // 与扩展端一致：无存储值（首访）时跟随系统深色偏好，而非恒 light。
+  return prefersDarkScheme() ? 'dark' : 'light'
+}
 
 export const applyThemeMode = (
   modeInput: unknown,

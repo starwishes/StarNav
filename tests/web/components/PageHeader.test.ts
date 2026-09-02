@@ -149,7 +149,7 @@ describe('PageHeader', () => {
 
     await wrapper.find('.lang-toggle').trigger('click')
     expect(mocks.setLocale).toHaveBeenCalledWith('en-US')
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('Switched to English')
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:common.languageSwitched')
 
     Object.defineProperty(window, 'scrollY', {
       configurable: true,

@@ -13,9 +13,15 @@ import {
   REMEMBER_SESSION_DAYS,
   sessionDaysToExpiresIn
 } from './identityHelpers.js'
-import { loginSchema } from '../../middleware/validation.js'
-import { errors } from '../../middleware/errorHandler.js'
+import { loginSchema } from '../../validation.js'
+import { errors } from '../../utils/errors.js'
 import { logger } from '../../utils/logger.js'
+
+/**
+ * 用户不存在时也执行一次 bcrypt 比较，抹平"存在/不存在"的响应时间差，
+ * 避免通过登录接口对用户名做时序枚举。
+ */
+const DUMMY_PASSWORD_HASH = '$2b$10$xUQeeAb9wEZeDtLm8bqe/.zpXPhcXBMIY1YI1QFI6WudVVvE6JcQG'
 
 export const authLifecycleService = {
   login(credentials: AuthCredentials, context: RequestContextLike = {}) {
@@ -30,7 +36,15 @@ export const authLifecycleService = {
     const userAgent = context.userAgent || 'unknown'
     const user = accountService.findByUsername(username)
 
-    if (!user || !bcrypt.compareSync(password, user.password)) {
+    if (!user) {
+      // 执行一次无意义比较，保持与"用户存在但密码错误"相同的时间开销
+      bcrypt.compareSync(password, DUMMY_PASSWORD_HASH)
+      auditService.log('login', { username, ip, userAgent, success: false })
+      logger.warn(`登录失败尝试: ${username}`)
+      throw errors.unauthorized('用户名或密码错误')
+    }
+
+    if (!bcrypt.compareSync(password, user.password)) {
       auditService.log('login', { username, ip, userAgent, success: false })
       logger.warn(`登录失败尝试: ${username}`)
       throw errors.unauthorized('用户名或密码错误')

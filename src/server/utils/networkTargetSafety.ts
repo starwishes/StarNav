@@ -1,7 +1,7 @@
 import dns from 'node:dns/promises'
 import net from 'node:net'
 
-import { errors } from '../middleware/errorHandler.js'
+import { errors } from '../utils/errors.js'
 
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:'])
 const LINK_CHECK_TARGET_ERROR = '仅支持检测公网 HTTP/HTTPS 地址'
@@ -85,7 +85,9 @@ const isBlockedHostname = (hostname: string): boolean => {
   )
 }
 
-const assertPublicDnsTarget = async (hostname: string): Promise<void> => {
+const assertPublicDnsTarget = async (
+  hostname: string
+): Promise<Array<{ address: string; family: number }>> => {
   let results: Array<{ address: string; family: number }>
 
   try {
@@ -101,9 +103,26 @@ const assertPublicDnsTarget = async (hostname: string): Promise<void> => {
   if (results.some((result) => isPrivateIpAddress(result.address))) {
     throw errors.badRequest(LINK_CHECK_TARGET_ERROR)
   }
+
+  return results
 }
 
-export const normalizePublicHttpUrl = async (value: unknown): Promise<string> => {
+export type ResolvedPublicHttpTarget = {
+  url: string
+  address: string
+  family: number
+}
+
+/**
+ * 校验目标 URL 为公网 HTTP/HTTPS 地址，并解析出固定 IP。
+ *
+ * 返回固定的 IP 地址供调用方在发起请求时通过自定义 `lookup` 直连，
+ * 避免「校验后 fetch 再独立解析」的 DNS rebinding 绕过（攻击者可在
+ * 校验与请求之间把域名解析到 127.0.0.1 / 169.254.169.254 等私网地址）。
+ */
+export const resolvePublicHttpTarget = async (
+  value: unknown
+): Promise<ResolvedPublicHttpTarget> => {
   if (typeof value !== 'string') {
     throw errors.badRequest(LINK_CHECK_TARGET_ERROR)
   }
@@ -128,9 +147,18 @@ export const normalizePublicHttpUrl = async (value: unknown): Promise<string> =>
     throw errors.badRequest(LINK_CHECK_TARGET_ERROR)
   }
 
-  if (net.isIP(parsed.hostname) === 0) {
-    await assertPublicDnsTarget(parsed.hostname)
+  const url = parsed.toString()
+
+  if (net.isIP(parsed.hostname) !== 0) {
+    const family = net.isIP(parsed.hostname)
+    return { url, address: parsed.hostname, family }
   }
 
-  return parsed.toString()
+  const results = await assertPublicDnsTarget(parsed.hostname)
+  const first = results[0]
+  return {
+    url,
+    address: first.address,
+    family: first.family ?? (net.isIP(first.address) === 6 ? 6 : 4)
+  }
 }

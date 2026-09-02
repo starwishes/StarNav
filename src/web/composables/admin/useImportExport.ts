@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { Category, Item, ImportedBookmarkItem } from '@/types'
 import { parseJsonBackupPayload, type ParsedJsonBackup } from '@/utils/jsonBackup'
 import { isSafeHttpUrl } from '@common/security/urlSafety'
+import { normalizeUrl } from '@common/url'
 
 const cloneCategories = (source: Category[]) => source.map((category) => ({ ...category }))
 const cloneItems = (source: Item[]) => source.map((item) => ({ ...item }))
@@ -24,22 +25,6 @@ export function useImportExport(
 ) {
   const { t } = useI18n()
   const showBookmarkImport = ref(false)
-
-  /**
-   * URL 规范化
-   */
-  const normalizeUrl = (url: string) => {
-    try {
-      const u = new URL(url)
-      let p = u.pathname
-      if (p.endsWith('/') && p.length > 1) p = p.slice(0, -1)
-      return u.origin + p + u.search
-    } catch {
-      let s = url.trim().toLowerCase()
-      if (s.endsWith('/')) s = s.slice(0, -1)
-      return s
-    }
-  }
 
   const persistImportedData = async (
     nextCategories: Category[],
@@ -93,17 +78,33 @@ export function useImportExport(
     const existingUrls = new Set(nextItems.map((item) => normalizeUrl(item.url)))
 
     // 1. 合并分类
+    // 第一遍：为每个导入分类计算目标 id（同名并入现存分类；否则分配新 id）
     content.categories.forEach((cat) => {
       const existingCategoryId = currentCatNames.get(cat.name)
       if (existingCategoryId !== undefined) {
-        catMapping[cat.id] = existingCategoryId
+        catMapping[Number(cat.id)] = existingCategoryId
       } else {
         maxCatId += 1
-        const newCat = { ...cat, id: maxCatId }
-        nextCategories.push(newCat)
-        catMapping[cat.id] = maxCatId
+        catMapping[Number(cat.id)] = maxCatId
         currentCatNames.set(cat.name, maxCatId)
       }
+    })
+
+    // 第二遍：按映射构建新分类，并把备份 id 空间的 parentId 重映射到目标 id 空间。
+    // 无映射 / 0 / null 一律归为根分类，避免子分类挂到同 id 现存分类或悬空。
+    content.categories.forEach((cat) => {
+      const targetId = catMapping[Number(cat.id)]
+      if (nextCategories.some((existing) => existing.id === targetId)) {
+        return // 已并入现存同名分类
+      }
+
+      const newCat = { ...cat, id: targetId }
+      const rawParentId = cat.parentId
+      if (rawParentId !== undefined && rawParentId !== null) {
+        const numericParentId = Number(rawParentId)
+        newCat.parentId = numericParentId > 0 ? (catMapping[numericParentId] ?? null) : null
+      }
+      nextCategories.push(newCat)
     })
 
     // 2. 合并书签（按规范化 URL 去重）
@@ -124,7 +125,7 @@ export function useImportExport(
         ...item,
         id: maxItemId,
         url: candidateUrl,
-        categoryId: catMapping[item.categoryId] ?? nextCategories[0]?.id ?? 1
+        categoryId: catMapping[item.categoryId] ?? 0
       }
       nextItems.push(newItem)
       existingUrls.add(dedupKey)
@@ -135,7 +136,7 @@ export function useImportExport(
       await persistImportedData(
         nextCategories,
         nextItems,
-        t('admin.importSuccess', { count: addedCount }) + '. ' + t('admin.importConfirm')
+        t('admin.importSuccess', { count: addedCount })
       )
       return true
     } catch {
@@ -185,7 +186,7 @@ export function useImportExport(
         name: item.name,
         url: candidateUrl,
         description: item.description || '',
-        categoryId: catNameToId.get(item.categoryName) ?? nextCategories[0]?.id ?? 1,
+        categoryId: catNameToId.get(item.categoryName) ?? nextCategories[0]?.id ?? 0,
         pinned: false,
         level: 0
       })
@@ -193,7 +194,11 @@ export function useImportExport(
       addedCount += 1
     })
 
-    await persistImportedData(nextCategories, nextItems, `导入成功，已同步 ${addedCount} 个书签`)
+    await persistImportedData(
+      nextCategories,
+      nextItems,
+      t('admin.importSuccess', { count: addedCount })
+    )
 
     return addedCount
   }

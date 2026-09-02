@@ -9,26 +9,24 @@ export interface GenericApiResponse<T = unknown> {
 }
 
 export class ApiError<TPayload = unknown> extends Error {
-  status: number
+  status?: number
   payload?: TPayload
 
   constructor(message: string, options: { status?: number; payload?: TPayload } = {}) {
     super(message)
     this.name = 'ApiError'
-    this.status = Number(options.status || 0)
+    this.status = options.status
     this.payload = options.payload
   }
 }
 
 export function unwrapApiPayload<T>(payload: GenericApiResponse<T> | T): T {
+  // 服务端只下发 `data` 信封；`content` 仅是 POST /data 的历史输入字段名，
+  // 不参与响应解包（见 validation.ts dataSchema）。
   if (payload && typeof payload === 'object') {
     const record = payload as GenericApiResponse<T>
     if (record.data !== undefined) {
       return record.data as T
-    }
-
-    if (record.content !== undefined) {
-      return record.content as T
     }
   }
 

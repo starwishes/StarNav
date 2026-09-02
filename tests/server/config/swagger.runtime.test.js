@@ -1,10 +1,9 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
 
 describe('swagger runtime spec', () => {
   // swagger-jsdoc walks all route/controller sources; allow headroom under load
-  it(
-    'builds a real OpenAPI spec from route annotations',
-    async () => {
+  it('builds a real OpenAPI spec from route annotations', async () => {
     vi.resetModules()
 
     const [{ getSwaggerSpec }, { APP_VERSION }] = await Promise.all([
@@ -79,7 +78,5 @@ describe('swagger runtime spec', () => {
       ])
     )
     expect(() => JSON.stringify(swaggerSpec)).not.toThrow()
-  },
-    30000
-  )
+  }, 30000)
 })

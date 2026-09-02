@@ -4,6 +4,11 @@ import { logger } from '../../utils/logger.js'
 import { USER_LEVEL } from '../../../shared/constants.js'
 import type { UserListRow, UserRow, SettingsValueRow } from '../../types/sqliteRows.js'
 
+// 第 16 轮审查：bcrypt cost 10 → 12。bcrypt 哈希自带 cost 前缀，旧哈希登录验证
+// （verifyPassword → compareSync）自动读取 hash 内 cost，无兼容问题。
+// 导出供 adminBootstrapService 共享，保证管理员初始/强制更新密码与账户变更同 cost。
+export const BCRYPT_COST = 12
+
 /**
  * 账户管理服务 (SQLite 版本)
  */
@@ -46,7 +51,7 @@ class AccountService {
    */
   create(username: string, password: string, level: number | undefined = undefined) {
     const db = getDb()
-    const hashedPassword = bcrypt.hashSync(password, 10)
+    const hashedPassword = bcrypt.hashSync(password, BCRYPT_COST)
 
     // 获取默认用户级别
     const settingRow = db
@@ -58,7 +63,7 @@ class AccountService {
       db.prepare(
         `
                 INSERT INTO users (username, password, level, auth_version, created_at)
-                VALUES (?, ?, ?, 0, datetime('now'))
+                VALUES (?, ?, ?, 0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
             `
       ).run(username, hashedPassword, level || defaultLevel)
 
@@ -104,7 +109,7 @@ class AccountService {
       }
       if (password) {
         updates.push('password = ?')
-        params.push(bcrypt.hashSync(password, 10))
+        params.push(bcrypt.hashSync(password, BCRYPT_COST))
       }
       if (newUsername && newUsername !== oldUsername) {
         updates.push('username = ?')
@@ -153,7 +158,9 @@ class AccountService {
   updateLastLogin(username: string) {
     const db = getDb()
     try {
-      db.prepare(`UPDATE users SET last_login = datetime('now') WHERE username = ?`).run(username)
+      db.prepare(
+        `UPDATE users SET last_login = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE username = ?`
+      ).run(username)
     } catch (err: unknown) {
       logger.error('更新登录时间失败', err)
     }

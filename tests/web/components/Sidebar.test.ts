@@ -10,6 +10,12 @@ vi.mock('@/store/admin', () => ({
   useAdminStore: () => adminStoreMock
 }))
 
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({
+    t: (key: string) => `translated:${key}`
+  })
+}))
+
 const Sidebar = (await import('@/components/index/Sidebar.vue')).default
 
 const createWrapper = () => {
@@ -58,18 +64,18 @@ describe('Sidebar', () => {
     window.dispatchEvent(new Event('scroll'))
     await nextTick()
 
-    expect(wrapper.find('button[title="返回顶部"]').exists()).toBe(true)
+    expect(wrapper.find('button[title="translated:sidebar.backToTop"]').exists()).toBe(true)
 
-    await wrapper.find('button[title="返回顶部"]').trigger('click')
+    await wrapper.find('button[title="translated:sidebar.backToTop"]').trigger('click')
     expect(window.scrollTo).toHaveBeenCalledWith({
       top: 0,
       behavior: 'smooth'
     })
 
-    await wrapper.find('button[title="菜单"]').trigger('click')
+    await wrapper.find('button[title="translated:sidebar.menu"]').trigger('click')
     expect(toggleSidebarMock).toHaveBeenCalledTimes(1)
 
-    await wrapper.find('button[title="添加"]').trigger('click')
+    await wrapper.find('button[title="translated:sidebar.add"]').trigger('click')
     await nextTick()
     expect(wrapper.find('.fab-action-menu').exists()).toBe(true)
 
@@ -78,7 +84,7 @@ describe('Sidebar', () => {
     expect(wrapper.emitted('add')).toEqual([[]])
     expect(wrapper.find('.fab-action-menu').exists()).toBe(false)
 
-    await wrapper.find('button[title="添加"]').trigger('click')
+    await wrapper.find('button[title="translated:sidebar.add"]').trigger('click')
     await nextTick()
     await wrapper.findAll('.fab-action-button')[1].trigger('click')
     expect(wrapper.emitted('add-category')).toEqual([[]])
@@ -88,7 +94,7 @@ describe('Sidebar', () => {
   it('closes the action menu on outside clicks and hides the authenticated fab for guests', async () => {
     const wrapper = createWrapper()
 
-    await wrapper.find('button[title="添加"]').trigger('click')
+    await wrapper.find('button[title="translated:sidebar.add"]').trigger('click')
     await nextTick()
     expect(wrapper.find('.fab-action-menu').exists()).toBe(true)
 
@@ -100,6 +106,6 @@ describe('Sidebar', () => {
     const guestWrapper = createWrapper()
 
     expect(guestWrapper.find('.fab-menu-shell').exists()).toBe(false)
-    expect(guestWrapper.find('button[title="菜单"]').exists()).toBe(true)
+    expect(guestWrapper.find('button[title="translated:sidebar.menu"]').exists()).toBe(true)
   })
 })

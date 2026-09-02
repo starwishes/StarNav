@@ -1,9 +1,12 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const rateLimit = vi.fn((options) => ({ options }))
 
 vi.mock('express-rate-limit', () => ({
-  default: rateLimit
+  default: rateLimit,
+  // 测试用 IPv4 地址透传即可（ipKeyGenerator 在 IPv4 下原样返回）
+  ipKeyGenerator: (ip) => ip
 }))
 
 const {
@@ -12,7 +15,9 @@ const {
   dataUpdateLimiter,
   faviconLimiter,
   healthLimiter,
-  loginLimiter
+  loginIpLimiter,
+  loginLimiter,
+  suggestLimiter
 } = await import('../../../src/server/middleware/limiter.js')
 
 describe('limiter middleware config', () => {
@@ -26,7 +31,7 @@ describe('limiter middleware config', () => {
       max: 10,
       skip: expect.any(Function),
       keyGenerator: expect.any(Function),
-      message: { error: '尝试过于频繁，请稍后再试' },
+      message: { success: false, code: 'RATE_LIMITED', error: '尝试过于频繁，请稍后再试' },
       standardHeaders: true,
       legacyHeaders: false
     })
@@ -73,7 +78,7 @@ describe('limiter middleware config', () => {
       windowMs: 60 * 1000,
       max: 60,
       skip: expect.any(Function),
-      message: { error: '更新过于频繁，请稍后再试' },
+      message: { success: false, code: 'RATE_LIMITED', error: '更新过于频繁，请稍后再试' },
       standardHeaders: true,
       legacyHeaders: false
     })
@@ -83,20 +88,40 @@ describe('limiter middleware config', () => {
     expect(dataUpdateLimiter.options.skip()).toBe(true)
   })
 
-  it('registers public endpoint limiters for favicon and health', () => {
+  it('registers a pure-IP login limiter as a second-tier cap for username-rotation attacks', () => {
     expect(rateLimit).toHaveBeenNthCalledWith(3, {
-      windowMs: 10 * 60 * 1000,
-      max: 300,
+      windowMs: 15 * 60 * 1000,
+      max: 60,
       skip: expect.any(Function),
-      message: { error: '请求过于频繁，请稍后再试' },
+      keyGenerator: expect.any(Function),
+      message: { success: false, code: 'RATE_LIMITED', error: '尝试过于频繁，请稍后再试' },
       standardHeaders: true,
       legacyHeaders: false
     })
+
+    const { keyGenerator } = loginIpLimiter.options
+    expect(keyGenerator({ ip: '203.0.113.7' })).toBe('203.0.113.7')
+    expect(keyGenerator({ ip: '203.0.113.7' })).not.toBe(keyGenerator({ ip: '198.51.100.2' }))
+
+    expect(loginIpLimiter.options.skip()).toBe(false)
+    process.env.NODE_ENV = 'test'
+    expect(loginIpLimiter.options.skip()).toBe(true)
+  })
+
+  it('registers public endpoint limiters for favicon and health', () => {
     expect(rateLimit).toHaveBeenNthCalledWith(4, {
+      windowMs: 10 * 60 * 1000,
+      max: 300,
+      skip: expect.any(Function),
+      message: { success: false, code: 'RATE_LIMITED', error: '请求过于频繁，请稍后再试' },
+      standardHeaders: true,
+      legacyHeaders: false
+    })
+    expect(rateLimit).toHaveBeenNthCalledWith(5, {
       windowMs: 10 * 60 * 1000,
       max: 120,
       skip: expect.any(Function),
-      message: { error: '请求过于频繁，请稍后再试' },
+      message: { success: false, code: 'RATE_LIMITED', error: '请求过于频繁，请稍后再试' },
       standardHeaders: true,
       legacyHeaders: false
     })
@@ -108,13 +133,28 @@ describe('limiter middleware config', () => {
     expect(healthLimiter.options.skip()).toBe(true)
   })
 
+  it('registers a public suggest limiter to cap the unauthenticated suggest relay', () => {
+    expect(rateLimit).toHaveBeenNthCalledWith(6, {
+      windowMs: 10 * 60 * 1000,
+      max: 120,
+      skip: expect.any(Function),
+      message: { success: false, code: 'RATE_LIMITED', error: '请求过于频繁，请稍后再试' },
+      standardHeaders: true,
+      legacyHeaders: false
+    })
+
+    expect(suggestLimiter.options.skip()).toBe(false)
+    process.env.NODE_ENV = 'test'
+    expect(suggestLimiter.options.skip()).toBe(true)
+  })
+
   it('registers a stricter per-IP click limiter for the public click endpoint', () => {
-    expect(rateLimit).toHaveBeenNthCalledWith(5, {
+    expect(rateLimit).toHaveBeenNthCalledWith(7, {
       windowMs: 60 * 1000,
       max: 30,
       skip: expect.any(Function),
       keyGenerator: expect.any(Function),
-      message: { error: '操作过于频繁，请稍后再试' },
+      message: { success: false, code: 'RATE_LIMITED', error: '操作过于频繁，请稍后再试' },
       standardHeaders: true,
       legacyHeaders: false
     })
@@ -152,11 +192,11 @@ describe('limiter middleware config', () => {
   })
 
   it('registers a second-tier per-IP cap for the click endpoint (UA-rotation fuse)', () => {
-    expect(rateLimit).toHaveBeenNthCalledWith(6, {
+    expect(rateLimit).toHaveBeenNthCalledWith(8, {
       windowMs: 60 * 1000,
       max: 180,
       skip: expect.any(Function),
-      message: { error: '操作过于频繁，请稍后再试' },
+      message: { success: false, code: 'RATE_LIMITED', error: '操作过于频繁，请稍后再试' },
       standardHeaders: true,
       legacyHeaders: false
     })

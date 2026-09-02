@@ -26,11 +26,12 @@ const resolveOutputPath = () => {
 }
 
 try {
-  getDb()
+  const db = getDb()
 
   const dbPath = databasePathService.getDbPath()
   const outputPath = resolveOutputPath()
   const result = databaseMaintenanceService.backupDatabase({
+    db,
     dbPath,
     checkpoint: forceCheckpoint,
     outputPath

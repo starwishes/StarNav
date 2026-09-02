@@ -1,7 +1,6 @@
 type RecordLike = Record<string, unknown>
 
-const hasOwn = (value: object, key: string) =>
-  Object.prototype.hasOwnProperty.call(value, key)
+const hasOwn = (value: object, key: string) => Object.prototype.hasOwnProperty.call(value, key)
 
 const pickValue = (record: RecordLike, keys: string[]) => {
   for (const key of keys) {
@@ -37,9 +36,7 @@ export const normalizeDbParentId = (parentId: unknown) => {
   }
 
   const normalizedParentId = Number(parentId)
-  return Number.isInteger(normalizedParentId) && normalizedParentId > 0
-    ? normalizedParentId
-    : null
+  return Number.isInteger(normalizedParentId) && normalizedParentId > 0 ? normalizedParentId : null
 }
 
 export const mapBookmarkRow = (
@@ -106,6 +103,7 @@ export const mapBookmarkSearchResult = (item: RecordLike | null | undefined) => 
     url: item.url,
     description: item.description,
     categoryId: normalizeApiCategoryId(pickValue(item, ['categoryId', 'category_id'])),
-    categoryName: (item.categoryName as string | undefined) || '未分类'
+    // 后端不烘焙展示文案：无分类时返回 null，由前端按 locale 渲染"未分类"
+    categoryName: (item.categoryName as string | undefined) ?? null
   }
 }

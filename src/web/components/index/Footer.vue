@@ -4,13 +4,15 @@
       <div v-if="safeFooterHtml" class="custom-footer" v-html="safeFooterHtml"></div>
       <div v-else class="copyright">
         &copy; {{ currentYear }}
-        <a href="https://github.com/starwishes/Nav" target="_blank">{{
+        <a href="https://github.com/starwishes/Nav" target="_blank" rel="noopener noreferrer">{{
           configStore.displaySiteName
         }}</a
         >. All Rights Reserved.
       </div>
       <div v-if="ICP_NUMBER" class="icp">
-        <a href="https://beian.miit.gov.cn/" target="_blank">{{ ICP_NUMBER }}</a>
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">{{
+          ICP_NUMBER
+        }}</a>
       </div>
     </div>
   </footer>
@@ -92,4 +94,3 @@ const safeFooterHtml = computed(() => sanitizeFooterHtml(configStore.siteConfig.
   color: rgba(226, 232, 240, 0.74);
 }
 </style>
-

@@ -43,25 +43,6 @@ export interface SettingsKeyValueRow {
   value: string
 }
 
-/** daily_stats aggregates */
-export interface DailyStatTotalsRow {
-  total_pv: number
-  total_uv: number
-}
-
-/** daily_stats date/pv/uv */
-export interface DailyStatRow {
-  date: string
-  pv: number
-  uv: number
-}
-
-/** visit_logs GROUP BY os/browser */
-export interface NameValueStatRow {
-  name: string
-  value: number
-}
-
 /** categories SELECT with parentId alias */
 export interface CategoryRow {
   id: number
@@ -158,10 +139,6 @@ export interface AuditLogRow {
 /** COUNT / MAX helpers */
 export interface CountRow {
   count: number
-}
-
-export interface MaxIdRow {
-  maxId: number | null
 }
 
 export interface NextSortOrderRow {

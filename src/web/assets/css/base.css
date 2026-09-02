@@ -6,6 +6,12 @@
   box-sizing: border-box;
 }
 
+/*
+ * 响应式断点说明：各组件目前按需使用 480/520/640/720/768/900/980/1024/1100/1280
+ * 等多档断点，未统一收敛为单一 scale（属历史沿革）。重构成本高、收益低，
+ * 新增样式时优先复用相近断点（移动端 640、平板 768、桌面 1024+），
+ * 不强制全局统一。
+ */
 :root {
   /* element色卡 */
   --white: #ffffff;
@@ -25,7 +31,13 @@
   --warning: #ffc107;
   --danger: #dc3545;
 
-  /* --ui-theme: rgba(255, 0, 0, 0.8); */
+  /* ------------------------------------------------------------------
+   * --ui-* token：此处是 JS 挂载前的静态兜底（防 FOUC/首屏闪变），
+   * 真值在 src/web/utils/theme.ts（resolveThemeTokens / applyThemeTokens）。
+   * 调整色值/字体请优先改 theme.ts，保持两处一致。
+   * --el-* 变量仍被组件消费（data-grid.scss、SiteTable、BookmarkImportStep*），
+   * 虽命名为 element-plus 风格但非死代码，勿删。
+   * ------------------------------------------------------------------ */
   --ui-theme: #409eff;
   --ui-theme-rgb: 64, 158, 255;
   --ui-theme-hover: #337ecc;
@@ -40,6 +52,8 @@
   --ui-text-primary: #0f172a;
   --ui-text-muted: rgba(71, 85, 105, 0.82);
   --ui-font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+  /* --ui-font-display 与 --ui-font-body 同栈：它是 theme.ts fontDisplay token 的静态兜底，
+     多个组件用 font-family: var(--ui-font-display)，保持两值一致即可。 */
   --ui-font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
   --el-color-primary: var(--ui-theme);
   --el-color-success: var(--green-500);
@@ -350,19 +364,6 @@ button {
   -webkit-backdrop-filter: blur(15px) !important;
   border: 1px solid var(--ui-panel-border, rgba(255, 255, 255, 0.2)) !important;
   box-shadow: var(--ui-panel-shadow, 0 8px 32px 0 rgba(0, 0, 0, 0.1)) !important;
-}
-
-/* Element Plus Drawer Refinement */
-.el-drawer {
-  background: var(--ui-panel-bg, rgba(255, 255, 255, 0.05)) !important;
-  /* backdrop-filter 已移除以避免动画冲突 */
-  border-right: 1px solid var(--ui-panel-border, rgba(255, 255, 255, 0.15)) !important;
-  box-shadow: none !important;
-}
-
-.el-drawer__body {
-  color: var(--ui-text-primary, #fff) !important;
-  padding: 20px !important;
 }
 
 /* Dark Mode Overrides */

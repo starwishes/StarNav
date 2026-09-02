@@ -40,6 +40,9 @@
 
 .user-dialog-shell {
   width: min(100%, 420px);
+  /* 移动端软键盘/横屏下限制高度，内容可滚动而不被视口裁剪 */
+  max-height: min(86vh, 860px);
+  overflow-y: auto;
   border-radius: 24px;
   border: 1px solid var(--user-dialog-border);
   background: var(--user-dialog-bg);
@@ -61,7 +64,7 @@
 
 .dialog-kicker {
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;

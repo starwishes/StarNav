@@ -26,7 +26,3 @@ export const sanitizeText = (text: unknown, maxLength = 1000): string => {
 
   return clean
 }
-
-export const isValidUsername = (username: string): boolean => {
-  return /^[a-zA-Z0-9_]{3,20}$/.test(username)
-}

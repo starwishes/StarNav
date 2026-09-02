@@ -152,7 +152,7 @@ describe('BookmarkImport', () => {
     await fileInput.trigger('change')
     await wrapper.vm.$nextTick()
 
-    expect(mocks.parseBookmarkHtml).toHaveBeenCalledWith('<html></html>')
+    expect(mocks.parseBookmarkHtml).toHaveBeenCalledWith('<html></html>', 'admin.unnamedCategory')
     expect(wrapper.text()).toContain('2 个分类，3 个书签')
 
     const checkboxes = wrapper.findAll('input.category-checkbox')

@@ -24,6 +24,16 @@
       </div>
     </div>
 
+    <div v-else-if="loadError" class="site-container error-state">
+      <div class="sn-error-state home-error-state">
+        <p class="sn-error-state__text">{{ t('common.loadFailed') }}</p>
+        <button type="button" class="empty-action-button" @click="handleRetry">
+          <AppIcon name="icon-md-sync" class="button-icon" />
+          <span>{{ t('common.retry') }}</span>
+        </button>
+      </div>
+    </div>
+
     <div v-else-if="dataValue.length === 0" class="site-container empty-state">
       <div class="sn-empty-state home-empty-state">
         <div class="empty-title">{{ t('common.noData') }}</div>
@@ -55,7 +65,6 @@
           :selection-mode="selectionMode"
           :selected-items="selectedItems"
           :show-add="adminStore.isAuthenticated"
-          @header-click="handleCategoryClick"
           @header-contextmenu="(payload) => onCategoryContextMenu(payload, catIndex)"
           @add-item="handleAddItem"
           @item-mouseenter="onItemMouseEnter"
@@ -81,6 +90,7 @@
       @edit-item="handleEdit"
       @delete-item="handleDelete"
       @move-category="moveCategory"
+      @close="closeContextMenu"
       @edit-category="handleEditCategory"
       @delete-category="handleDeleteCategory"
     />
@@ -157,7 +167,7 @@ const adminStore = useAdminStore()
 const dataStore = useDataStore()
 const getFallbackFaviconUrl = (item: Pick<Item, 'url'>) =>
   buildProxyIconCandidate(item.url, Favicon)
-const { loading } = storeToRefs(dataStore)
+const { loading, loadError } = storeToRefs(dataStore)
 
 const emit = defineEmits<{
   (e: 'loaded'): void
@@ -206,13 +216,24 @@ const {
   saveSite
 } = useSiteDialogState(dataStore, contextMenu, closeContextMenu)
 
+const handleRetry = () => {
+  void dataStore.loadData()
+}
+
 const handleItemClick = async (item: Item) => {
   if (moveState.active) {
     await handleMouseDragUp()
     return
   }
 
-  dataApi.trackClick(item.id).catch(() => {})
+  dataApi
+    .trackClick(item.id)
+    .then((tracked) => {
+      if (tracked) {
+        dataStore.patchItemClick(tracked.id, tracked.clickCount, tracked.lastVisited)
+      }
+    })
+    .catch(() => {})
   utilsOpenUrl(item.url)
 }
 
@@ -263,8 +284,6 @@ const handleStartMoveItem = () => {
     closeContextMenu
   )
 }
-
-const handleCategoryClick = () => {}
 
 watch(selectionMode, (active: boolean) => {
   if (!active) {
@@ -422,6 +441,22 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   gap: 18px;
+}
+
+.home-error-state {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.sn-error-state__text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--category-empty);
 }
 
 .empty-title {

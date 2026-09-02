@@ -1,3 +1,4 @@
+// @vitest-environment node
 import realFs from 'node:fs'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'

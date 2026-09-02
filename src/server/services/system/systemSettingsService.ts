@@ -1,13 +1,17 @@
 import { settingsService } from './settingsService.js'
-import { errors } from '../../middleware/errorHandler.js'
-import { adminSettingsSchema, backgroundUrlSchema } from '../../middleware/validation.js'
+import { errors } from '../../utils/errors.js'
+import { adminSettingsSchema, backgroundUrlSchema } from '../../validation.js'
 import { sanitizeFooterHtml } from '../../../shared/security/footerHtml.js'
 import { isAllowedTimezone, normalizeOptionalUrl } from '../../../shared/security/urlSafety.js'
 import type { SettingsMap } from '../../types/domain.js'
 
 const REMOVED_SETTINGS_KEYS = ['themePreset', 'themeColor'] as const
 
-const validatePayload = (schema: { validate: (payload: unknown, options?: object) => { error?: unknown; value: unknown } }, payload: unknown, message: string) => {
+const validatePayload = (
+  schema: { validate: (payload: unknown, options?: object) => { error?: unknown; value: unknown } },
+  payload: unknown,
+  message: string
+) => {
   const { error, value } = schema.validate(payload, {
     abortEarly: false,
     convert: true,
@@ -35,9 +39,7 @@ const sanitizeSettingsForOutput = (settings: SettingsMap = {}) => {
         ? rest.backgroundUrl
         : normalizeOptionalUrl(rest.backgroundUrl, { allowRelative: true }),
     footerHtml:
-      rest.footerHtml === undefined
-        ? rest.footerHtml
-        : sanitizeFooterHtml(rest.footerHtml),
+      rest.footerHtml === undefined ? rest.footerHtml : sanitizeFooterHtml(rest.footerHtml),
     faviconUrl:
       rest.faviconUrl === undefined
         ? rest.faviconUrl
@@ -87,7 +89,9 @@ export const systemSettingsService = {
     // Accept and drop removed theme keys so older clients/payloads do not 400.
     const cleanedPayload = stripRemovedSettingsKeys(payload)
     const validatedPayload = validatePayload(adminSettingsSchema, cleanedPayload, '设置参数不正确')
-    const normalizedPayload = normalizeAdminSettingsPayload(validatedPayload as SettingsMap & Record<string, unknown>)
+    const normalizedPayload = normalizeAdminSettingsPayload(
+      validatedPayload as SettingsMap & Record<string, unknown>
+    )
 
     if (!settingsService.updateAll(normalizedPayload)) {
       throw errors.internal('保存失败')

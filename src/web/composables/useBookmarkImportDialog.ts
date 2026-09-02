@@ -1,5 +1,6 @@
-import { computed, nextTick, onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useDialogA11y } from '@/composables/useDialogA11y'
 import {
   buildBookmarkImportPayload,
   parseBookmarkHtml,
@@ -10,6 +11,9 @@ import type { ImportedBookmarkItem } from '@/types'
 import { createScopedLogger } from '../../shared/logger.js'
 
 const logger = createScopedLogger('web:bookmark-import')
+
+/** 书签 HTML 导入文件大小上限：避免超大文件被整读进内存并阻塞主线程。 */
+const IMPORT_FILE_MAX_BYTES = 10 * 1024 * 1024
 
 export interface BookmarkImportDialogOptions {
   modelValue: Ref<boolean> | (() => boolean)
@@ -31,7 +35,6 @@ export const useBookmarkImportDialog = (options: {
   const parsedCategories = ref<ParsedBookmarkCategory[]>([])
   const importing = ref(false)
   const importedCount = ref(0)
-  const dragActive = ref(false)
   const selectedFileName = ref('')
   const fileInputRef = ref<HTMLInputElement | null>(null)
   const dialogPanelRef = ref<HTMLElement | null>(null)
@@ -51,7 +54,6 @@ export const useBookmarkImportDialog = (options: {
     parsedCategories.value = []
     importing.value = false
     importedCount.value = 0
-    dragActive.value = false
     selectedFileName.value = ''
     if (fileInputRef.value) {
       fileInputRef.value.value = ''
@@ -73,9 +75,15 @@ export const useBookmarkImportDialog = (options: {
   const processFile = async (file?: File | null) => {
     if (!file) return
     selectedFileName.value = file.name
+
+    if (file.size > IMPORT_FILE_MAX_BYTES) {
+      ElMessage.error(t('bookmarkImport.fileTooLarge', { size: '10MB' }))
+      return
+    }
+
     try {
       const content = await readFile(file)
-      const parsed = parseBookmarkHtml(content)
+      const parsed = parseBookmarkHtml(content, t('admin.unnamedCategory'))
       if (parsed.length === 0) {
         ElMessage.warning(t('bookmarkImport.emptyWarning'))
         return
@@ -98,7 +106,6 @@ export const useBookmarkImportDialog = (options: {
   }
 
   const handleDrop = async (event: DragEvent) => {
-    dragActive.value = false
     await processFile(event.dataTransfer?.files?.[0] || null)
   }
 
@@ -127,22 +134,18 @@ export const useBookmarkImportDialog = (options: {
     }, 200)
   }
 
+  // 打开聚焦、Tab 焦点陷阱、Esc 关闭、关闭后焦点归还触发元素。
+  useDialogA11y({
+    isOpen: () => options.getModelValue(),
+    getDialog: () => dialogPanelRef.value,
+    onClose: handleClose
+  })
+
   const handleDialogKeydown = (event: KeyboardEvent) => {
     if (event.key === 'Escape' && options.getModelValue()) {
       handleClose()
     }
   }
-
-  watch(
-    () => options.getModelValue(),
-    (val) => {
-      if (val) {
-        nextTick(() => {
-          dialogPanelRef.value?.focus()
-        })
-      }
-    }
-  )
 
   onMounted(() => {
     document.addEventListener('keydown', handleDialogKeydown)
@@ -157,7 +160,6 @@ export const useBookmarkImportDialog = (options: {
     parsedCategories,
     importing,
     importedCount,
-    dragActive,
     selectedFileName,
     fileInputRef,
     dialogPanelRef,

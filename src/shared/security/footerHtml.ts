@@ -130,5 +130,13 @@ export const sanitizeFooterHtml = (input = ''): string => {
       return `<a href="${escapeAttribute(href)}"${shouldOpenNewTab ? ' target="_blank" rel="noopener noreferrer nofollow"' : ''}>`
     })
     .join('')
+    .concat(
+      // 闭合所有未配对的开放标签（如 `<a href=...>` 缺少 `</a>`），
+      // 避免注入的标签吞掉后续整段内容 / 破坏布局
+      openTagStack
+        .reverse()
+        .map((tagName) => `</${tagName}>`)
+        .join('')
+    )
     .trim()
 }

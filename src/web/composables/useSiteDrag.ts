@@ -54,6 +54,13 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
     moveState.y = e.clientY + 10
   }
 
+  // 放置模式下按 Escape 取消移动（否则用户一旦进入放置模式只能点击落点退出）
+  const handleGlobalKeydown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && moveState.active) {
+      cancelMove()
+    }
+  }
+
   /**
    * Commit the in-progress placement.
    * Interaction mode ends immediately so the UI does not stay "stuck" while the API runs.
@@ -76,14 +83,8 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
       return
     }
 
-    const {
-      item,
-      hoverCatIndex,
-      hoverCategoryId,
-      hoverItemIndex,
-      fromCategoryId,
-      fromItemIndex
-    } = moveState
+    const { item, hoverCatIndex, hoverCategoryId, hoverItemIndex, fromCategoryId, fromItemIndex } =
+      moveState
     const scrollY = typeof window !== 'undefined' ? window.scrollY : 0
 
     // End placement mode first so further clicks do not re-enter commit.
@@ -150,6 +151,7 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
 
     // Ghost follows the cursor; placement is committed by click (not mouseup).
     document.addEventListener('mousemove', handleGlobalMouseMove)
+    document.addEventListener('keydown', handleGlobalKeydown)
     ElMessage.info(t('context.dragDropClickHint'))
     // Guard against any layout thrash from menu close / ghost mount.
     restoreScrollY(scrollY)
@@ -158,12 +160,33 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
   // --- Touch Drag ---
 
   let touchTimer: ReturnType<typeof setTimeout> | null = null
+  let cancelLongPressListener: ((e: TouchEvent) => void) | null = null
+  let pendingMoveRaf: number | null = null
   const LONG_PRESS_DURATION = 500
+  const LONG_PRESS_MOVE_THRESHOLD = 10
+
+  /** 取消未生效的长按：清定时器 + 移除"位移取消"监听 */
+  const clearLongPressTimer = () => {
+    if (touchTimer) {
+      clearTimeout(touchTimer)
+      touchTimer = null
+    }
+    if (cancelLongPressListener) {
+      // passive 不影响监听匹配，仅按 capture 匹配，移除时无需重复传 options
+      document.removeEventListener('touchmove', cancelLongPressListener)
+      cancelLongPressListener = null
+    }
+  }
 
   const cleanupTouchListeners = () => {
+    clearLongPressTimer()
     document.removeEventListener('touchmove', handleTouchMove)
     document.removeEventListener('touchend', handleTouchEnd)
     document.removeEventListener('touchcancel', handleTouchEnd)
+    if (pendingMoveRaf !== null) {
+      cancelAnimationFrame(pendingMoveRaf)
+      pendingMoveRaf = null
+    }
   }
 
   const handleTouchMove = (e: TouchEvent) => {
@@ -177,7 +200,11 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
     if (elem) {
       const siteWrapper = elem.closest('.site-wrapper')
       if (siteWrapper) {
-        requestAnimationFrame(() => {
+        if (pendingMoveRaf !== null) {
+          cancelAnimationFrame(pendingMoveRaf)
+        }
+        pendingMoveRaf = requestAnimationFrame(() => {
+          pendingMoveRaf = null
           if (!moveState.active) return
           const catIndex = parseInt(siteWrapper.getAttribute('data-cat-index') || '-1')
           const catId = parseInt(siteWrapper.getAttribute('data-cat-id') || '0')
@@ -191,10 +218,7 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
   }
 
   const handleTouchEnd = async () => {
-    if (touchTimer) {
-      clearTimeout(touchTimer)
-      touchTimer = null
-    }
+    clearLongPressTimer()
     if (!moveState.active) return
     await commitMove()
   }
@@ -205,7 +229,22 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
     const startX = touch.clientX
     const startY = touch.clientY
 
+    // 长按未生效期间，手指位移超过阈值即取消长按，避免滚动页面误触发移动模式
+    const cancelListener = (moveEvent: TouchEvent) => {
+      const current = moveEvent.touches[0]
+      if (
+        Math.abs(current.clientX - startX) > LONG_PRESS_MOVE_THRESHOLD ||
+        Math.abs(current.clientY - startY) > LONG_PRESS_MOVE_THRESHOLD
+      ) {
+        clearLongPressTimer()
+      }
+    }
+    cancelLongPressListener = cancelListener
+    document.addEventListener('touchmove', cancelListener, { passive: true })
+
     touchTimer = setTimeout(() => {
+      // 长按生效：移除位移取消监听，切换为真实拖拽监听
+      clearLongPressTimer()
       if (navigator.vibrate) navigator.vibrate(50)
       moveState.item = JSON.parse(JSON.stringify(item))
       moveState.fromCatIndex = catIdx
@@ -242,13 +281,11 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
 
   const cleanupListeners = () => {
     document.removeEventListener('mousemove', handleGlobalMouseMove)
+    document.removeEventListener('keydown', handleGlobalKeydown)
   }
 
   const cancelMove = () => {
-    if (touchTimer) {
-      clearTimeout(touchTimer)
-      touchTimer = null
-    }
+    clearLongPressTimer()
     resetState()
     cleanupListeners()
     cleanupTouchListeners()

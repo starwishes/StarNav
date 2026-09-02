@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../src/server/services/system/settingsService.js', () => ({
@@ -9,7 +10,8 @@ vi.mock('../../../src/server/services/system/settingsService.js', () => ({
   }
 }))
 
-const { systemSettingsService } = await import('../../../src/server/services/system/systemSettingsService.js')
+const { systemSettingsService } =
+  await import('../../../src/server/services/system/systemSettingsService.js')
 const { settingsService } = await import('../../../src/server/services/system/settingsService.js')
 
 describe('SystemSettingsService', () => {

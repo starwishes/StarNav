@@ -23,7 +23,13 @@ export const ADMIN_BOOTSTRAP_PASSWORD_PATH = path.join(DATA_DIR, '.admin_bootstr
  * 默认管理员名称 (主数据拥有者)
  */
 export const DEFAULT_ADMIN_NAME = process.env.ADMIN_USERNAME || 'admin'
-export const TRUST_PROXY = process.env.TRUST_PROXY === 'true'
+/**
+ * 默认信任一层反向代理：Express 从 X-Forwarded-For 读取真实客户端 IP，
+ * 日志/会话/限流均按真实 IP 处理（覆盖最常见的反代部署形态）。
+ * 仅当应用端口直连公网（无受信任反代）时显式设为 "false"，
+ * 避免客户端伪造 X-Forwarded-For 头绕过基于 IP 的限流。
+ */
+export const TRUST_PROXY = process.env.TRUST_PROXY !== 'false'
 
 const TEST_JWT_SECRET = 'test-jwt-secret-for-vitest-only-0123456789abcdef'
 const isTestRuntime = () =>
@@ -68,6 +74,9 @@ export const getOrCreateJwtSecret = () => {
     return secret
   } catch (err) {
     logger.error('获取或创建 JWT 密钥失败', err)
+    logger.error(
+      '⚠️  使用临时 JWT 密钥继续启动：每次重启都会生成新密钥，所有已登录会话将在重启后失效。请检查 DATA_DIR 权限并设置 JWT_SECRET 环境变量'
+    )
     return crypto.randomBytes(32).toString('hex')
   }
 }
@@ -169,6 +178,16 @@ export const validateEnv = () => {
     if (!corsOrigins) {
       warnings.push('生产环境建议设置 CORS_ORIGINS 以限制访问来源')
     }
+
+    // TLS 终止在反代、又未配置 CORS_ORIGINS 时：
+    // 计算出的请求源为 http://host，而浏览器 Origin 为 https://host，
+    // 会导致所有 Cookie 写请求 403（fail-closed 但难以排查）。提前提示。
+    // 此分支仅在 TRUST_PROXY=false 时触发，顺带提醒该配置的 IP 语义副作用。
+    if (!corsOrigins && trustProxy === 'false') {
+      warnings.push(
+        '若 HTTPS 由反向代理终止：请配置 CORS_ORIGINS 为实际访问域名，否则基于 Cookie 的写请求可能全部被来源校验拒绝（403）；同时 TRUST_PROXY=false 会使会话/审计 IP 显示为反代出口'
+      )
+    }
   }
 
   // 5. PORT 校验
@@ -212,21 +231,33 @@ export const validateEnv = () => {
   }
 
   // 8. TRUST_PROXY 校验
-  // 注意：TRUST_PROXY 关闭（默认）时 Express 会把反向代理出口 IP 当作客户端 IP，
-  // 基于 IP 的限流器（见 middleware/limiter.ts）会共享同一 key。登录限流已按
-  // IP+username 复合 key，避免单代理 IP 下全站账号被整体锁定；如需精确识别
-  // 真实客户端 IP，请在受信任代理后显式设置 TRUST_PROXY=true。
+  // 默认信任一层反向代理（TRUST_PROXY=true）：Express 从 X-Forwarded-For 读取
+  // 真实客户端 IP，日志/会话/限流均按真实 IP 记录。仅当应用端口直连公网
+  // （无受信任反代）时建议显式 TRUST_PROXY=false，避免客户端伪造
+  // X-Forwarded-For 头绕过基于 IP 的限流（见 middleware/limiter.ts）。
   if (
     trustProxy !== undefined &&
     trustProxy !== '' &&
     trustProxy !== 'true' &&
     trustProxy !== 'false'
   ) {
-    errors.push('TRUST_PROXY 仅支持 "true"、"false" 或留空关闭')
+    errors.push('TRUST_PROXY 仅支持 "true"、"false" 或留空（默认 true）')
   }
 
-  if (trustProxy === 'true') {
-    warnings.push('TRUST_PROXY=true：仅应在受信任的反向代理之后启用')
+  if (trustProxy === 'false') {
+    warnings.push(
+      'TRUST_PROXY=false：若经反向代理部署，会话/审计日志将显示反代出口 IP 而非真实客户端 IP'
+    )
+  }
+
+  // 方案 B：生产环境未显式设置 TRUST_PROXY 时给出告警。
+  // 默认 trust proxy=1 意味着“信任一层反代”，会无条件采纳 X-Forwarded-For；
+  // 若端口直连公网（compose 默认 8080:8080 暴露，无受信任反代），攻击者可
+  // 伪造 XFF 绕过按 IP 的限流并污染会话/审计 IP。
+  if (isProduction && (trustProxy === undefined || trustProxy === '')) {
+    warnings.push(
+      'TRUST_PROXY 未显式设置（默认信任一层反代）：若本服务端口直连公网（无反向代理），客户端可伪造 X-Forwarded-For 头绕过基于 IP 的限流并污染审计 IP，建议显式设置 TRUST_PROXY=false'
+    )
   }
 
   // 输出结果

@@ -1,4 +1,5 @@
 import type { Category, Item, SiteConfig } from '@/types'
+import { normalizeUrl } from '@common/url'
 
 type RawCategory = Partial<Omit<Category, 'id' | 'level' | 'parentId'>> & {
   id?: number | string
@@ -226,7 +227,12 @@ export const findDuplicateItemByUrl = (items: Item[], url: string, excludeId?: n
     return null
   }
 
-  const targetUrl = url.trim().toLowerCase()
+  // 与添加/导入/清理共用同一 canonicalizer（去尾部斜杠/跟踪参数、归一化 host），
+  // 否则 https://x.com/ 与 https://x.com 会漏判为两条近重复
+  const targetKey = normalizeUrl(url)
+  if (!targetKey) {
+    return null
+  }
 
   return (
     items.find((item) => {
@@ -234,7 +240,8 @@ export const findDuplicateItemByUrl = (items: Item[], url: string, excludeId?: n
         return false
       }
 
-      return (item.url || '').trim().toLowerCase() === targetUrl
+      const itemKey = normalizeUrl(item.url || '')
+      return itemKey !== '' && itemKey === targetKey
     }) || null
   )
 }

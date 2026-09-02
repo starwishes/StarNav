@@ -2,7 +2,6 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 import pkg from './package.json'
-import viteCompression from 'vite-plugin-compression'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
@@ -20,32 +19,21 @@ export default defineConfig(() => {
           // Drop previous precaches after deploy so old AdminDashboard-*.js hashes die quickly.
           cleanupOutdatedCaches: true,
           // 首页是核心离线场景，后台和反馈弹层属于按需能力，不必在安装阶段全部预缓存。
+          // 注：多数管理子视图（AuditLog/BookmarkImport/ProfileSettings/RecycleBin/
+          // SessionManager/StatsDashboard/SystemHealth/feedback-core）已静态并入
+          // AdminDashboard chunk，其余为异步路由懒加载 chunk，名单按 dist/assets 实际
+          // chunk 收敛，避免死条目。
           globIgnores: [
             'assets/js/AdminDashboard-*.js',
-            'assets/js/AuditLog-*.js',
-            'assets/js/BookmarkImport-*.js',
             'assets/js/DataManager-*.js',
             'assets/js/MonitoringDashboard-*.js',
-            'assets/js/ProfileSettings-*.js',
-            'assets/js/RecycleBin-*.js',
-            'assets/js/SessionManager-*.js',
-            'assets/js/StatsDashboard-*.js',
-            'assets/js/SystemHealth-*.js',
             'assets/js/SystemSettings-*.js',
             'assets/js/UserTable-*.js',
             'assets/css/AdminDashboard-*.css',
-            'assets/css/AuditLog-*.css',
-            'assets/css/BookmarkImport-*.css',
             'assets/css/DataManager-*.css',
             'assets/css/MonitoringDashboard-*.css',
-            'assets/css/ProfileSettings-*.css',
-            'assets/css/RecycleBin-*.css',
-            'assets/css/SessionManager-*.css',
-            'assets/css/StatsDashboard-*.css',
-            'assets/css/SystemHealth-*.css',
             'assets/css/SystemSettings-*.css',
-            'assets/css/UserTable-*.css',
-            'assets/js/feedback-core-*.js'
+            'assets/css/UserTable-*.css'
           ],
           runtimeCaching: [
             {
@@ -65,6 +53,7 @@ export default defineConfig(() => {
               }
             },
             {
+              // 经 /api/favicon 代理的站点图标：同源请求，缓存可控
               urlPattern: /\/api\/favicon\?url=/,
               handler: 'CacheFirst',
               options: {
@@ -77,21 +66,11 @@ export default defineConfig(() => {
                   statuses: [0, 200]
                 }
               }
-            },
-            {
-              urlPattern: /^https?:\/\/.*\/favicon\.ico(?:\?.*)?$/,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'starnav-site-favicons',
-                expiration: {
-                  maxEntries: 300,
-                  maxAgeSeconds: 60 * 60 * 24 * 30
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
             }
+            // 注意：不再缓存任意跨源 favicon.ico。
+            // 让 SW 拦截并缓存所有 http(s)://host/favicon.ico 会把页面发往任意
+            // 第三方域的请求都纳入 SW 缓存（含 no-cors opaque 响应），既扩大
+            // 拦截面又难以审计；这类图标改由浏览器 HTTP 缓存承担即可。
           ]
         },
         manifest: {
@@ -100,11 +79,19 @@ export default defineConfig(() => {
           description: '您的个性化导航助手',
           theme_color: '#ffffff',
           icons: [
+            // Chrome 的可安装性要求 PNG 图标（SVG 不满足 install criteria）；
+            // 由 scripts/build-pwa-icons.mjs 从 pwa-icon.svg 光栅化生成。
             {
-              src: 'pwa-icon.svg',
+              src: 'pwa-icon-192.png',
               sizes: '192x192',
-              type: 'image/svg+xml'
+              type: 'image/png'
             },
+            {
+              src: 'pwa-icon-512.png',
+              sizes: '512x512',
+              type: 'image/png'
+            },
+            // Safari/Firefox 支持 SVG 图标，保留作为补充
             {
               src: 'pwa-icon.svg',
               sizes: '512x512',
@@ -112,37 +99,11 @@ export default defineConfig(() => {
             }
           ]
         }
-      }),
-      // 生产环境开启 gzip 压缩
-      viteCompression({
-        verbose: true, // 是否在控制台输出压缩结果
-        disable: false, // 是否禁用
-        threshold: 10240, // 体积大于 threshold 才会被压缩，单位 b（10KB）
-        algorithm: 'gzip', // 压缩算法，可选 ['gzip', 'brotliCompress', 'deflate', 'deflateRaw']
-        ext: '.gz', // 生成的压缩包后缀
-        deleteOriginFile: false // 压缩后是否删除源文件
-      }),
-      // 生产环境开启 brotli 压缩
-      viteCompression({
-        verbose: true,
-        disable: false,
-        threshold: 10240,
-        algorithm: 'brotliCompress',
-        ext: '.br',
-        deleteOriginFile: false
-      }),
-      // 前端资源预加载优化
-      {
-        name: 'resource-hints',
-        transformIndexHtml(html) {
-          return html.replace(
-            '</head>',
-            `  <link rel="preconnect" href="/api">
-  <link rel="dns-prefetch" href="/api">
-</head>`
-          )
-        }
-      }
+      })
+      // 第 16 轮：不再生成 .gz 预压缩产物。
+      // vite-plugin-compression 上游多年未维护（peer 仅支持 vite ^2），且服务端已启用
+      // compression() 动态压缩；.gz 预压缩只对"纯静态托管、不经本服务"的部署形态有意义，
+      // 该形态不在本项目单进程（server.ts 静态托管 dist）的支持范围内，故移除依赖。
     ],
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version)
@@ -172,8 +133,13 @@ export default defineConfig(() => {
               if (id.includes('vue-i18n') || id.includes('@intlify')) {
                 return 'i18n'
               }
-              // Vue 核心库
-              if (id.includes('vue') && !id.includes('element')) {
+              // Vue 核心库（vue-i18n/vue-router 已在上方单独分组）
+              // 注意：当前 rolldown 下 `vue` 包的模块经 vue-i18n 的
+              // runtime esm-bundler 别名转发后，实际归属 i18n chunk，
+              // 这里的 vue-core chunk 往往只是对 i18n chunk 的纯 re-export。
+              // 分组意图是"按依赖归类便于缓存复用"，实际归属以产物为准，
+              // 不追求进一步拆分（避免无收益的 chunk 抖动）。
+              if (id.includes('vue')) {
                 return 'vue-core'
               }
               // Pinia 状态管理
@@ -200,7 +166,8 @@ export default defineConfig(() => {
       minify: 'terser',
       terserOptions: {
         compress: {
-          drop_console: true, // 移除 console
+          // 只移除纯 console.log，保留 warn/error 便于线上排查
+          pure_funcs: ['console.log'],
           drop_debugger: true
         }
       }

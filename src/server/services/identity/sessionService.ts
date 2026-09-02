@@ -5,8 +5,16 @@ import type { SessionCreateOptions } from '../../types/domain.js'
 import type { SessionRow, SessionListRow } from '../../types/sqliteRows.js'
 
 const SESSION_EXPIRE_DAYS = 7
-const ACTIVE_SESSION_CONDITION = `datetime(expires_at) > datetime('now')`
-const EXPIRED_SESSION_CONDITION = `datetime(expires_at) <= datetime('now')`
+// 写侧时间统一为 ISO 风格（strftime('%Y-%m-%dT%H:%M:%fZ','now')），
+// 比较侧也必须用同一格式做字符串比较。round-4 前使用 datetime('now') 写入的
+// 旧数据是 'YYYY-MM-DD HH:MM:SS'（空格格式），直接与 ISO 字符串比较会恒判过期，
+// 因此比较前用 replace 把旧格式的空格归一为 'T'（低成本兼容，无副作用）。
+// 取舍说明：replace 使 idx_sessions_expires 索引对该表达式非 sargable（无法走索引），
+// 但 sessions 表极小（每用户数行），全表扫描成本可忽略；已评估一次性启动迁移
+// （UPDATE sessions SET expires_at=replace(expires_at,' ','T')）后再去掉比较侧 replace，
+// 但旧备份/旧版本进程恢复的库仍可能混入空格格式，保留 replace 的兼容窗口更稳妥，故维持现状。
+const ACTIVE_SESSION_CONDITION = `replace(expires_at, ' ', 'T') > strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`
+const EXPIRED_SESSION_CONDITION = `replace(expires_at, ' ', 'T') <= strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`
 
 /**
  * 会话管理服务 (SQLite 版本)
@@ -41,9 +49,9 @@ export const sessionService = {
 
     if (existingSession) {
       // 会话仍然有效，更新活跃时间
-      db.prepare(`UPDATE sessions SET last_active_at = datetime('now') WHERE session_id = ?`).run(
-        existingSession.session_id
-      )
+      db.prepare(
+        `UPDATE sessions SET last_active_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE session_id = ?`
+      ).run(existingSession.session_id)
       logger.info(`复用现有会话: ${username} (${existingSession.session_id.substring(0, 8)}...)`)
       return existingSession.session_id
     }
@@ -62,7 +70,7 @@ export const sessionService = {
                 last_active_at,
                 expires_at
             )
-            VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), ?)
+            VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), ?)
         `
     ).run(sessionId, username, ip, userAgent, expiresAt.toISOString())
 
@@ -92,10 +100,11 @@ export const sessionService = {
     }
 
     // 节流更新最后活跃时间：距上次更新不足 5 分钟时跳过写库，
-    // 避免每个已认证请求都触发一次 SQLite 写操作
+    // 避免每个已认证请求都触发一次 SQLite 写操作。
+    // last_active_at 同样做空格格式归一，避免旧数据被当作"永远过期"而每次刷新。
     db.prepare(
-      `UPDATE sessions SET last_active_at = datetime('now')
-       WHERE session_id = ? AND last_active_at <= datetime('now', '-5 minutes')`
+      `UPDATE sessions SET last_active_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+       WHERE session_id = ? AND replace(last_active_at, ' ', 'T') <= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-5 minutes')`
     ).run(sessionId)
 
     return true
@@ -163,32 +172,6 @@ export const sessionService = {
     if (result.changes > 0) {
       logger.info(`撤销 ${username} 的 ${result.changes} 个其他会话`)
     }
-    return result.changes
-  },
-
-  /**
-   * 用户改名后迁移会话归属
-   */
-  renameUsername(oldUsername: string, newUsername: string) {
-    if (!oldUsername || !newUsername || oldUsername === newUsername) {
-      return 0
-    }
-
-    const db = getDb()
-    const result = db
-      .prepare(
-        `
-            UPDATE sessions
-            SET username = ?
-            WHERE username = ?
-        `
-      )
-      .run(newUsername, oldUsername)
-
-    if (result.changes > 0) {
-      logger.info(`会话归属迁移成功: ${oldUsername} -> ${newUsername} (${result.changes})`)
-    }
-
     return result.changes
   },
 

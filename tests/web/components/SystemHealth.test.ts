@@ -151,7 +151,7 @@ describe('SystemHealth', () => {
     expect(wrapper.text()).toContain('database unavailable')
   })
 
-  it('keeps the skeleton visible when health loading fails', async () => {
+  it('shows an error state with retry when health loading fails', async () => {
     mocks.getSystemHealth.mockRejectedValue(new Error('boom'))
     vi.spyOn(console, 'error').mockImplementation(() => {})
 
@@ -166,7 +166,42 @@ describe('SystemHealth', () => {
     await Promise.resolve()
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.find('.skeleton-grid').exists()).toBe(true)
-    expect(wrapper.find('.health-grid').text()).not.toContain('translated:health.healthy')
+    // 失败时不再无限停留在骨架屏：渲染错误态 + 重试按钮。
+    expect(wrapper.find('.skeleton-grid').exists()).toBe(false)
+    expect(wrapper.find('.error-card').exists()).toBe(true)
+    expect(wrapper.text()).toContain('translated:health.loadFailed')
+    expect(wrapper.text()).toContain('translated:common.retry')
+
+    // 重试成功后回到正常内容
+    mocks.getSystemHealth.mockResolvedValue({
+      status: 'healthy',
+      version: '1.0.0',
+      timestamp: '2026-04-13T10:00:00.000Z',
+      checks: {
+        uptime: 10,
+        memory: { rss: '1 MB', heapUsed: '1 MB', heapTotal: '2 MB' },
+        database: {
+          ok: true,
+          size: 1,
+          tables: 1,
+          quickCheck: 'ok',
+          journalMode: 'wal',
+          writable: true,
+          dbPath: '/data/db'
+        },
+        cache: { hits: 0, misses: 0, keys: 0 },
+        runtime: {
+          nodeEnv: 'production',
+          authCookieSecureMode: 'auto',
+          cspUpgradeInsecureRequests: false,
+          corsOriginsConfigured: false
+        }
+      }
+    })
+    await wrapper.find('.error-retry').trigger('click')
+    await Promise.resolve()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.error-card').exists()).toBe(false)
+    expect(wrapper.text()).toContain('translated:health.healthy')
   })
 })

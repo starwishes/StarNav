@@ -14,6 +14,5 @@ export type UserLevel = (typeof USER_LEVEL)[keyof typeof USER_LEVEL]
 
 export const DEFAULT_CONFIG = {
   PAGE_SIZE: 50,
-  MAX_LOGIN_ATTEMPTS: 5,
-  JWT_EXPIRES_IN: '7d'
+  MAX_LOGIN_ATTEMPTS: 5
 } as const

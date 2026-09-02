@@ -4,7 +4,7 @@ import { clearBootstrapPasswordFile } from './adminBootstrapService.js'
 import { auditService } from './auditService.js'
 import { sessionService } from './sessionService.js'
 import { ensureExistingUser, ensureStrongPassword } from './identityHelpers.js'
-import { errors } from '../../middleware/errorHandler.js'
+import { errors } from '../../utils/errors.js'
 import type {
   AuditClearQuery,
   AuthCredentials,
@@ -12,7 +12,7 @@ import type {
   RequestContextLike
 } from '../../types/domain.js'
 
-// 与前端构造的 UTC 时间格式保持一致（audit_logs.created_at 为 datetime('now') 存储）
+// 与前端构造的 UTC 时间格式保持一致（audit_logs.created_at 以 strftime('%Y-%m-%dT%H:%M:%fZ','now') 存储）
 const AUDIT_BEFORE_RE = /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/
 
 const isRealDate = (str: string): boolean => {
@@ -135,6 +135,15 @@ export const adminIdentityService = {
 
   deleteUser(targetUsername: string, context: RequestContextLike = {}) {
     ensureExistingUser(targetUsername)
+
+    if (targetUsername === DEFAULT_ADMIN_NAME) {
+      throw errors.badRequest('不能删除主管理员账户')
+    }
+
+    if (context.operator && targetUsername === context.operator) {
+      throw errors.badRequest('不能删除当前登录账户')
+    }
+
     sessionService.revokeByUsername(targetUsername)
 
     if (!accountService.delete(targetUsername)) {

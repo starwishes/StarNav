@@ -2,13 +2,38 @@ import { logger } from '../../utils/logger.js'
 
 /**
  * 书签域内存快照缓存（categories + items）
+ *
  * 与 `cacheRuntimeService` / `cacheService`（通用 TTL 缓存）相互独立；
- * 统一失效入口见后续 Phase 3。
+ * 统一的失效入口为 `cacheInvalidationService.invalidateBookmarkCaches`，
+ * 写路径（`bookmarkMutationService`）在变更后调用。
  */
 
+/** 快照内书签行的规范形态（由 mapBookmarkRow 产出，camelCase） */
+export interface BookmarkSnapshotItem {
+  id: number
+  name: string
+  url: string
+  description: string
+  categoryId: number
+  level: number
+  pinned: boolean
+  clickCount: number
+  lastVisited?: string | null
+  [key: string]: unknown
+}
+
+/** 快照内分类行的规范形态（由 mapCategoryRow 产出，camelCase） */
+export interface BookmarkSnapshotCategory {
+  id: number
+  name: string
+  level: number
+  parentId: number | null
+  [key: string]: unknown
+}
+
 export interface BookmarkSnapshotCache {
-  categories: Array<Record<string, unknown>>
-  items: Array<Record<string, unknown>>
+  categories: BookmarkSnapshotCategory[]
+  items: BookmarkSnapshotItem[]
 }
 
 declare global {
@@ -25,9 +50,11 @@ export function rebuildCache(
   categories: Array<Record<string, unknown>>,
   items: Array<Record<string, unknown>>
 ) {
+  // 行来自 mapCategoryRow / mapBookmarkRow（camelCase 规范形态），
+  // 与快照接口一致；这里仅在边界断言形态，读侧按接口类型消费。
   global.__STARNAV_CACHE__ = {
-    categories,
-    items
+    categories: categories as BookmarkSnapshotCategory[],
+    items: items as BookmarkSnapshotItem[]
   }
   logger.debug('缓存已重建')
 }
@@ -55,15 +82,14 @@ export function patchItemClickInCache(
   }
 
   const id = Number(itemId)
-  const item = cache.items.find((row) => Number(row.id) === id)
+  const item = cache.items.find((row) => row.id === id)
   if (!item) {
     return false
   }
 
+  // 快照统一为 camelCase（mapBookmarkRow 产出），只需更新规范字段
   item.clickCount = clickCount
-  item.click_count = clickCount
   item.lastVisited = lastVisited ?? null
-  item.last_visited = lastVisited ?? null
   logger.debug(`快照已原地更新点击: item=${id} count=${clickCount}`)
   return true
 }

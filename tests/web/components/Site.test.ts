@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
 let adminStoreMock: any
 let dataStoreMock: any
 let loadingRef = ref(false)
+let loadErrorRef = ref('')
 let filteredDataRef = ref<any[]>([])
 let contextMenuState: any
 let moveState: any
@@ -43,7 +44,8 @@ vi.mock('@/store/data', () => ({
 
 vi.mock('pinia', () => ({
   storeToRefs: () => ({
-    loading: loadingRef
+    loading: loadingRef,
+    loadError: loadErrorRef
   })
 }))
 
@@ -203,6 +205,7 @@ describe('Site', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     loadingRef = ref(false)
+    loadErrorRef = ref('')
     filteredDataRef = ref([])
     selectionModeRef = ref(false)
     selectedItems = new Set<number>()
@@ -287,6 +290,21 @@ describe('Site', () => {
       expect(section.classes()).not.toContain('tone-light')
       expect(section.classes()).not.toContain('tone-dark')
     }
+  })
+
+  it('shows a load-error state with retry instead of the misleading empty state', async () => {
+    loadErrorRef.value = 'boom'
+
+    const wrapper = createWrapper()
+    await flushAsync()
+
+    expect(wrapper.find('.sn-error-state').exists()).toBe(true)
+    expect(wrapper.text()).toContain('translated:common.loadFailed')
+    expect(wrapper.find('.empty-title').exists()).toBe(false)
+
+    await wrapper.find('.sn-error-state button').trigger('click')
+    // 挂载时 loadData 一次 + 重试点击一次
+    expect(dataStoreMock.loadData).toHaveBeenCalledTimes(2)
   })
 
   it('tracks normal item clicks and short-circuits to drag placement while moving', async () => {

@@ -1,13 +1,31 @@
 import { getDb } from '../../src/server/services/database/database.js'
 import { accountService } from '../../src/server/services/identity/accountService.js'
-import { authenticate, optionalAuth } from '../../src/server/middleware/auth.js'
+import {
+  authenticate,
+  ensureTrustedCookieWriteOriginMiddleware,
+  optionalAuth
+} from '../../src/server/middleware/auth.js'
 import { authController } from '../../src/server/controllers/authController.js'
 import { bookmarkController } from '../../src/server/controllers/bookmarkController.js'
 import { invalidateCache } from '../../src/server/services/bookmark/cache.js'
+import { clickIpLimiter, clickLimiter } from '../../src/server/middleware/limiter.js'
 
 const normalizeHeaders = (headers = {}) =>
   Object.fromEntries(Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]))
 
+/**
+ * 集成测试路由表（受控近似，非生产路由全量镜像）。
+ *
+ * 局限说明：
+ * - 仅覆盖集成测试实际用到的路由，且逐条手写 handler 链；新增/调整生产路由时
+ *   必须同步本表（tests/server/routes/routeMounting.test.js 断言生产挂载链，可作对照）。
+ * - 不包含 HTTP 层中间件（helmet/cors/body-parser/compression/静态文件与 SPA 回退），
+ *   因此 cookie 写请求的 CORS 来源校验等"浏览器侧"行为不在本表体现。
+ * - 点击计数路由的中间件链与生产保持完全一致（optionalAuth → origin 校验 →
+ *   clickLimiter → clickIpLimiter → controller），防止被测链路与生产漂移。
+ * - 全链路（真实 HTTP + 完整中间件）覆盖在 tests/smoke/runtime.smoke.test.js
+ *   （启动真实 server 实例），本表定位为 controller+service 级集成，不重复起服务。
+ */
 const buildRouteTable = () => [
   {
     method: 'POST',
@@ -77,7 +95,13 @@ const buildRouteTable = () => [
     method: 'POST',
     pattern: /^\/api\/sites\/([^/]+)\/click$/,
     paramNames: ['id'],
-    handlers: [bookmarkController.trackClick]
+    handlers: [
+      optionalAuth,
+      ensureTrustedCookieWriteOriginMiddleware,
+      clickLimiter,
+      clickIpLimiter,
+      bookmarkController.trackClick
+    ]
   }
 ]
 
@@ -362,8 +386,6 @@ export function resetTestDatabase() {
     db.prepare('DELETE FROM categories').run()
     db.prepare('DELETE FROM users').run()
     db.prepare('DELETE FROM sessions').run()
-    db.prepare('DELETE FROM visit_logs').run()
-    db.prepare('DELETE FROM daily_stats').run()
     invalidateCache()
   } catch (err) {
     console.error('重置数据库失败:', err.message)

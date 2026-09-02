@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('fs', () => ({
@@ -16,8 +17,14 @@ vi.mock('../../../src/server/utils/logger.js', () => ({
   }
 }))
 
+vi.mock('../../../src/server/services/database/databaseBackupValidator.js', () => ({
+  assertRestorableBackup: vi.fn()
+}))
+
 const fs = (await import('fs')).default
 const { logger } = await import('../../../src/server/utils/logger.js')
+const { assertRestorableBackup } =
+  await import('../../../src/server/services/database/databaseBackupValidator.js')
 const { databaseMaintenanceService } =
   await import('../../../src/server/services/database/databaseMaintenanceService.js')
 
@@ -28,8 +35,8 @@ describe('DatabaseMaintenanceService', () => {
     fs.copyFileSync.mockReset()
     fs.mkdirSync.mockReset()
     fs.rmSync.mockReset()
+    assertRestorableBackup.mockReset()
   })
-
   it('should run a restart checkpoint', () => {
     const db = {
       pragma: vi.fn()
@@ -54,66 +61,86 @@ describe('DatabaseMaintenanceService', () => {
     expect(logger.error).toHaveBeenCalledWith('数据库 Checkpoint 失败', error)
   })
 
-  it('should create a backup after checkpointing the current database file', () => {
+  it('should create a consistent backup via VACUUM INTO after checkpointing', () => {
     const checkpoint = vi.fn()
+    const db = {
+      exec: vi.fn()
+    }
     fs.existsSync.mockReturnValue(true)
 
     const result = databaseMaintenanceService.backupDatabase({
+      db,
       dbPath: '/tmp/starnav.db',
       checkpoint
     })
 
     expect(checkpoint).toHaveBeenCalled()
-    expect(fs.copyFileSync).toHaveBeenCalledWith('/tmp/starnav.db', '/tmp/starnav.db.bak')
+    expect(fs.rmSync).toHaveBeenCalledWith('/tmp/starnav.db.bak', { force: true })
+    expect(db.exec).toHaveBeenCalledWith("VACUUM INTO '/tmp/starnav.db.bak'")
     expect(result).toEqual({
       success: true,
+      code: 'BACKUP_OK',
       path: '/tmp/starnav.db.bak'
     })
   })
 
   it('should support custom backup output paths', () => {
     const checkpoint = vi.fn()
+    const db = {
+      exec: vi.fn()
+    }
     fs.existsSync.mockReturnValue(true)
 
     const result = databaseMaintenanceService.backupDatabase({
+      db,
       dbPath: '/tmp/starnav.db',
       checkpoint,
       outputPath: '/var/backups/starnav-1.db.bak'
     })
 
     expect(fs.mkdirSync).toHaveBeenCalledWith('/var/backups', { recursive: true })
-    expect(fs.copyFileSync).toHaveBeenCalledWith('/tmp/starnav.db', '/var/backups/starnav-1.db.bak')
+    expect(db.exec).toHaveBeenCalledWith("VACUUM INTO '/var/backups/starnav-1.db.bak'")
     expect(result).toEqual({
       success: true,
+      code: 'BACKUP_OK',
       path: '/var/backups/starnav-1.db.bak'
     })
   })
 
   it('should report missing database files without checkpointing', () => {
     const checkpoint = vi.fn()
+    const db = {
+      exec: vi.fn()
+    }
     fs.existsSync.mockReturnValue(false)
 
     const result = databaseMaintenanceService.backupDatabase({
+      db,
       dbPath: '/tmp/missing.db',
       checkpoint
     })
 
     expect(checkpoint).not.toHaveBeenCalled()
+    expect(db.exec).not.toHaveBeenCalled()
     expect(result).toEqual({
       success: false,
+      code: 'BACKUP_FAILED',
       error: '数据库文件不存在'
     })
   })
 
-  it('should report backup copy failures', () => {
+  it('should report backup failures', () => {
     const checkpoint = vi.fn()
     const error = new Error('disk full')
+    const db = {
+      exec: vi.fn(() => {
+        throw error
+      })
+    }
     fs.existsSync.mockReturnValue(true)
-    fs.copyFileSync.mockImplementation(() => {
-      throw error
-    })
 
     const result = databaseMaintenanceService.backupDatabase({
+      db,
       dbPath: '/tmp/starnav.db',
       checkpoint
     })
@@ -122,6 +149,7 @@ describe('DatabaseMaintenanceService', () => {
     expect(logger.error).toHaveBeenCalledWith('数据库备份失败', error)
     expect(result).toEqual({
       success: false,
+      code: 'BACKUP_FAILED',
       error: 'disk full'
     })
   })
@@ -137,6 +165,7 @@ describe('DatabaseMaintenanceService', () => {
       snapshotPath: '/tmp/backups/pre-restore.db.bak'
     })
 
+    expect(assertRestorableBackup).toHaveBeenCalledWith('/tmp/backups/source.db.bak')
     expect(fs.mkdirSync).toHaveBeenCalledWith('/tmp/backups', { recursive: true })
     expect(fs.copyFileSync).toHaveBeenNthCalledWith(
       1,
@@ -152,6 +181,7 @@ describe('DatabaseMaintenanceService', () => {
     )
     expect(result).toEqual({
       success: true,
+      code: 'RESTORE_OK',
       path: '/tmp/starnav.db',
       previousBackupPath: '/tmp/backups/pre-restore.db.bak'
     })
@@ -165,6 +195,7 @@ describe('DatabaseMaintenanceService', () => {
       backupPath: '/tmp/backups/source.db.bak'
     })
 
+    expect(assertRestorableBackup).toHaveBeenCalledWith('/tmp/backups/source.db.bak')
     expect(fs.mkdirSync).toHaveBeenCalledWith('/tmp/data', { recursive: true })
     expect(fs.copyFileSync).toHaveBeenCalledWith(
       '/tmp/backups/source.db.bak',
@@ -172,6 +203,7 @@ describe('DatabaseMaintenanceService', () => {
     )
     expect(result).toEqual({
       success: true,
+      code: 'RESTORE_OK',
       path: '/tmp/data/starnav.db',
       previousBackupPath: null
     })
@@ -185,11 +217,35 @@ describe('DatabaseMaintenanceService', () => {
       backupPath: '/tmp/missing.db.bak'
     })
 
+    expect(assertRestorableBackup).not.toHaveBeenCalled()
     expect(result).toEqual({
       success: false,
+      code: 'RESTORE_FAILED',
       error: '备份文件不存在'
     })
     expect(fs.copyFileSync).not.toHaveBeenCalled()
+  })
+
+  it('should refuse to restore when the backup fails SQLite validation', () => {
+    const validationError = new Error('备份文件完整性检查未通过: garbage')
+    assertRestorableBackup.mockImplementation(() => {
+      throw validationError
+    })
+    fs.existsSync.mockImplementation((target) => target === '/tmp/backups/source.db.bak')
+
+    const result = databaseMaintenanceService.restoreDatabase({
+      dbPath: '/tmp/starnav.db',
+      backupPath: '/tmp/backups/source.db.bak'
+    })
+
+    expect(assertRestorableBackup).toHaveBeenCalledWith('/tmp/backups/source.db.bak')
+    expect(fs.copyFileSync).not.toHaveBeenCalled()
+    expect(logger.error).toHaveBeenCalledWith('数据库恢复失败', validationError)
+    expect(result).toEqual({
+      success: false,
+      code: 'RESTORE_FAILED',
+      error: '备份文件完整性检查未通过: garbage'
+    })
   })
 
   it('should report restore failures after snapshot preparation starts', () => {
@@ -211,6 +267,7 @@ describe('DatabaseMaintenanceService', () => {
     expect(logger.error).toHaveBeenCalledWith('数据库恢复失败', error)
     expect(result).toEqual({
       success: false,
+      code: 'RESTORE_FAILED',
       error: 'copy failed'
     })
   })

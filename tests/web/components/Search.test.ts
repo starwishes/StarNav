@@ -39,10 +39,17 @@ vi.mock('@/utils/feedback', () => ({
   }
 }))
 
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({
+    t: (key: string, params?: Record<string, unknown>) =>
+      params ? `${key}:${JSON.stringify(params)}` : `translated:${key}`
+  })
+}))
+
 const SearchBoxStub = defineComponent({
   name: 'SearchBox',
   props: ['modelValue', 'searchMode', 'placeholder'],
-  emits: ['update:modelValue', 'update:searchMode', 'focus', 'blur', 'enter', 'clear'],
+  emits: ['update:modelValue', 'update:searchMode', 'focus', 'blur', 'keydown', 'enter', 'clear'],
   setup(props, { emit, slots, expose }) {
     expose({
       focus: searchBoxFocusMock
@@ -59,6 +66,30 @@ const SearchBoxStub = defineComponent({
         }),
         h('button', { class: 'emit-enter', onClick: () => emit('enter') }, 'enter'),
         h('button', { class: 'emit-clear', onClick: () => emit('clear') }, 'clear'),
+        h(
+          'button',
+          {
+            class: 'emit-keydown-down',
+            onClick: () => emit('keydown', new KeyboardEvent('keydown', { key: 'ArrowDown' }))
+          },
+          'keydown-down'
+        ),
+        h(
+          'button',
+          {
+            class: 'emit-keydown-up',
+            onClick: () => emit('keydown', new KeyboardEvent('keydown', { key: 'ArrowUp' }))
+          },
+          'keydown-up'
+        ),
+        h(
+          'button',
+          {
+            class: 'emit-keydown-enter',
+            onClick: () => emit('keydown', new KeyboardEvent('keydown', { key: 'Enter' }))
+          },
+          'keydown-enter'
+        ),
         slots['engine-selector']?.()
       ])
   }
@@ -175,6 +206,7 @@ const SearchResultsStub = defineComponent({
           { class: 'results-suggestion-count' },
           String((props.suggestions as any[])?.length || 0)
         ),
+        h('span', { class: 'results-active-index' }, String(props.activeSuggestionIndex ?? -1)),
         h(
           'span',
           { class: 'results-first-suggestion' },
@@ -370,6 +402,60 @@ describe('Search', () => {
     expect(wrapper.find('.results-first-suggestion').text()).toBe('star nav')
   })
 
+  it('navigates online suggestions with arrow keys and fills the input with Enter', async () => {
+    mocks.getSuggestions.mockResolvedValue(['alpha', 'beta', 'gamma'])
+
+    const wrapper = createWrapper()
+    await wrapper.find('.emit-select-google').trigger('click')
+    await flushAsync()
+
+    await wrapper.find('.search-input-stub').setValue('a')
+    vi.advanceTimersByTime(300)
+    await flushAsync()
+
+    expect(wrapper.find('.results-suggestion-count').text()).toBe('3')
+    expect(wrapper.find('.results-active-index').text()).toBe('-1')
+
+    // ArrowDown moves onto the first suggestion, then wraps at the end
+    await wrapper.find('.emit-keydown-down').trigger('click')
+    await flushAsync()
+    expect(wrapper.find('.results-active-index').text()).toBe('0')
+
+    await wrapper.find('.emit-keydown-down').trigger('click')
+    await wrapper.find('.emit-keydown-down').trigger('click')
+    await flushAsync()
+    expect(wrapper.find('.results-active-index').text()).toBe('2')
+
+    await wrapper.find('.emit-keydown-down').trigger('click')
+    await flushAsync()
+    expect(wrapper.find('.results-active-index').text()).toBe('0')
+
+    // ArrowUp moves backwards and wraps at the start
+    await wrapper.find('.emit-keydown-up').trigger('click')
+    await flushAsync()
+    expect(wrapper.find('.results-active-index').text()).toBe('2')
+
+    // Enter picks the highlighted suggestion: input fills, suggestions clear,
+    // and the keyup.enter still drives handleEnter (no double-open here because
+    // the stub only emits keydown).
+    await wrapper.find('.emit-keydown-up').trigger('click')
+    await wrapper.find('.emit-keydown-enter').trigger('click')
+    await flushAsync()
+
+    expect((wrapper.find('.search-input-stub').element as HTMLInputElement).value).toBe('beta')
+    expect(wrapper.find('.results-suggestion-count').text()).toBe('0')
+    expect(mocks.openUrl).not.toHaveBeenCalled()
+
+    // Enter without a highlighted suggestion still submits the engine search
+    await wrapper.find('.search-input-stub').setValue('gpt')
+    vi.advanceTimersByTime(300)
+    await flushAsync()
+    await wrapper.find('.emit-enter').trigger('click')
+    await flushAsync()
+
+    expect(mocks.openUrl).toHaveBeenCalledWith('https://www.google.com/search?q=gpt')
+  })
+
   it.each([
     {
       provider: 'bing',
@@ -498,8 +584,8 @@ describe('Search', () => {
     await wrapper.find('.emit-add-engine').trigger('click')
     await flushAsync()
 
-    expect(mocks.messageWarning).toHaveBeenCalledWith('最多支持 5 个搜索引擎')
-    expect(wrapper.text()).not.toContain('添加搜索引擎')
+    expect(mocks.messageWarning).toHaveBeenCalledWith('engine.maxEngines:{"count":5}')
+    expect(wrapper.text()).not.toContain('translated:engine.dialogTitleAdd')
   })
 
   it('keeps the current engine selected when it is renamed', async () => {
@@ -540,9 +626,9 @@ describe('Search', () => {
     await wrapper.find('.emit-add-engine').trigger('click')
     await flushAsync()
 
-    expect(wrapper.text()).toContain('添加搜索引擎')
+    expect(wrapper.text()).toContain('translated:engine.dialogTitleAdd')
     await wrapper.find('form').trigger('submit')
-    expect(mocks.messageWarning).toHaveBeenCalledWith('请填写完整信息')
+    expect(mocks.messageWarning).toHaveBeenCalledWith('translated:engine.draftEmpty')
 
     const inputs = wrapper.findAll('.engine-form__input')
     await inputs[0].setValue('DuckDuckGo')
@@ -550,7 +636,7 @@ describe('Search', () => {
     await wrapper.find('form').trigger('submit')
     await flushAsync()
 
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('添加成功')
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:engine.addSuccess')
     expect(JSON.parse(localStorage.getItem('user_search_engines') || '[]')).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -565,7 +651,7 @@ describe('Search', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
     await flushAsync()
 
-    expect(wrapper.text()).not.toContain('添加搜索引擎')
+    expect(wrapper.text()).not.toContain('translated:engine.dialogTitleAdd')
   })
 
   it('normalizes search engine urls and rejects invalid search templates', async () => {
@@ -580,9 +666,7 @@ describe('Search', () => {
     await wrapper.find('form').trigger('submit')
     await flushAsync()
 
-    expect(mocks.messageWarning).toHaveBeenCalledWith(
-      '搜索地址需以查询参数赋值结尾，例如 https://www.google.com/search?q='
-    )
+    expect(mocks.messageWarning).toHaveBeenCalledWith('translated:engine.draftMissingSuffix')
 
     await inputs[1].setValue('duckduckgo.com/?q=')
     await wrapper.find('form').trigger('submit')

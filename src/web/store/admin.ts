@@ -1,38 +1,28 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import i18n from '@/plugins/i18n'
 import type { AuthUser, AuthResult, User } from '@/types'
 import type { SystemSettings } from '@/api'
 import { adminApi } from '@/api/admin'
 import { authApi } from '@/api'
-
-const readStoredAdminUser = () => {
-  try {
-    const raw = localStorage.getItem('admin_user')
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
+import { authStorage } from '@/utils/authStorage'
 
 export const useAdminStore = defineStore('admin', () => {
-  const token = ref<string | null>(null)
-  const user = ref<AuthUser | null>(readStoredAdminUser())
+  const user = ref<AuthUser | null>(authStorage.read())
   const isAuthenticated = ref<boolean>(!!user.value)
 
-  // 设置认证信息
-  const setAuth = (newToken: string, newUser: AuthUser) => {
-    token.value = newToken
+  // 会话由 HttpOnly Cookie 承载，前端无需持有/传递 token
+  const setAuth = (newUser: AuthUser) => {
     user.value = newUser
     isAuthenticated.value = true
-    localStorage.setItem('admin_user', JSON.stringify(newUser))
+    authStorage.write(newUser)
   }
 
   // 清除认证信息
   const clearAuth = () => {
-    token.value = null
     user.value = null
     isAuthenticated.value = false
-    localStorage.removeItem('admin_user')
+    authStorage.clear()
   }
 
   const logout = async () => {
@@ -53,14 +43,16 @@ export const useAdminStore = defineStore('admin', () => {
   ): Promise<AuthResult> => {
     try {
       const data = await authApi.login({ username, password, remember })
-      if (!data.token || !data.user) {
-        throw new Error(typeof data.error === 'string' ? data.error : '登录失败')
+      if (!data.user) {
+        throw new Error(
+          typeof data.error === 'string' ? data.error : i18n.global.t('auth.loginFailed')
+        )
       }
 
-      setAuth(data.token, data.user as AuthUser)
+      setAuth(data.user as AuthUser)
       return { success: true }
     } catch (error) {
-      const message = error instanceof Error ? error.message : '登录失败'
+      const message = error instanceof Error ? error.message : i18n.global.t('auth.loginFailed')
       return { success: false, error: message }
     }
   }
@@ -71,7 +63,7 @@ export const useAdminStore = defineStore('admin', () => {
       await authApi.register({ username, password })
       return { success: true }
     } catch (error) {
-      const message = error instanceof Error ? error.message : '注册失败'
+      const message = error instanceof Error ? error.message : i18n.global.t('auth.registerFailed')
       return { success: false, error: message }
     }
   }
@@ -100,7 +92,6 @@ export const useAdminStore = defineStore('admin', () => {
   ) => adminApi.updateUser(oldUsername, updateData)
 
   return {
-    token,
     user,
     isAuthenticated,
     setAuth,

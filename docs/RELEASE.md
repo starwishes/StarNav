@@ -21,14 +21,15 @@ npm run release:dry-run
 
 1. `npm run versions:check`
 2. `npm run lint:check`
-3. `npm run lint:ops`
-4. `npm run audit:prod`
-5. `npm run test:fast`
-6. `npm run test:smoke`
-7. `npm run build`
-8. `SKIP_BUILD=1 npm run test:browser`
-9. `npm run docker:smoke`
-10. 读取 `package.json` 当前版本，检查本地守门项是否齐全；如果同时设置了 `GITHUB_TOKEN` / `GH_TOKEN` 且本机有 `gh`，再顺带检查同名 GitHub Release 是否已存在
+3. `npm run typecheck`
+4. `npm run lint:ops`
+5. `npm run audit:prod`
+6. `npm run test:fast`
+7. `npm run test:smoke`
+8. `npm run build`
+9. `SKIP_BUILD=1 npm run test:browser`
+10. `npm run docker:smoke`
+11. 读取 `package.json` 当前版本，输出计划发布的版本号
 
 其中 `test:fast` 已经排除了真实 runtime smoke，只保留无端口的应用级 smoke；真正会起隔离实例的回归留在 `test:smoke`。
 `audit:prod` 只检查生产依赖，不会因为 dev-only 工具链告警而阻断发布演练。
@@ -52,7 +53,7 @@ npm run docker:smoke
 - 等待 `/api/health` 变为可用
 - 用显式管理员密码登录，确认主站核心运行链路可用
 
-本地执行 `docker:build` / `docker:smoke` 时，脚本会在未显式传 `APT_DEBIAN_MIRROR` / `APT_DEBIAN_SECURITY_MIRROR` 的情况下默认切到 TUNA 的 HTTP Debian 镜像（`http://mirrors.tuna.tsinghua.edu.cn/debian` / `http://mirrors.tuna.tsinghua.edu.cn/debian-security`）；GitHub Actions 等 `CI` 环境保持不注入镜像源。
+本地执行 `docker:build` / `docker:smoke` 时，脚本**不会**默认切换任何镜像源，apt 走 Debian 官方源；如网络受限可在执行时显式传 `APT_DEBIAN_MIRROR` / `APT_DEBIAN_SECURITY_MIRROR` 指向镜像站（例如 TUNA 的 HTTP Debian 镜像 `http://mirrors.tuna.tsinghua.edu.cn/debian` / `http://mirrors.tuna.tsinghua.edu.cn/debian-security`）。`CI` / `GITHUB_ACTIONS` 环境同样不注入镜像源。
 
 默认镜像基线固定为 `node:24.14.1-slim`。如果要验证新的 Node 24 patch 线，可临时覆盖：
 

@@ -23,11 +23,10 @@ export function useVirtualSiteGrid<T>(options: UseVirtualSiteGridOptions<T>) {
   const gridRef = ref<HTMLElement | null>(null)
   const columns = ref(1)
   const scrollOffset = ref(0)
-  const viewportHeight = ref(
-    typeof window !== 'undefined' ? window.innerHeight || 800 : 800
-  )
+  const viewportHeight = ref(typeof window !== 'undefined' ? window.innerHeight || 800 : 800)
 
   let resizeObserver: ResizeObserver | null = null
+  let measureRafId: number | null = null
 
   const measure = () => {
     const el = gridRef.value
@@ -42,6 +41,17 @@ export function useVirtualSiteGrid<T>(options: UseVirtualSiteGridOptions<T>) {
     // How much of the grid is above the viewport top (0 if top is still visible).
     scrollOffset.value = Math.max(0, -rect.top)
     viewportHeight.value = window.innerHeight || 800
+  }
+
+  // scroll 高频触发，用 rAF 合并同帧内的重复测量，避免每次滚动都强制布局
+  const scheduleMeasure = () => {
+    if (measureRafId !== null) {
+      return
+    }
+    measureRafId = requestAnimationFrame(() => {
+      measureRafId = null
+      measure()
+    })
   }
 
   const virtualized = computed(() =>
@@ -87,8 +97,8 @@ export function useVirtualSiteGrid<T>(options: UseVirtualSiteGridOptions<T>) {
 
   onMounted(() => {
     measure()
-    window.addEventListener('scroll', measure, { passive: true })
-    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', scheduleMeasure, { passive: true })
+    window.addEventListener('resize', scheduleMeasure)
 
     if (typeof ResizeObserver === 'function') {
       resizeObserver = new ResizeObserver(() => measure())
@@ -113,8 +123,12 @@ export function useVirtualSiteGrid<T>(options: UseVirtualSiteGridOptions<T>) {
   })
 
   onUnmounted(() => {
-    window.removeEventListener('scroll', measure)
-    window.removeEventListener('resize', measure)
+    window.removeEventListener('scroll', scheduleMeasure)
+    window.removeEventListener('resize', scheduleMeasure)
+    if (measureRafId !== null) {
+      cancelAnimationFrame(measureRafId)
+      measureRafId = null
+    }
     resizeObserver?.disconnect()
     resizeObserver = null
   })

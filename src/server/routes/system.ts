@@ -1,6 +1,6 @@
 import express from 'express'
 import { authenticate, requireAdmin } from '../middleware/auth.js'
-import { faviconLimiter, healthLimiter } from '../middleware/limiter.js'
+import { faviconLimiter, healthLimiter, suggestLimiter } from '../middleware/limiter.js'
 import { systemController } from '../controllers/systemController.js'
 import { toolController } from '../controllers/toolController.js'
 
@@ -309,7 +309,7 @@ router.get('/favicon', faviconLimiter, toolController.getFavicon)
  *               items:
  *                 type: string
  */
-router.get('/suggest', toolController.getSuggestions)
+router.get('/suggest', suggestLimiter, toolController.getSuggestions)
 
 /**
  * @swagger

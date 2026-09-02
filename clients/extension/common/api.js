@@ -4,7 +4,7 @@ class ApiError extends Error {
   constructor(message, options = {}) {
     super(message);
     this.name = "ApiError";
-    this.status = Number(options.status || 0);
+    this.status = options.status;
     this.payload = options.payload;
   }
 }
@@ -13,9 +13,6 @@ function unwrapApiPayload(payload) {
     const record = payload;
     if (record.data !== void 0) {
       return record.data;
-    }
-    if (record.content !== void 0) {
-      return record.content;
     }
   }
   return payload;

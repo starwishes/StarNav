@@ -211,4 +211,45 @@ describe('config store', () => {
     expect(doc.documentElement.style.getPropertyValue('--bg-image')).toBe("url('/stored-bg.jpg')")
     expect(doc.body.style.backgroundImage).toContain('/stored-bg.jpg')
   })
+
+  it('silently logs localStorage write failures instead of throwing or toasting', () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota exceeded')
+    })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const store = useConfigStore()
+
+    expect(() => store.updateConfig({ siteName: 'Wont Persist' })).not.toThrow()
+    expect(store.siteConfig.siteName).toBe('Wont Persist')
+    expect(errorSpy).toHaveBeenCalled()
+
+    setItemSpy.mockRestore()
+  })
+
+  it('force waits for the in-flight request before starting a fresh one', async () => {
+    let resolveFirst
+    mocks.getSettings.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFirst = resolve
+        })
+    )
+    mocks.getSettings.mockResolvedValueOnce({ siteName: 'Second Remote' })
+
+    const store = useConfigStore()
+    const firstPromise = store.fetchConfig()
+    const forcePromise = store.fetchConfig({ force: true })
+
+    // The force call must not have clobbered the dedup reference while in flight.
+    expect(mocks.getSettings).toHaveBeenCalledTimes(1)
+
+    resolveFirst({ siteName: 'First Remote' })
+    await firstPromise
+    await forcePromise
+
+    expect(mocks.getSettings).toHaveBeenCalledTimes(2)
+    expect(store.siteConfig.siteName).toBe('Second Remote')
+    expect(store.loading).toBe(false)
+  })
 })

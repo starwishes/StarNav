@@ -1,5 +1,5 @@
 import type { BookmarkPayload, DbRow, IdLike } from '../../types/domain.js'
-import type { BookmarkItemRow, ItemCategoryRefRow, MaxIdRow } from '../../types/sqliteRows.js'
+import type { BookmarkItemRow, ItemCategoryRefRow } from '../../types/sqliteRows.js'
 import { getDb, forceCheckpoint } from '../database/database.js'
 import { backupDatabaseThrottled } from '../database/backupThrottle.js'
 import { logger } from '../../utils/logger.js'
@@ -30,27 +30,29 @@ export const bookmarkWriteService = {
     const pinned = !!itemData.pinned
     const level = Number(itemData.level || 0)
 
-    const maxId = db.prepare<MaxIdRow>('SELECT MAX(id) as maxId FROM items').get()?.maxId || 0
-    const newId = maxId + 1
+    // items.id 为 INTEGER PRIMARY KEY（无 AUTOINCREMENT），SQLite 自动分配 rowid，
+    // 无需手动 SELECT MAX(id)+1（后者在并发写下还有重复 id 风险）。
     const sortOrder = getNextSortOrder(db, categoryId)
 
-    db.prepare(
+    const result = db
+      .prepare(
+        `
+        INSERT INTO items (name, url, description, icon, category_id, pinned, level, click_count, sort_order, last_visited)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
       `
-        INSERT INTO items (id, name, url, description, icon, category_id, pinned, level, click_count, sort_order, last_visited)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-      `
-    ).run(
-      newId,
-      name,
-      itemData.url,
-      description,
-      icon,
-      categoryId,
-      pinned ? 1 : 0,
-      level,
-      sortOrder,
-      new Date().toISOString()
-    )
+      )
+      .run(
+        name,
+        itemData.url,
+        description,
+        icon,
+        categoryId,
+        pinned ? 1 : 0,
+        level,
+        sortOrder,
+        new Date().toISOString()
+      )
+    const newId = Number(result.lastInsertRowid)
 
     const newItem = {
       id: newId,
@@ -74,7 +76,7 @@ export const bookmarkWriteService = {
     const id = Number(itemId)
 
     try {
-      // 注意：写前整库备份（copyFileSync）为同步阻塞操作，已改为 5s 节流
+      // 注意：写前整库备份（VACUUM INTO 一致快照）为同步阻塞操作，已改为 5s 节流
       //（见 backupThrottle.ts），在保留可恢复性的同时降低高频写操作的阻塞影响。
       backupDatabaseThrottled()
 
@@ -126,7 +128,10 @@ export const bookmarkWriteService = {
         }
       }
 
-      if (fields.length === 0) return null
+      if (fields.length === 0) {
+        // 书签存在但没有可更新字段（如空 payload）：返回当前行，避免误报 404
+        return mapBookmarkRow(currentItem, { includeSortOrder: true })
+      }
 
       values.push(id)
       const sql = `UPDATE items SET ${fields.join(', ')} WHERE id = ?`
@@ -353,29 +358,45 @@ export const bookmarkWriteService = {
     }
   },
 
-  trackClick(itemId: IdLike) {
+  trackClick(itemId: IdLike, level: number | string | null | undefined = 0) {
     const db = getDb()
     const id = Number(itemId)
+    const normalizedLevel = Number(level) || 0
 
     try {
+      // 公开端点：只允许对当前可见等级（含分类可见性）的书签计数，
+      // 返回最小负载（id/clickCount/lastVisited），不泄漏完整书签内容。
       const result = db
         .prepare(
           `
             UPDATE items
-            SET click_count = click_count + 1, last_visited = datetime('now')
+            SET click_count = click_count + 1, last_visited = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
             WHERE id = ?
+              AND level <= ?
+              AND (
+                category_id IS NULL
+                OR category_id = 0
+                OR EXISTS (SELECT 1 FROM categories c WHERE c.id = items.category_id AND c.level <= ?)
+              )
           `
         )
-        .run(id)
+        .run(id, normalizedLevel, normalizedLevel)
 
       if (result.changes > 0) {
         const item = db.prepare<BookmarkItemRow>('SELECT * FROM items WHERE id = ?').get(id)
-        return mapBookmarkRow(item, { includeSortOrder: true })
+        if (item) {
+          return {
+            id: Number(item.id),
+            clickCount: Number(item.click_count || 0),
+            lastVisited: (item.last_visited as string | null | undefined) ?? null
+          }
+        }
       }
       return null
     } catch (error) {
+      // 真实数据库异常向上抛出（500），不要误报为“书签未找到”
       logger.error(`点击统计失败: ${itemId}`, error)
-      return null
+      throw error
     }
   },
 

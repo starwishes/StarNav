@@ -20,7 +20,7 @@
             <button
               type="button"
               class="dialog-close"
-              aria-label="关闭分类弹窗"
+              :aria-label="t('category.closeDialog')"
               @click="handleClose"
             >
               ×
@@ -47,6 +47,8 @@
                 class="dialog-input"
                 :placeholder="t('category.placeholderName')"
                 autocomplete="off"
+                :aria-invalid="nameInvalid || undefined"
+                @input="nameInvalid = false"
               />
             </label>
 
@@ -76,10 +78,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AppSelect from '@/components/AppSelect.vue'
 import type { Category } from '@/types'
 import { useI18n } from 'vue-i18n'
+import { useDialogA11y } from '@/composables/useDialogA11y'
+import { ElMessage } from '@/utils/feedback'
 import { cloneCategoryDialogForm } from '@/components/categoryDialogHelpers'
 
 const { t } = useI18n()
@@ -100,9 +104,13 @@ const visible = computed(() => props.modelValue)
 const localForm = ref<Partial<Category> | null>(null)
 const dialogPanelRef = ref<HTMLElement | null>(null)
 const nameInputRef = ref<HTMLInputElement | null>(null)
+// 空分类名校验失败标记：绑定 aria-invalid 供读屏播报。
+// aria-describedby 暂不关联——错误以瞬态 toast 呈现，DOM 中无常驻错误文本元素可指向。
+const nameInvalid = ref(false)
 
 const syncLocalForm = () => {
   localForm.value = cloneCategoryDialogForm(props.form)
+  nameInvalid.value = false
 }
 
 watch(
@@ -114,10 +122,6 @@ watch(
     }
 
     syncLocalForm()
-    nextTick(() => {
-      dialogPanelRef.value?.focus()
-      nameInputRef.value?.focus()
-    })
   },
   { immediate: true }
 )
@@ -140,6 +144,12 @@ const handleSave = () => {
     return
   }
 
+  if (!String(localForm.value.name || '').trim()) {
+    nameInvalid.value = true
+    ElMessage.warning(t('category.nameRequired'))
+    return
+  }
+
   emit('update:form', cloneCategoryDialogForm(localForm.value))
   emit('save')
 }
@@ -149,6 +159,14 @@ const handleDialogKeydown = (event: KeyboardEvent) => {
     handleClose()
   }
 }
+
+// 打开聚焦、Tab 焦点陷阱、Esc 关闭、关闭后焦点归还触发元素。
+useDialogA11y({
+  isOpen: () => props.modelValue,
+  getDialog: () => dialogPanelRef.value,
+  getInitialFocus: () => nameInputRef.value,
+  onClose: handleClose
+})
 
 onMounted(() => {
   document.addEventListener('keydown', handleDialogKeydown)
@@ -211,6 +229,9 @@ onUnmounted(() => {
 
 .category-dialog-shell {
   width: min(100%, 500px);
+  /* 移动端软键盘/横屏下限制高度，内容可滚动而不被视口裁剪 */
+  max-height: min(86vh, 860px);
+  overflow-y: auto;
   border-radius: 24px;
   border: 1px solid var(--category-dialog-border);
   background: var(--category-dialog-bg);
@@ -232,7 +253,7 @@ onUnmounted(() => {
 
 .dialog-kicker {
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;

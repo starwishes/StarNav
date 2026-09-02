@@ -6,18 +6,8 @@ import {
   NavigationGuardNext
 } from 'vue-router'
 import i18n from '@/plugins/i18n'
-
-const readStoredAdminUser = () => {
-  // 注意：这里的 admin_user 仅来自 localStorage（客户端可任意篡改），
-  // 因此本路由守卫只是 UX 层面的引导——让未登录/权限不足的用户看到登录弹窗；
-  // 真正的授权由服务端 authenticate/requireAdmin 中间件在每个 API 上强制执行。
-  try {
-    const raw = localStorage.getItem('admin_user')
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
+import { USER_LEVEL } from '@common/constants'
+import { authStorage } from '@/utils/authStorage'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -57,9 +47,12 @@ router.beforeEach(
     const t = i18n.global.t
     const configStore = useConfigStore()
     const siteName = configStore.displaySiteName
-    const currentUser = readStoredAdminUser()
+    // 注意：这里的 admin_user 仅来自 localStorage（客户端可任意篡改），
+    // 因此本路由守卫只是 UX 层面的引导——让未登录/权限不足的用户看到登录弹窗；
+    // 真正的授权由服务端 authenticate/requireAdmin 中间件在每个 API 上强制执行。
+    const currentUser = authStorage.read()
 
-    if (to.meta.requiresAdmin && (!currentUser || Number(currentUser.level) !== 3)) {
+    if (to.meta.requiresAdmin && (!currentUser || Number(currentUser.level) !== USER_LEVEL.ADMIN)) {
       // Send home with a flag so the header can open the login dialog.
       // 前端守卫仅为 UX，服务端才是真授权：所有管理接口仍有 requireAdmin 保护。
       next({ path: '/', query: { login: '1', redirect: to.fullPath } })
@@ -75,10 +68,5 @@ router.beforeEach(
     next()
   }
 )
-
-import { recordVisit } from '@/api/stats'
-router.afterEach((to) => {
-  void Promise.resolve(recordVisit(to.fullPath)).catch(() => {})
-})
 
 export default router

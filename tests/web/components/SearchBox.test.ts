@@ -1,6 +1,12 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({
+    t: (key: string) => `translated:${key}`
+  })
+}))
+
 const SearchBox = (await import('@/components/index/SearchBox.vue')).default
 
 const createWrapper = (overrides: Record<string, unknown> = {}) =>

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const logger = {
@@ -8,8 +9,9 @@ vi.mock('../../../src/server/utils/logger.js', () => ({
   logger
 }))
 
-const { ApiError, asyncHandler, errorHandler, errors, formatError } =
-  await import('../../../src/server/middleware/errorHandler.js')
+const { errorHandler } = await import('../../../src/server/middleware/errorHandler.js')
+const { formatError } = await import('../../../src/server/utils/response.js')
+const { ApiError, errors } = await import('../../../src/server/utils/errors.js')
 
 describe('errorHandler middleware', () => {
   beforeEach(() => {
@@ -93,7 +95,7 @@ describe('errorHandler middleware', () => {
     })
   })
 
-  it('includes stack traces in development and keeps async handler forwarding', async () => {
+  it('includes stack traces in development and hides internals in production', async () => {
     process.env.NODE_ENV = 'development'
     const res = {
       status: vi.fn().mockReturnThis(),
@@ -110,12 +112,6 @@ describe('errorHandler middleware', () => {
       code: 'INTERNAL_ERROR',
       details: 'dev-stack'
     })
-
-    const next = vi.fn()
-    await asyncHandler(async () => {
-      throw errors.badRequest('bad')
-    })({}, {}, next)
-    expect(next).toHaveBeenCalledWith(expect.objectContaining({ message: 'bad', statusCode: 400 }))
 
     // Production (NODE_ENV unset): unexpected 500 must not leak internal messages
     process.env.NODE_ENV = ''

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../src/server/services/identity/accountService.js', () => ({
@@ -38,7 +39,7 @@ vi.mock('../../../src/server/services/identity/identityHelpers.js', () => ({
   issueToken: vi.fn()
 }))
 
-vi.mock('../../../src/server/middleware/validation.js', () => ({
+vi.mock('../../../src/server/validation.js', () => ({
   loginSchema: {
     validate: vi.fn()
   }
@@ -63,10 +64,11 @@ const { sessionService } = await import('../../../src/server/services/identity/s
 const { settingsService } = await import('../../../src/server/services/system/settingsService.js')
 const { ensureStrongPassword, issueToken } =
   await import('../../../src/server/services/identity/identityHelpers.js')
-const { loginSchema } = await import('../../../src/server/middleware/validation.js')
+const { loginSchema } = await import('../../../src/server/validation.js')
 const { logger } = await import('../../../src/server/utils/logger.js')
 const bcrypt = (await import('bcryptjs')).default
-const { authLifecycleService } = await import('../../../src/server/services/identity/authLifecycleService.js')
+const { authLifecycleService } =
+  await import('../../../src/server/services/identity/authLifecycleService.js')
 
 describe('authLifecycleService', () => {
   beforeEach(() => {

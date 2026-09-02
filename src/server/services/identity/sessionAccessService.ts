@@ -1,6 +1,6 @@
 import { auditService } from './auditService.js'
 import { sessionService } from './sessionService.js'
-import { errors } from '../../middleware/errorHandler.js'
+import { errors } from '../../utils/errors.js'
 import type { AuthUserLike, RequestContextLike } from '../../types/domain.js'
 
 type CurrentUser = AuthUserLike & { sessionId?: string }

@@ -73,6 +73,34 @@ export const migrateFromJson = () => {
 
     // 迁移书签
     const items = (jsonData.items || []) as Array<Record<string, unknown>>
+
+    // 重复 id/url 检测：legacy JSON 含重复项时 INSERT OR REPLACE 会静默丢弃前一条。
+    // 选择"迁移前统计并告警"而非 INSERT OR IGNORE：旧数据冲突时"后写覆盖"与"先写保留"
+    // 都是任意取舍，告警让丢弃变得可观测，且不改现有 REPLACE 语义（第 15 轮审查）。
+    const countDuplicates = (values: Array<string | number>) => {
+      const seen = new Set<string | number>()
+      let duplicateCount = 0
+      values.forEach((value) => {
+        if (seen.has(value)) {
+          duplicateCount += 1
+        } else {
+          seen.add(value)
+        }
+      })
+      return duplicateCount
+    }
+
+    const duplicateIds = countDuplicates(
+      items.map((item) => Number(item.id)).filter((id) => Number.isFinite(id))
+    )
+    if (duplicateIds > 0) {
+      logger.warn(`迁移书签: 检测到 ${duplicateIds} 个重复 id，后者将覆盖前者（REPLACE 语义）`)
+    }
+    const duplicateUrls = countDuplicates(items.map((item) => String(item.url)))
+    if (duplicateUrls > 0) {
+      logger.warn(`迁移书签: 检测到 ${duplicateUrls} 个重复 url，后者将覆盖前者（REPLACE 语义）`)
+    }
+
     const insertItem = db.prepare(`
             INSERT OR REPLACE INTO items 
             (id, name, url, description, icon, category_id, pinned, level, click_count, last_visited, sort_order)
@@ -102,86 +130,155 @@ export const migrateFromJson = () => {
 
   try {
     transaction()
-    forceCheckpoint() // 迁移后立即同步磁盘
+  } catch (err) {
+    logger.error('数据迁移失败', err)
+    return false
+  }
 
+  // 数据已提交入库。checkpoint 只是把 WAL 落盘，失败不影响已提交数据；
+  // 原 JSON 归档失败时源文件保留在 data/，下次启动因 existingCategories>0 会短路跳过，
+  // 留下的孤儿文件可手工清理。刻意不把上述失败误报为"迁移失败"（第 15 轮审查）。
+  try {
+    forceCheckpoint() // 迁移后立即同步磁盘
+  } catch (err) {
+    logger.warn('数据迁移完成但 checkpoint 失败（不影响已迁移数据）', err)
+  }
+
+  try {
     // 备份并清理原 JSON 文件
     const backupDir = path.join(DATA_DIR, 'archive')
     if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true })
     const backupPath = path.join(backupDir, path.basename(sourceFile!) + '.migrated.bak')
     fs.renameSync(sourceFile!, backupPath)
     logger.info(`原 JSON 文件已迁移并归档: ${backupPath}`)
-
-    logger.info('数据迁移完成!')
-    return true
   } catch (err) {
-    logger.error('数据迁移失败', err)
-    return false
+    logger.warn(`数据已迁移但原 JSON 归档失败（源文件保留于 ${sourceFile}，可手工清理）`, err)
   }
+
+  logger.info('数据迁移完成!')
+  return true
+}
+
+/**
+ * 用户迁移结果统计。
+ */
+export interface MigrateUsersResult {
+  /** 实际写入 users 表的用户数 */
+  inserted: number
+  /** 因明文密码等原因主动跳过的用户数 */
+  skipped: number
+  /** 迁移失败（JSON 解析/写入异常）的用户文件名清单 */
+  failed: string[]
+  /** 是否实际执行了迁移（users 目录存在且用户表为空） */
+  ran: boolean
 }
 
 /**
  * 迁移用户数据
+ *
+ * 数据完整性取舍（第 15 轮审查）：
+ * - 逐文件 JSON.parse + 写入，坏文件 try/catch 跳过（对齐 migrateFromJson 的逐文件解析），
+ *   单个损坏文件不会中断整批迁移。
+ * - 每个用户独立小事务：坏文件跳过时已成功行保留；单个文件写入失败仅回滚该用户。
+ * - 失败文件名记入返回值 failed 清单并写日志；源文件保留在 users/ 目录供人工处理。
+ * - 不做持久化失败标记：若某轮迁移有文件失败，下次启动 existingUsers>0 会整体跳过，
+ *   遗留文件需人工修复后重试。这是最简方案——若要支持自动续迁，需把成功文件归档
+ *   （.migrated.bak）以区分"未迁移"文件并去掉 existingUsers>0 短路，会改变现有文件
+ *   布局与守卫语义，收益/成本不划算。
  */
-export const migrateUsers = () => {
+export const migrateUsers = (): MigrateUsersResult => {
   const db = getDb()
   const usersDir = path.join(DATA_DIR, 'users')
 
+  const result: MigrateUsersResult = { inserted: 0, skipped: 0, failed: [], ran: false }
+
   if (!fs.existsSync(usersDir)) {
-    return false
+    return result
   }
 
   const existingUsers =
     db.prepare<CountRow>('SELECT COUNT(*) as count FROM users').get()?.count ?? 0
   if (existingUsers > 0) {
     logger.info('用户表已有数据，跳过迁移')
-    return false
+    return result
   }
 
   const insertUser = db.prepare(`
         INSERT OR REPLACE INTO users (username, password, level, created_at)
-        VALUES (?, ?, ?, datetime('now'))
+        VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
     `)
 
   // bcrypt 哈希以 $2a$/$2b$/$2y$ 开头；其余视为明文，禁止原样入库
   const BCRYPT_HASH_PATTERN = /^\$2[aby]\$/
 
+  // 每个用户一个独立事务：写入成功则提交，失败仅回滚该用户，不影响其他文件
+  const insertUserTx = db.transaction((username: string, password: string, level: number) => {
+    insertUser.run(username, password, level)
+  })
+
+  let files: string[]
   try {
-    const files = fs.readdirSync(usersDir).filter((f) => f.endsWith('.json'))
-
-    files.forEach((file) => {
-      const username = path.basename(file, '.json')
-      const userPath = path.join(usersDir, file)
-      const userData = JSON.parse(fs.readFileSync(userPath, 'utf8'))
-
-      const password = String(userData.password || '')
-      if (!BCRYPT_HASH_PATTERN.test(password)) {
-        logger.warn(
-          `迁移用户跳过: ${username} — 密码不是 bcrypt 哈希（疑似明文），禁止原样入库，请手动重置该账户密码`
-        )
-        return
-      }
-
-      // 智能判定等级：
-      // 1. 如果 JSON 中有 level，以 JSON 为准
-      // 2. 如果是默认管理员 (配置的用户名)，强制设为 3 (Admin)
-      // 3. 其他用户默认为 1 (User)，避免变成 0 (Guest)
-      let finalLevel = 1
-      if (userData.level !== undefined) {
-        finalLevel = Number(userData.level)
-      } else if (username === DEFAULT_ADMIN_NAME || username === process.env.ADMIN_USERNAME) {
-        finalLevel = 3
-      }
-
-      insertUser.run(username, password, finalLevel)
-      logger.info(`迁移用户: ${username}`)
-    })
-
-    logger.info(`用户迁移完成: ${files.length} 个`)
-    return true
+    files = fs.readdirSync(usersDir).filter((f) => f.endsWith('.json'))
   } catch (err) {
-    logger.error('用户迁移失败', err)
-    return false
+    logger.error('读取用户迁移目录失败', err)
+    return result
   }
+
+  for (const file of files) {
+    const username = path.basename(file, '.json')
+    const userPath = path.join(usersDir, file)
+
+    let userData: { password?: unknown; level?: unknown }
+    try {
+      userData = JSON.parse(fs.readFileSync(userPath, 'utf8'))
+    } catch (err) {
+      result.failed.push(file)
+      logger.warn(`迁移用户失败（JSON 解析）: ${file}`, err)
+      continue
+    }
+
+    const password = String(userData.password || '')
+    if (!BCRYPT_HASH_PATTERN.test(password)) {
+      result.skipped += 1
+      logger.warn(
+        `迁移用户跳过: ${username} — 密码不是 bcrypt 哈希（疑似明文），禁止原样入库，请手动重置该账户密码`
+      )
+      continue
+    }
+
+    // 智能判定等级：
+    // 1. 如果 JSON 中有 level，钳制到 [1,3]（第 16 轮审查：legacy JSON 可能带 0/负数/99，
+    //    0 是"游客展示"层级而非登录用户层级，越界值必须归一，非法数字回退默认 1）
+    // 2. 如果是默认管理员 (配置的用户名)，强制设为 3 (Admin)
+    // 3. 其他用户默认为 1 (User)，避免变成 0 (Guest)
+    const clampLevel = (level: unknown, fallback: number) => {
+      const parsed = Number(level)
+      if (!Number.isFinite(parsed)) return fallback
+      return Math.min(3, Math.max(1, parsed))
+    }
+    let finalLevel = 1
+    if (userData.level !== undefined) {
+      finalLevel = clampLevel(userData.level, 1)
+    } else if (username === DEFAULT_ADMIN_NAME || username === process.env.ADMIN_USERNAME) {
+      finalLevel = 3
+    }
+
+    try {
+      insertUserTx(username, password, finalLevel)
+      result.inserted += 1
+      logger.info(`迁移用户: ${username}`)
+    } catch (err) {
+      result.failed.push(file)
+      logger.error(`迁移用户失败（写入）: ${file}`, err)
+    }
+  }
+
+  result.ran = true
+  logger.info(
+    `用户迁移完成: 插入 ${result.inserted} 个 / 跳过 ${result.skipped} 个 / 失败 ${result.failed.length} 个` +
+      (result.failed.length > 0 ? `（失败文件: ${result.failed.join(', ')}）` : '')
+  )
+  return result
 }
 
 /**

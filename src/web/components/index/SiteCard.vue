@@ -7,9 +7,13 @@
     <a
       class="inherit-text"
       :class="{ 'is-disabled': selectionMode }"
-      :href="selectionMode ? 'javascript:void(0)' : undefined"
+      :href="getSafeHref(item.url)"
       target="_blank"
+      rel="noopener noreferrer"
+      :role="selectionMode ? 'checkbox' : undefined"
+      :aria-checked="selectionMode ? selected : undefined"
       @click.prevent="!selectionMode && $emit('click', $event)"
+      @auxclick="handleAuxClick"
       @touchstart="!selectionMode && $emit('touchstart', $event)"
     >
       <div
@@ -25,6 +29,7 @@
             v-if="currentIconSrc && isRenderableIconUrl(currentIconSrc)"
             :src="currentIconSrc"
             class="site-icon"
+            alt=""
             loading="lazy"
             @error="handleIconError"
           />
@@ -38,7 +43,8 @@
           <div class="site-desc text">{{ item.description }}</div>
         </div>
 
-        <div v-if="item.pinned" class="pin-badge">📌</div>
+        <div v-if="item.pinned" class="pin-badge" aria-hidden="true">📌</div>
+        <span v-if="item.pinned" class="sr-only">{{ t('site.pinnedBadge') }}</span>
 
         <div v-if="selectionMode" class="selection-checkbox">
           <div class="checkbox-inner" :class="{ checked: selected }">
@@ -53,8 +59,12 @@
 <script setup lang="ts">
 import AppIcon from '@/components/AppIcon.vue'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Item } from '@/types'
+import { isSafeHttpUrl, isSafeRelativePath } from '@common/security/urlSafety'
 import { buildIconCandidates, isRenderableIconUrl, markIconUnavailable } from './siteIconHelpers'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   item: Item
@@ -78,6 +88,20 @@ const handleClick = (e: MouseEvent) => {
     emit('toggle-select')
   }
 }
+
+// 选择模式下中键（auxclick）会直接在新标签打开书签，绕过选择流程：
+// 仅在选择模式拦截，正常模式保留浏览器“中键新标签打开”的原生行为。
+const handleAuxClick = (e: MouseEvent) => {
+  if (props.selectionMode) {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+}
+
+// 书签 URL 可能被篡改为危险协议：渲染层 href 一律用安全化结果，
+// 实际跳转由父级 openUrl()（同样做协议校验）执行。
+const getSafeHref = (url: string) =>
+  isSafeHttpUrl(url) || isSafeRelativePath(url) ? url : undefined
 
 const iconIndex = ref(0)
 
@@ -126,7 +150,7 @@ watch(
   --card-bg: var(--category-card-bg, #ffffff);
   --card-border: var(--category-card-border, rgba(29, 29, 31, 0.1));
   --card-text: var(--category-card-text, #1d1d1f);
-  --card-muted: var(--category-card-muted, rgba(29, 29, 31, 0.58));
+  --card-muted: var(--category-card-muted, rgba(29, 29, 31, 0.72));
   --card-icon-bg: var(--category-icon-bg, rgba(29, 29, 31, 0.05));
   position: relative;
   display: flex;
@@ -141,6 +165,8 @@ watch(
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   box-shadow: none;
+  user-select: none;
+  -webkit-user-select: none;
   transition:
     transform 0.18s ease,
     border-color 0.18s ease,
@@ -280,6 +306,18 @@ watch(
   height: 14px;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .inherit-text {
   display: block;
   width: 100%;
@@ -292,4 +330,3 @@ watch(
   }
 }
 </style>
-

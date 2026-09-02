@@ -1,4 +1,6 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import path from 'node:path'
 
 const createAppMock = () => ({
   set: vi.fn(),
@@ -6,7 +8,7 @@ const createAppMock = () => ({
   get: vi.fn(),
   listen: vi.fn((port, callback) => {
     callback?.()
-    return { close: vi.fn(), port }
+    return { close: vi.fn(), on: vi.fn(), port }
   })
 })
 
@@ -15,6 +17,7 @@ const loadServerModule = async ({
   corsOrigins,
   cspUpgradeInsecureRequests,
   trustProxy,
+  apiDocsPublic,
   swaggerUiAvailable = true,
   staticOpenApiSpecAvailable = false
 } = {}) => {
@@ -24,6 +27,7 @@ const loadServerModule = async ({
   const originalCorsOrigins = process.env.CORS_ORIGINS
   const originalCspUpgradeInsecureRequests = process.env.CSP_UPGRADE_INSECURE_REQUESTS
   const originalTrustProxy = process.env.TRUST_PROXY
+  const originalApiDocsPublic = process.env.API_DOCS_PUBLIC
 
   process.env.NODE_ENV = nodeEnv
   if (corsOrigins === undefined) {
@@ -40,6 +44,11 @@ const loadServerModule = async ({
     delete process.env.TRUST_PROXY
   } else {
     process.env.TRUST_PROXY = trustProxy
+  }
+  if (apiDocsPublic === undefined) {
+    delete process.env.API_DOCS_PUBLIC
+  } else {
+    process.env.API_DOCS_PUBLIC = apiDocsPublic
   }
 
   const app = createAppMock()
@@ -84,7 +93,6 @@ const loadServerModule = async ({
   const authRoutes = { name: 'authRoutes' }
   const bookmarkRoutes = { name: 'bookmarkRoutes' }
   const systemRoutes = { name: 'systemRoutes' }
-  const statsRoutes = { name: 'statsRoutes' }
 
   vi.doMock('express', () => ({
     default: expressFactory
@@ -107,14 +115,11 @@ const loadServerModule = async ({
     getSwaggerSpec
   }))
   vi.doMock('../../src/server/config/index.js', () => ({
-    TRUST_PROXY: trustProxy === 'true',
+    TRUST_PROXY: trustProxy !== 'false',
     UPLOADS_DIR: '/tmp/uploads'
   }))
   vi.doMock('../../src/server/middleware/errorHandler.js', () => ({
     errorHandler: { type: 'errorHandler' }
-  }))
-  vi.doMock('../../src/server/middleware/statsLogger.js', () => ({
-    statsLogger: { type: 'statsLogger' }
   }))
   vi.doMock('../../src/server/routes/auth.js', () => ({
     default: authRoutes
@@ -124,9 +129,6 @@ const loadServerModule = async ({
   }))
   vi.doMock('../../src/server/routes/system.js', () => ({
     default: systemRoutes
-  }))
-  vi.doMock('../../src/server/routes/stats.js', () => ({
-    default: statsRoutes
   }))
   vi.doMock('../../src/server/services/system/initService.js', () => ({
     initService: {
@@ -178,12 +180,12 @@ const loadServerModule = async ({
     authRoutes,
     bookmarkRoutes,
     systemRoutes,
-    statsRoutes,
     restoreEnv() {
       process.env.NODE_ENV = originalNodeEnv
       process.env.CORS_ORIGINS = originalCorsOrigins
       process.env.CSP_UPGRADE_INSECURE_REQUESTS = originalCspUpgradeInsecureRequests
       process.env.TRUST_PROXY = originalTrustProxy
+      process.env.API_DOCS_PUBLIC = originalApiDocsPublic
     }
   }
 }
@@ -210,7 +212,7 @@ describe('server app assembly', () => {
       runtime
 
     expect(init).toHaveBeenCalledTimes(1)
-    expect(app.set).toHaveBeenCalledWith('trust proxy', false)
+    expect(app.set).toHaveBeenCalledWith('trust proxy', 1)
     expect(runtime.helmet).toHaveBeenCalledWith(
       expect.objectContaining({
         contentSecurityPolicy: expect.any(Object),
@@ -224,13 +226,11 @@ describe('server app assembly', () => {
     expect(app.use).toHaveBeenCalledWith(runtime.corsMiddleware)
     expect(app.use).toHaveBeenCalledWith(runtime.compressionMiddleware)
     expect(app.use).toHaveBeenCalledWith(runtime.jsonMiddleware)
-    expect(app.use).toHaveBeenCalledWith({ type: 'statsLogger' })
     expect(app.use).toHaveBeenCalledWith(runtime.staticMiddlewares[0])
     expect(app.use).toHaveBeenCalledWith('/uploads', runtime.staticMiddlewares[1])
     expect(app.use).toHaveBeenCalledWith('/api', runtime.authRoutes)
     expect(app.use).toHaveBeenCalledWith('/api', runtime.bookmarkRoutes)
     expect(app.use).toHaveBeenCalledWith('/api', runtime.systemRoutes)
-    expect(app.use).toHaveBeenCalledWith('/api', runtime.statsRoutes)
 
     // 未匹配的 /api 请求应返回 JSON 404，而不是落入 SPA 回退
     const apiNotFoundHandler = app.use.mock.calls.find(
@@ -289,6 +289,21 @@ describe('server app assembly', () => {
     expect(pageRes.sendFile).toHaveBeenCalledWith(expect.stringMatching(/dist[/\\]index\.html$/))
     expect(staticHeaderRes.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-cache')
 
+    // dist/assets/* 指纹资源长缓存 immutable；/uploads 短缓存
+    const assetHeaderRes = { setHeader: vi.fn() }
+    const uploadHeaderRes = { setHeader: vi.fn() }
+    runtime.staticMiddlewares[0].options.setHeaders(
+      assetHeaderRes,
+      path.join('/tmp/dist', 'assets', 'js', 'index-abc123.js')
+    )
+    runtime.staticMiddlewares[1].options.setHeaders(uploadHeaderRes, '/tmp/uploads/icon_123.png')
+
+    expect(assetHeaderRes.setHeader).toHaveBeenCalledWith(
+      'Cache-Control',
+      'public, max-age=31536000, immutable'
+    )
+    expect(uploadHeaderRes.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=3600')
+
     const buildRequest = (origin, { host = '127.0.0.1:38087', protocol = 'http' } = {}) => ({
       protocol,
       get: vi.fn((header) => {
@@ -325,8 +340,8 @@ describe('server app assembly', () => {
       null,
       expect.objectContaining({ origin: true, credentials: true })
     )
-    expect(callback.mock.calls[4][0]).toBeInstanceOf(Error)
-    expect(callback.mock.calls[4][0].message).toBe('CORS not allowed')
+    expect(callback.mock.calls[4][0]).toBeNull()
+    expect(callback.mock.calls[4][1]).toEqual({ origin: false, credentials: false })
     expect(logger.warn).toHaveBeenCalledWith('CORS 被拒绝', { origin: 'https://evil.test' })
 
     const server = await module.startServer(9090)
@@ -336,13 +351,13 @@ describe('server app assembly', () => {
     expect(logger.info).toHaveBeenCalledWith('   Running on port 9090 in test mode')
   })
 
-  it('enables trusted proxy mode only when explicitly configured', async () => {
+  it('trusts one reverse-proxy hop by default; TRUST_PROXY=false disables it', async () => {
     runtime = await loadServerModule({
       nodeEnv: 'test',
-      trustProxy: 'true'
+      trustProxy: 'false'
     })
 
-    expect(runtime.app.set).toHaveBeenCalledWith('trust proxy', 1)
+    expect(runtime.app.set).toHaveBeenCalledWith('trust proxy', false)
   })
 
   it('skips swagger ui registration in production', async () => {
@@ -390,10 +405,98 @@ describe('server app assembly', () => {
 
     await apiDocsHandler({}, res, vi.fn())
 
-    expect(fsAccess).toHaveBeenCalledTimes(1)
+    // 一次是 createConfiguredApp 启动时的 dist/index.html 存在性检查，另一次是 api-docs.json
+    expect(fsAccess).toHaveBeenCalledTimes(2)
     expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-cache')
     expect(res.sendFile).toHaveBeenCalledWith(expect.stringMatching(/dist[/\\]api-docs\.json$/))
     expect(getSwaggerSpec).not.toHaveBeenCalled()
+  })
+
+  it('returns 404 for /api-docs.json in production without a static spec (no dev fallback import)', async () => {
+    runtime = await loadServerModule({
+      nodeEnv: 'production',
+      staticOpenApiSpecAvailable: false
+    })
+
+    const { app, getSwaggerSpec } = runtime
+    const apiDocsHandler = app.get.mock.calls.find(([path]) => path === '/api-docs.json')[1]
+    const res = {
+      setHeader: vi.fn(),
+      sendFile: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn()
+    }
+
+    await apiDocsHandler({}, res, vi.fn())
+
+    // P1-5：生产无静态 spec 时直接 404，绝不动态 import devDependency swagger-jsdoc
+    expect(getSwaggerSpec).not.toHaveBeenCalled()
+    expect(res.status).toHaveBeenCalledWith(404)
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      error: '接口不存在',
+      code: 'NOT_FOUND'
+    })
+  })
+
+  it('blocks anonymous /api-docs.json before static serving in production by default', async () => {
+    runtime = await loadServerModule({ nodeEnv: 'production' })
+
+    const { app } = runtime
+    const blockCall = app.use.mock.calls.find(([path]) => path === '/api-docs.json')
+    expect(blockCall).toBeTruthy()
+
+    const res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn()
+    }
+    blockCall[1]({}, res)
+    expect(res.status).toHaveBeenCalledWith(404)
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      error: '接口不存在',
+      code: 'NOT_FOUND'
+    })
+  })
+
+  it('skips the /api-docs.json block when API_DOCS_PUBLIC=true in production', async () => {
+    runtime = await loadServerModule({
+      nodeEnv: 'production',
+      apiDocsPublic: 'true',
+      staticOpenApiSpecAvailable: true
+    })
+
+    const { app, getSwaggerSpec } = runtime
+    expect(app.use.mock.calls.some(([path]) => path === '/api-docs.json')).toBe(false)
+
+    const apiDocsHandler = app.get.mock.calls.find(([path]) => path === '/api-docs.json')[1]
+    const res = {
+      setHeader: vi.fn(),
+      sendFile: vi.fn()
+    }
+    await apiDocsHandler({}, res, vi.fn())
+    expect(res.sendFile).toHaveBeenCalledWith(expect.stringMatching(/dist[/\\]api-docs\.json$/))
+    expect(getSwaggerSpec).not.toHaveBeenCalled()
+  })
+
+  it('keeps dynamic /api-docs.json generation in non-production without a static spec', async () => {
+    runtime = await loadServerModule({
+      nodeEnv: 'development',
+      staticOpenApiSpecAvailable: false
+    })
+
+    const { app, getSwaggerSpec } = runtime
+    expect(app.use.mock.calls.some(([path]) => path === '/api-docs.json')).toBe(false)
+
+    const apiDocsHandler = app.get.mock.calls.find(([path]) => path === '/api-docs.json')[1]
+    const res = {
+      setHeader: vi.fn(),
+      send: vi.fn()
+    }
+    await apiDocsHandler({}, res, vi.fn())
+    expect(getSwaggerSpec).toHaveBeenCalledTimes(1)
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/json')
+    expect(res.send).toHaveBeenCalledWith({ openapi: '3.0.0', info: { title: 'StarNav API' } })
   })
 
   it('does not fall back to localhost CORS allowlists in production', async () => {
@@ -413,8 +516,8 @@ describe('server app assembly', () => {
     corsDelegate(buildRequest('http://localhost:5173'), callback)
     corsDelegate(buildRequest('https://nav.example.com'), callback)
 
-    expect(callback.mock.calls[0][0]).toBeInstanceOf(Error)
-    expect(callback.mock.calls[0][0].message).toBe('CORS not allowed')
+    expect(callback.mock.calls[0][0]).toBeNull()
+    expect(callback.mock.calls[0][1]).toEqual({ origin: false, credentials: false })
     expect(callback).toHaveBeenNthCalledWith(
       2,
       null,

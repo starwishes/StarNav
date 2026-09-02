@@ -128,4 +128,18 @@ describe('browser extension search controller', () => {
     expect(elements.clearSearch.style.display).toBe('none')
     expect(ui.hideSearchResults).toHaveBeenCalledTimes(2)
   })
+
+  it('cancels the pending debounce timer when clearing the search', async () => {
+    apiRequest.mockResolvedValue({ items: [] })
+
+    // 输入后未到 300ms 就清除：挂起的陈旧搜索不应再触发
+    controller.handleSearchInput({ target: { value: 'git' } })
+    controller.clearSearch()
+
+    await vi.advanceTimersByTimeAsync(300)
+
+    expect(apiRequest).not.toHaveBeenCalled()
+    expect(ui.hideSearchResults).toHaveBeenCalledTimes(1)
+    expect(elements.searchInput.value).toBe('')
+  })
 })

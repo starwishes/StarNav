@@ -84,6 +84,23 @@ describe('SiteTable', () => {
     expect(wrapper.find('.sn-pagination').exists()).toBe(false)
   })
 
+  it('shows an error state with retry when loading failed and there are no rows', async () => {
+    const wrapper = mount(SiteTable, {
+      props: {
+        items: [],
+        categories,
+        error: 'boom'
+      }
+    })
+
+    expect(wrapper.find('.sn-error-state').exists()).toBe(true)
+    expect(wrapper.text()).toContain('translated:common.loadFailed')
+    expect(wrapper.find('.sn-empty-state').exists()).toBe(false)
+
+    await wrapper.find('.sn-error-state button').trigger('click')
+    expect(wrapper.emitted('retry')).toBeTruthy()
+  })
+
   it('neutralizes unsafe bookmark URLs in rendered links', () => {
     const wrapper = createWrapper([
       buildItem(1, { url: 'https://safe.test' }),
@@ -122,6 +139,13 @@ describe('SiteTable', () => {
     const items = [buildItem(1), buildItem(2), buildItem(3)]
     const wrapper = createWrapper(items)
 
+    expect(wrapper.find('thead input[type="checkbox"]').attributes('aria-label')).toBe(
+      'translated:table.selectAll'
+    )
+    expect(wrapper.find('tbody input[type="checkbox"]').attributes('aria-label')).toBe(
+      'table.selectRow:{"name":"Site 1"}'
+    )
+
     await wrapper.find('thead input[type="checkbox"]').setValue(true)
     await nextTick()
 
@@ -132,7 +156,8 @@ describe('SiteTable', () => {
     await nextTick()
 
     expect(wrapper.emitted('batch-move')).toEqual([[[1, 2, 3], 2]])
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:table.moveSuccess')
+    // 成功 toast 由上层（useDataManagement.handleBatchMove）统一提示，子组件不再重复弹
+    expect(mocks.messageSuccess).not.toHaveBeenCalledWith('translated:table.moveSuccess')
     expect(wrapper.find('.batch-actions-footer').exists()).toBe(false)
   })
 
@@ -171,8 +196,8 @@ describe('SiteTable', () => {
 
     expect(mocks.checkLinks).toHaveBeenCalledWith([items[0].url, items[1].url])
     expect(mocks.messageWarning).toHaveBeenCalledWith('table.checkInvalid:{"count":1}')
-    expect(wrapper.find('[aria-label="ok"]').exists()).toBe(true)
-    expect(wrapper.find('[aria-label="error"]').exists()).toBe(true)
+    expect(wrapper.find('[aria-label="translated:table.linkOk"]').exists()).toBe(true)
+    expect(wrapper.find('[aria-label="translated:table.linkError"]').exists()).toBe(true)
   })
 
   it('clears pending statuses and reports failures when link checks fail', async () => {
@@ -188,7 +213,7 @@ describe('SiteTable', () => {
 
     expect(mocks.messageError).toHaveBeenCalledWith('translated:table.checkFail')
     expect(wrapper.find('.status-spinner').exists()).toBe(false)
-    expect(wrapper.find('[aria-label="ok"]').exists()).toBe(false)
-    expect(wrapper.find('[aria-label="error"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="translated:table.linkOk"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="translated:table.linkError"]').exists()).toBe(false)
   })
 })

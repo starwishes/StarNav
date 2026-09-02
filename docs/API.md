@@ -27,8 +27,8 @@ Production:  https://your-domain.com/api
 Authorization: Bearer <jwt>
 ```
 
-- Web 管理端登录成功后，服务端会额外下发 HttpOnly Cookie `starnav_auth`
-- 浏览器扩展和脚本客户端作为独立客户端，直接走 `/login` 并持久化 Bearer Token
+- Web 管理端登录成功后，服务端会下发 HttpOnly Cookie `starnav_auth`；浏览器 Web 页面请求（http/https `Origin`/`Referer`）的响应体**不含** `token`
+- 浏览器扩展（`chrome-extension://` 等）与 CLI/脚本等无 `Origin` 的客户端作为独立客户端，直接走 `/login`，响应体**含** `token` 并持久化供 Bearer 使用
 - 后端认证优先读取 Bearer Token，其次回退到 Cookie
 - Cookie 鉴权的写请求会校验 `Origin` / `Referer`，拒绝不受信来源
 - JWT 会绑定当前用户的认证版本；用户改密、改名、改权限或被删除后，旧 token 会失效
@@ -46,7 +46,7 @@ Content-Type: application/json
 }
 ```
 
-典型返回：
+典型返回（浏览器扩展 / CLI 等无 `Origin` 客户端，响应体**含** `token`）：
 
 ```json
 {
@@ -63,6 +63,8 @@ Content-Type: application/json
   }
 }
 ```
+
+浏览器 Web 页面请求（http/https `Origin`/`Referer`）返回的 `data` 中**不含** `token`，仅 `user`、`sessionId` 与 `expiresInDays`；认证态由 HttpOnly Cookie `starnav_auth` 承载。
 
 ## Route map
 
@@ -92,18 +94,24 @@ Content-Type: application/json
 
 ### Content and bookmarks
 
-| Method   | Path                 | Auth     | Notes                                     |
-| -------- | -------------------- | -------- | ----------------------------------------- |
-| `GET`    | `/data`              | Optional | 游客按 `level=0` 过滤，登录用户按权限过滤 |
-| `POST`   | `/data`              | Admin    | 保存全量分类与书签数据                    |
-| `POST`   | `/bookmark`          | Admin    | 创建书签                                  |
-| `PUT`    | `/bookmark/:id`      | Admin    | 更新书签                                  |
-| `DELETE` | `/bookmark/:id`      | Admin    | 永久删除书签                              |
-| `GET`    | `/bookmark/search`   | Yes      | 搜索当前权限范围内的书签                  |
-| `GET`    | `/bookmark/check`    | Yes      | 检查当前权限范围内 URL 是否重复           |
-| `GET`    | `/categories/simple` | Yes      | 获取当前权限范围内的分类平铺列表          |
-| `POST`   | `/category`          | Admin    | 创建分类                                  |
-| `POST`   | `/sites/:id/click`   | No       | 记录书签点击统计                          |
+| Method   | Path                     | Auth     | Notes                                     |
+| -------- | ------------------------ | -------- | ----------------------------------------- |
+| `GET`    | `/data`                  | Optional | 游客按 `level=0` 过滤，登录用户按权限过滤 |
+| `POST`   | `/data`                  | Admin    | 保存全量分类与书签数据                    |
+| `POST`   | `/bookmark`              | Admin    | 创建书签                                  |
+| `PUT`    | `/bookmark/:id`          | Admin    | 更新书签                                  |
+| `PUT`    | `/bookmark/:id/move`     | Admin    | 移动书签到指定分类与位置                  |
+| `DELETE` | `/bookmark/:id`          | Admin    | 永久删除书签                              |
+| `POST`   | `/bookmark/batch-move`   | Admin    | 批量移动书签到指定分类                    |
+| `POST`   | `/bookmark/batch-delete` | Admin    | 批量删除书签                              |
+| `GET`    | `/bookmark/search`       | Yes      | 搜索当前权限范围内的书签                  |
+| `GET`    | `/bookmark/check`        | Yes      | 检查当前权限范围内 URL 是否重复           |
+| `GET`    | `/categories/simple`     | Yes      | 获取当前权限范围内的分类平铺列表          |
+| `PUT`    | `/categories/reorder`    | Admin    | 批量调整分类顺序                          |
+| `POST`   | `/category`              | Admin    | 创建分类                                  |
+| `PUT`    | `/category/:id`          | Admin    | 更新分类（名称/图标/等级/父分类）         |
+| `DELETE` | `/category/:id`          | Admin    | 删除分类（子分类回挂上级，书签迁移）      |
+| `POST`   | `/sites/:id/click`       | No       | 记录书签点击统计                          |
 
 ### System and tools
 
@@ -122,11 +130,7 @@ Content-Type: application/json
 
 ### Stats
 
-| Method | Path     | Auth  | Notes        |
-| ------ | -------- | ----- | ------------ |
-| `GET`  | `/stats` | Admin | 访问统计汇总 |
-| `GET`  | `/cache` | Admin | 缓存运行统计 |
-| `POST` | `/visit` | No    | 访问上报     |
+> 说明：访问统计接口（`GET /stats` 汇总、`GET /cache` 缓存统计）与 PV/UV 数据采集（`POST /visit`）已随统计面板下线而**整体移除**，不再提供任何访问统计/采集接口。
 
 ## Public settings contract
 

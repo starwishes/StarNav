@@ -121,14 +121,21 @@
               : t('health.runtimeDefault')
           }}</b>
         </div>
-        <div class="metric-item metric-item-stack">
-          <span>{{ t('health.runtimeDataDir') }}</span>
-          <b>{{ healthData.checks.runtime.dataDir }}</b>
-        </div>
-        <div class="metric-item metric-item-stack">
-          <span>{{ t('health.runtimeUploadsDir') }}</span>
-          <b>{{ healthData.checks.runtime.uploadsDir }}</b>
-        </div>
+      </section>
+    </div>
+
+    <div v-else-if="loadFailed" class="health-grid error-state">
+      <section class="card-shell error-card" role="status">
+        <p class="error-title">{{ t('health.loadFailed') }}</p>
+        <button
+          type="button"
+          class="refresh-button error-retry"
+          :disabled="loading"
+          @click="fetchHealth"
+        >
+          <AppIcon name="icon-md-sync" class="refresh-icon" :class="{ spinning: loading }" />
+          {{ t('common.retry') }}
+        </button>
       </section>
     </div>
 
@@ -161,12 +168,16 @@ const { t } = useI18n()
 const logger = createScopedLogger('web:system-health')
 const loading = ref(false)
 const healthData = ref<HealthSummary | null>(null)
+const loadFailed = ref(false)
 
 const fetchHealth = async () => {
   loading.value = true
   try {
     healthData.value = await adminApi.getSystemHealth()
+    loadFailed.value = false
   } catch (error) {
+    // 失败不再无限停留在骨架屏：切到错误态，让用户主动重试。
+    loadFailed.value = true
     logger.error('Failed to fetch system health.', error)
   } finally {
     loading.value = false
@@ -407,6 +418,33 @@ onMounted(fetchHealth)
     background-size: 200% 100%;
     animation: shimmer 1.2s linear infinite;
   }
+}
+
+.error-state {
+  grid-template-columns: 1fr;
+}
+
+.error-card {
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--gray-500);
+}
+
+.error-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.error-retry {
+  width: auto;
+  padding: 0 18px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 @keyframes pulse {

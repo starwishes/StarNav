@@ -10,9 +10,15 @@
       <a class="category-title" :name="category.name">{{ category.name }}</a>
     </header>
 
-    <div v-if="hasSubCategories" class="sub-category-tabs" role="tablist">
+    <div
+      v-if="hasSubCategories"
+      class="sub-category-tabs"
+      role="tablist"
+      @keydown="handleTablistKeydown"
+    >
       <div
         role="tab"
+        :data-tab-id="category.id"
         :tabindex="activeTabId === category.id ? 0 : -1"
         :aria-selected="activeTabId === category.id"
         class="tab-item"
@@ -22,12 +28,13 @@
         @keydown.space.prevent="activeTabId = category.id"
         @contextmenu.prevent="$emit('header-contextmenu', { event: $event, category: category })"
       >
-        综合
+        {{ t('category.allTab') }}
       </div>
       <div
         v-for="child in category.children"
         :key="child.id"
         role="tab"
+        :data-tab-id="child.id"
         :tabindex="activeTabId === child.id ? 0 : -1"
         :aria-selected="activeTabId === child.id"
         class="tab-item"
@@ -41,8 +48,12 @@
       </div>
     </div>
 
-    <main class="category-main">
-      <div v-if="currentDisplayItems.length === 0" class="empty-placeholder">暂无书签</div>
+    <!-- 每分类一个 <main> 会违反“单页单 main landmark”规范：
+         顶层 home-content 已提供唯一 main，这里用普通 div 承载内容。 -->
+    <div class="category-main">
+      <div v-if="currentDisplayItems.length === 0" class="empty-placeholder">
+        {{ t('category.emptyItems') }}
+      </div>
       <ul
         v-else
         ref="gridRef"
@@ -99,12 +110,13 @@
           />
         </li>
       </ul>
-    </main>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import SiteCard from './SiteCard.vue'
 import { Favicon } from '@/config'
 import type { Category } from '@/types'
@@ -121,6 +133,8 @@ import {
   type DisplayedSiteItem,
   type SiteMoveState
 } from '@/components/index/siteCategoryHelpers'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   category: Category
@@ -151,6 +165,38 @@ defineEmits<{
 
 const activeTabId = ref<number>(props.category.id)
 const hasSubCategories = computed(() => hasChildCategories(props.category))
+
+// roving tabindex 的 tablist 键盘导航：←/→ 切换 activeTabId 并把焦点移到目标 tab。
+// 子分类 tab 非激活项 tabindex=-1，键盘 Tab 无法到达，方向键是唯一入口。
+// 直接从事件容器查询 tab 元素，避免模板 ref 在静态项与 v-for 项混用时收集不可靠。
+const handleTablistKeydown = (event: KeyboardEvent) => {
+  const tabs = Array.from(
+    (event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('.tab-item')
+  )
+  if (tabs.length === 0) {
+    return
+  }
+
+  let nextIndex: number
+  // 键盘事件必然落在当前聚焦的 tab 上；用 event.target 定位比 document.activeElement 更稳
+  const currentIndex = tabs.indexOf(event.target as HTMLElement)
+
+  if (event.key === 'ArrowRight') {
+    nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % tabs.length
+  } else if (event.key === 'ArrowLeft') {
+    nextIndex = currentIndex < 0 ? tabs.length - 1 : (currentIndex - 1 + tabs.length) % tabs.length
+  } else {
+    return
+  }
+
+  event.preventDefault()
+  const nextTab = tabs[nextIndex]
+  const tabId = Number(nextTab.dataset.tabId)
+  if (!Number.isNaN(tabId)) {
+    activeTabId.value = tabId
+    nextTab.focus()
+  }
+}
 
 const resolveMatchedTabId = (category: Category, selectedCategoryId?: number | null) => {
   if (selectedCategoryId === undefined || selectedCategoryId === null) {

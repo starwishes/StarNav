@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { bookmarkReadService } from '../../../src/server/services/bookmark/bookmarkReadService.js'

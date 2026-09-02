@@ -1,7 +1,7 @@
 /**
  * 写操作前整库备份节流器。
  *
- * 背景：backupDatabase 内部是 fs.copyFileSync 整库复制，为同步阻塞调用，
+ * 背景：backupDatabase 内部是 VACUUM INTO（事务内一致快照），仍为同步阻塞调用，
  * 每次书签/分类写操作都触发一次会阻塞事件循环。这里维护"距上次备份时间"，
  * 两次备份间隔小于阈值时跳过本次备份；数据库本身仍有 WAL + checkpoint
  * 兜底，跳过的备份不影响数据正确性，最终一致性由下一次超过间隔的写操作保证。
@@ -16,7 +16,7 @@ export const BACKUP_MIN_INTERVAL_MS = 5000
 /** 强制备份的最小间隔（毫秒）：force 也不能无上限地同步复制整库。 */
 export const BACKUP_FORCE_MIN_INTERVAL_MS = 500
 
-/** 连续失败达到该次数后进入退避，避免每次写操作都同步重试 copyFileSync。 */
+/** 连续失败达到该次数后进入退避，避免每次写操作都同步重试整库备份（VACUUM INTO）。 */
 export const BACKUP_MAX_CONSECUTIVE_FAILURES = 3
 
 /** 连续失败后的退避间隔（毫秒）。 */
@@ -31,7 +31,7 @@ let backoffUntil = 0
  *
  * @param force 强制备份——仅保留较短的最小间隔（500ms），用于 saveData
  *              这类破坏性操作，确保删除前有尽量新的快照，又不至于每次
- *              同步复制整库阻塞事件循环
+ *              同步 VACUUM INTO 整库备份阻塞事件循环
  * @returns 是否真正执行了备份（false 表示被节流跳过或备份失败）
  */
 export const backupDatabaseThrottled = (force = false): boolean => {

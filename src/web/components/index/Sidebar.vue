@@ -7,7 +7,7 @@
         class="sidebar-item glass-effect secondary"
         type="button"
         @click="scrollToTop"
-        title="返回顶部"
+        :title="t('sidebar.backToTop')"
       >
         <i class="iconfont icon-md-rocket"></i>
       </button>
@@ -15,10 +15,11 @@
 
     <!-- 2. 切换侧边栏 (独立) -->
     <button
-      class="sidebar-item glass-effect secondary"
+      class="sidebar-item glass-effect secondary sidebar-toggle-btn"
       type="button"
       @click="toggleSidebar"
-      title="菜单"
+      :title="t('sidebar.menu')"
+      :aria-label="t('sidebar.menu')"
     >
       <i class="iconfont icon-md-menu"></i>
     </button>
@@ -28,7 +29,7 @@
       <button
         class="sidebar-item main-fab glass-effect"
         type="button"
-        title="添加"
+        :title="t('sidebar.add')"
         @click.stop="toggleActionMenu"
       >
         <i class="iconfont icon-tianjia"></i>
@@ -37,12 +38,12 @@
       <transition name="sidebar-menu">
         <div v-if="menuOpen" class="fab-action-menu" @click.stop>
           <button type="button" class="fab-action-button" @click="handleAction('add')">
-            <i class="iconfont icon-lianjie action-icon"></i>
-            <span>添加网站</span>
+            <i class="iconfont icon-md-link action-icon"></i>
+            <span>{{ t('manage.addSite') }}</span>
           </button>
           <button type="button" class="fab-action-button" @click="handleAction('add-category')">
-            <i class="iconfont icon-leimupinleifenleileibie action-icon"></i>
-            <span>添加分类</span>
+            <i class="iconfont icon-fenlei action-icon"></i>
+            <span>{{ t('manage.addCategory') }}</span>
           </button>
         </div>
       </transition>
@@ -52,8 +53,10 @@
 
 <script setup lang="ts">
 import { useAdminStore } from '@/store/admin'
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted, onUnmounted, inject } from 'vue'
 
+const { t } = useI18n()
 const adminStore = useAdminStore()
 const isVisible = ref(false)
 const menuOpen = ref(false)
@@ -123,6 +126,12 @@ onUnmounted(() => {
   @media screen and (max-width: 768px) {
     right: 16px;
     bottom: 80px;
+
+    /* 移动端侧栏已 display:none，此按钮调用 toggleSidebar 是 no-op：
+       首页分类树由纵向区块承载导航，隐藏该 no-op 控件。 */
+    .sidebar-toggle-btn {
+      display: none;
+    }
   }
 
   .sidebar-item {
@@ -137,6 +146,11 @@ onUnmounted(() => {
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     position: relative;
     outline: none;
+
+    &:focus-visible {
+      outline: 2px solid rgba(var(--ui-theme-rgb), 0.5);
+      outline-offset: 2px;
+    }
 
     /* 统一玻璃材质基础样式 */
     backdrop-filter: blur(12px);
@@ -286,4 +300,3 @@ onUnmounted(() => {
   color: rgba(226, 232, 240, 0.82);
 }
 </style>
-

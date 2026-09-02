@@ -52,13 +52,7 @@ export function useSiteFilter(moveState?: { active: boolean }) {
     // 提取置顶项
     const pinnedItems = collectItems(filtered)
       .filter((item) => item.pinned)
-      .map((item) => {
-        const pinnedReplica = { ...item, level: item.level || 0 } as Item & {
-          _isPinnedReplica?: boolean
-        }
-        pinnedReplica._isPinnedReplica = true
-        return pinnedReplica
-      })
+      .map((item) => ({ ...item, level: item.level || 0 }))
 
     if (pinnedItems.length > 0) {
       return [

@@ -20,7 +20,7 @@ const __dirname = path.dirname(__filename)
 const REPO_ROOT = path.resolve(__dirname, '../..')
 
 /** Shared modules mirrored into clients/extension/common */
-const SYNC_MODULES = ['api', 'logger']
+const SYNC_MODULES = ['api', 'logger', 'url']
 
 const require = createRequire(import.meta.url)
 

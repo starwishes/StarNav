@@ -11,16 +11,15 @@ import {
 
 describe('extension common api helpers', () => {
   it('ApiError carries status and payload', () => {
-    const error = new ApiError('boom', { status: '404', payload: { code: 'NF' } })
+    const error = new ApiError('boom', { status: 404, payload: { code: 'NF' } })
     expect(error.name).toBe('ApiError')
     expect(error.message).toBe('boom')
     expect(error.status).toBe(404)
     expect(error.payload).toEqual({ code: 'NF' })
   })
 
-  it('unwrapApiPayload extracts data then content', () => {
+  it('unwrapApiPayload extracts the data envelope', () => {
     expect(unwrapApiPayload({ data: { a: 1 } })).toEqual({ a: 1 })
-    expect(unwrapApiPayload({ content: 'x' })).toBe('x')
     expect(unwrapApiPayload('raw')).toBe('raw')
     expect(unwrapApiPayload(null)).toBe(null)
   })

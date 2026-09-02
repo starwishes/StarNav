@@ -1,16 +1,8 @@
 import { bookmarkReadService } from './bookmarkReadService.js'
 import { categoryReadService } from './categoryReadService.js'
 import { rebuildCache, getCache, hasCache } from './cache.js'
+import { ALL_LEVELS, normalizeLevel } from './levelUtils.js'
 import type { LevelLike } from '../../types/domain.js'
-
-const normalizeLevel = (visitorLevel: LevelLike = 0) => {
-  if (typeof visitorLevel === 'number') {
-    return visitorLevel
-  }
-
-  const parsed = Number.parseInt(String(visitorLevel ?? 0), 10)
-  return Number.isNaN(parsed) ? 0 : parsed
-}
 
 export const bookmarkSnapshotService = {
   getData(visitorLevel: LevelLike = 0) {
@@ -26,8 +18,8 @@ export const bookmarkSnapshotService = {
 
     // 正常环境下使用全局缓存
     if (!hasCache()) {
-      const allCategories = categoryReadService.getAll(999)
-      const allItems = bookmarkReadService.getAll(999)
+      const allCategories = categoryReadService.getAll(ALL_LEVELS)
+      const allItems = bookmarkReadService.getAll(ALL_LEVELS)
       rebuildCache(allCategories, allItems)
     }
 
@@ -36,9 +28,7 @@ export const bookmarkSnapshotService = {
       return { categories: [], items: [] }
     }
 
-    const categories = cache.categories.filter(
-      (category) => Number(category.level || 0) <= level
-    )
+    const categories = cache.categories.filter((category) => Number(category.level || 0) <= level)
     const validCategoryIds = new Set(categories.map((category) => category.id))
     const items = cache.items.filter(
       (item) =>
@@ -49,7 +39,7 @@ export const bookmarkSnapshotService = {
     return { categories, items }
   },
 
-  getCategories(level: LevelLike = 999) {
+  getCategories(level: LevelLike = ALL_LEVELS) {
     return categoryReadService.getAll(normalizeLevel(level))
   }
 }

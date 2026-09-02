@@ -1,3 +1,4 @@
+// @vitest-environment node
 import Database from 'better-sqlite3'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -8,7 +9,8 @@ vi.mock('../../../src/server/utils/logger.js', () => ({
 }))
 
 const { logger } = await import('../../../src/server/utils/logger.js')
-const { databaseSchemaService } = await import('../../../src/server/services/database/databaseSchemaService.js')
+const { databaseSchemaService } =
+  await import('../../../src/server/services/database/databaseSchemaService.js')
 
 describe('DatabaseSchemaService', () => {
   beforeEach(() => {
@@ -48,14 +50,6 @@ describe('DatabaseSchemaService', () => {
       CREATE TABLE sessions (
         session_id TEXT PRIMARY KEY,
         username TEXT NOT NULL
-      );
-      CREATE TABLE daily_stats (
-        date TEXT PRIMARY KEY
-      );
-      CREATE TABLE visit_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT NOT NULL,
-        ip TEXT NOT NULL
       );
     `)
 

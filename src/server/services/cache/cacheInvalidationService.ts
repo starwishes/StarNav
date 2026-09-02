@@ -1,7 +1,8 @@
 import { logger } from '../../utils/logger.js'
 import { invalidateCache as invalidateBookmarkSnapshotCache } from '../bookmark/cache.js'
-import cacheDefault from './cacheService.js'
+import { cacheService as cacheDefault } from './cacheService.js'
 import { CacheKeys } from './cacheDefinitionService.js'
+import { USER_LEVEL } from '../../../shared/constants.js'
 import type { CacheRuntimeService } from './cacheRuntimeService.js'
 
 type CacheLike = Pick<CacheRuntimeService, 'del'> & {
@@ -28,17 +29,13 @@ export function clearByPrefix(prefix: string, cacheService: CacheLike) {
 
 export function clearDataCache(cacheService: CacheLike) {
   clearByPrefix('categories:simple:', cacheService)
-  for (let level = 0; level <= 3; level++) {
+  for (let level = USER_LEVEL.GUEST; level <= USER_LEVEL.ADMIN; level++) {
     cacheService.del(CacheKeys.data(level))
   }
 }
 
 export function clearSearchCache(cacheService: CacheLike) {
   return clearByPrefix('search:', cacheService)
-}
-
-export function clearUserCache(username: string, cacheService: CacheLike) {
-  return cacheService.del(CacheKeys.userInfo(username))
 }
 
 export type InvalidateBookmarkCachesOptions = {
@@ -72,6 +69,5 @@ export const cacheInvalidationService = {
   clearByPrefix,
   clearDataCache,
   clearSearchCache,
-  clearUserCache,
   invalidateBookmarkCaches
 }

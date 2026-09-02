@@ -53,18 +53,15 @@ describe('admin store', () => {
 
     const store = useAdminStore()
 
-    expect(store.token).toBeNull()
     expect(store.user).toEqual(authUser)
     expect(store.isAuthenticated).toBe(true)
 
-    store.setAuth('next-token', { ...authUser, name: 'Renamed' })
-    expect(store.token).toBe('next-token')
+    store.setAuth({ ...authUser, name: 'Renamed' })
     expect(JSON.parse(localStorage.getItem('admin_user') || '{}')).toMatchObject({
       name: 'Renamed'
     })
 
     store.clearAuth()
-    expect(store.token).toBeNull()
     expect(store.user).toBeNull()
     expect(store.isAuthenticated).toBe(false)
     expect(localStorage.getItem('admin_user')).toBeNull()
@@ -93,7 +90,6 @@ describe('admin store', () => {
       password: 'secret',
       remember: false
     })
-    expect(store.token).toBe('jwt-token')
     expect(store.user).toEqual(authUser)
     expect(JSON.parse(localStorage.getItem('admin_user') || '{}')).toMatchObject(authUser)
 
@@ -125,9 +121,25 @@ describe('admin store', () => {
     })
   })
 
+  it('falls back to localized failure messages when the api returns no usable error', async () => {
+    const store = useAdminStore()
+
+    mocks.login.mockResolvedValueOnce({})
+    await expect(store.login('admin', 'secret')).resolves.toEqual({
+      success: false,
+      error: '登录失败'
+    })
+
+    mocks.register.mockRejectedValueOnce('boom')
+    await expect(store.register('alice', 'secret')).resolves.toEqual({
+      success: false,
+      error: '注册失败'
+    })
+  })
+
   it('clears local auth state after logout even when the request fails', async () => {
     const store = useAdminStore()
-    store.setAuth('jwt-token', authUser)
+    store.setAuth(authUser)
 
     mocks.logout.mockResolvedValueOnce({ success: true })
     await expect(store.logout()).resolves.toBeUndefined()
@@ -135,7 +147,7 @@ describe('admin store', () => {
     expect(store.isAuthenticated).toBe(false)
     expect(store.user).toBeNull()
 
-    store.setAuth('jwt-token', authUser)
+    store.setAuth(authUser)
     mocks.logout.mockRejectedValueOnce(new Error('network failed'))
     await expect(store.logout()).resolves.toBeUndefined()
     expect(store.isAuthenticated).toBe(false)

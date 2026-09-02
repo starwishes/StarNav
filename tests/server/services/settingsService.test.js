@@ -1,10 +1,10 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getDb } from '../../../src/server/services/database/database.js'
 import { settingsService } from '../../../src/server/services/system/settingsService.js'
 import { logger } from '../../../src/server/utils/logger.js'
 import { cleanupTestDataDir, createTestDataDir } from '../../setup/testDataDir.js'
-
 
 describe('settingsService', () => {
   let testDataDir

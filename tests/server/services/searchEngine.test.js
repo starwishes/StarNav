@@ -1,6 +1,7 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { SearchEngine } from '../../../src/server/services/bookmark/SearchEngine.js'
+import { searchBookmarks } from '../../../src/server/services/bookmark/SearchEngine.js'
 import {
   cleanupBookmarkTestContext,
   createBookmarkTestContext,
@@ -49,13 +50,11 @@ const insertItem = (
   ).run(id, name, url, description, categoryId, level, lastVisited, sortOrder)
 }
 
-describe('SearchEngine', () => {
+describe('searchBookmarks', () => {
   let ctx
-  let searchEngine
 
   beforeEach(() => {
     ctx = createBookmarkTestContext('starnav-search-engine')
-    searchEngine = new SearchEngine()
   })
 
   afterEach(async () => {
@@ -96,7 +95,7 @@ describe('SearchEngine', () => {
       lastVisited: null
     })
 
-    expect(searchEngine.search('', 0, 3)).toEqual([
+    expect(searchBookmarks('', 0, 3)).toEqual([
       expect.objectContaining({
         id: 1,
         name: 'Newest Public',
@@ -107,7 +106,7 @@ describe('SearchEngine', () => {
         id: 2,
         name: 'Older Public',
         categoryId: 0,
-        categoryName: '未分类'
+        categoryName: null
       }),
       expect.objectContaining({
         id: 4,
@@ -148,18 +147,18 @@ describe('SearchEngine', () => {
       categoryId: 2
     })
 
-    expect(searchEngine.search('deploy', 1, 10)).toEqual([
+    expect(searchBookmarks('deploy', 1, 10)).toEqual([
       expect.objectContaining({
         id: 1,
         name: 'StarNav Docs',
         categoryName: 'Engineering'
       })
     ])
-    expect(searchEngine.search(repoUrl.slice(8, 16).toUpperCase(), 1, 10)).toEqual([
+    expect(searchBookmarks(repoUrl.slice(8, 16).toUpperCase(), 1, 10)).toEqual([
       expect.objectContaining({
         id: 2,
         name: 'Reference',
-        categoryName: '未分类'
+        categoryName: null
       })
     ])
   })

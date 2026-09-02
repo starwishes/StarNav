@@ -1,6 +1,7 @@
 <template>
   <li class="category-item" :class="{ active: isActive }" :data-depth="depth">
-    <div
+    <button
+      type="button"
       class="category-header"
       :style="headerStyle"
       :title="isCollapsed ? category.name : ''"
@@ -17,7 +18,7 @@
         class="custom-chevron"
         :class="{ 'is-expanded': isExpanded }"
       ></span>
-    </div>
+    </button>
 
     <transition name="expand">
       <ul v-if="!isCollapsed && isExpanded && hasChildren" class="sub-category-list">
@@ -97,7 +98,11 @@ const handleHeaderClick = () => {
   min-height: 46px;
   margin: 0 10px;
   padding: 8px 14px;
+  border: none;
   border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
   color: var(--sidebar-item-text, rgba(15, 23, 42, 0.74));
   cursor: pointer;
   transition:
@@ -109,6 +114,11 @@ const handleHeaderClick = () => {
     background: var(--sidebar-item-hover-bg, rgba(var(--ui-theme-rgb), 0.1));
     color: var(--sidebar-item-text-strong, var(--ui-text-primary, #0f172a));
     transform: translateX(2px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--ui-theme-rgb), 0.35);
+    outline-offset: -2px;
   }
 }
 
@@ -211,4 +221,3 @@ const handleHeaderClick = () => {
   display: none;
 }
 </style>
-

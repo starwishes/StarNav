@@ -120,7 +120,7 @@ describe('UserTable', () => {
     expect(wrapper.text()).toContain('translated:users.addUser')
 
     await wrapper.find('.dialog-form').trigger('submit')
-    expect(mocks.messageWarning).toHaveBeenCalledWith('请填写完整的用户信息')
+    expect(mocks.messageWarning).toHaveBeenCalledWith('translated:admin.userFieldsRequired')
     expect(wrapper.emitted('add')).toBeUndefined()
 
     const inputs = wrapper.findAll('.dialog-input')

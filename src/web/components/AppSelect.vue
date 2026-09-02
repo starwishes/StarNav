@@ -9,6 +9,7 @@
     :aria-disabled="disabled"
     aria-haspopup="listbox"
     :aria-controls="menuId"
+    :aria-activedescendant="open && activeIndex >= 0 ? getOptionId(activeIndex) : undefined"
     :tabindex="disabled ? -1 : 0"
     v-bind="rootAttrs"
     @click="toggleOpen"
@@ -32,8 +33,10 @@
           <button
             v-for="(option, index) in options"
             :key="getOptionKey(option, index)"
+            :id="getOptionId(index)"
             type="button"
             class="app-select__option"
+            role="option"
             :class="{
               'is-selected': isOptionSelected(option),
               'is-active': activeIndex === index,
@@ -55,15 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  nextTick,
-  onBeforeUnmount,
-  ref,
-  useAttrs,
-  useSlots,
-  watch
-} from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, useAttrs, useSlots, watch } from 'vue'
 import {
   buildSelectOptionsFromSlots,
   computeMenuPosition,
@@ -107,6 +102,7 @@ const open = ref(false)
 const activeIndex = ref(-1)
 const menuStyle = ref<Record<string, string>>({})
 const menuId = `app-select-menu-${Math.random().toString(36).slice(2, 10)}`
+const getOptionId = (index: number) => `${menuId}-option-${index}`
 
 const rootAttrs = computed(() => {
   const nextAttrs = { ...(attrs as Record<string, unknown>) }
@@ -340,8 +336,9 @@ onBeforeUnmount(() => {
   cursor: pointer;
   user-select: none;
 
-  &:focus {
-    outline: none;
+  &:focus-visible {
+    outline: 2px solid rgba(var(--ui-theme-rgb), 0.4);
+    outline-offset: 2px;
   }
 
   &.is-disabled {

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   api,
@@ -226,7 +227,8 @@ describe('Bookmarks API Integration Tests', () => {
           expect.objectContaining({
             id: itemId,
             categoryId: 0,
-            categoryName: '未分类'
+            // 后端不再烘焙展示文案：未分类返回 null，由前端按 locale 渲染
+            categoryName: null
           })
         ])
       )
@@ -269,7 +271,7 @@ describe('Bookmarks API Integration Tests', () => {
 
       const { getDb } = await import('../../src/server/services/database/database.js')
       const { invalidateCache } = await import('../../src/server/services/bookmark/cache.js')
-      const cache = (await import('../../src/server/services/cache/cacheService.js')).default
+      const cache = (await import('../../src/server/services/cache/cacheService.js')).cacheService
       const db = getDb()
 
       const hiddenCategory = db
@@ -342,6 +344,34 @@ describe('Bookmarks API Integration Tests', () => {
       })
 
       expect(res.status).toBe(409)
+    })
+  })
+
+  describe('点击统计', () => {
+    it('records a click through the production middleware chain (guest mode)', async () => {
+      const createRes = await api
+        .post('/api/bookmark')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          name: `click_target_${Date.now()}`,
+          url: `https://click-target-${Date.now()}.example.com`,
+          categoryId: defaultCategoryId
+        })
+      const itemId = unwrapResponseBody(createRes.body).item.id
+
+      // 公开写接口：无 token / 无 cookie 的游客请求也应按生产链路（optionalAuth →
+      // origin 校验 → 限流）通过并成功计数。
+      const clickRes = await api.post(`/api/sites/${itemId}/click`)
+      expect(clickRes.status).toBe(200)
+      const clickBody = unwrapResponseBody(clickRes.body)
+      expect(clickBody.item).toMatchObject({
+        id: itemId,
+        clickCount: 1
+      })
+
+      // 再次点击应递增计数
+      const secondClick = await api.post(`/api/sites/${itemId}/click`)
+      expect(unwrapResponseBody(secondClick.body).item.clickCount).toBe(2)
     })
   })
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
@@ -51,10 +52,14 @@ describe('auth cookie helpers', () => {
       get: (name) => (name === 'x-forwarded-proto' ? 'https' : '')
     }
 
-    expect(shouldUseSecureAuthCookie(proxiedHttpsReq)).toBe(false)
+    // 默认 TRUST_PROXY=true：信任反代转发的 X-Forwarded-Proto
+    expect(shouldUseSecureAuthCookie(proxiedHttpsReq)).toBe(true)
 
     process.env.TRUST_PROXY = 'true'
     expect(shouldUseSecureAuthCookie(proxiedHttpsReq)).toBe(true)
+
+    process.env.TRUST_PROXY = 'false'
+    expect(shouldUseSecureAuthCookie(proxiedHttpsReq)).toBe(false)
 
     process.env.AUTH_COOKIE_SECURE = 'false'
     expect(shouldUseSecureAuthCookie(proxiedHttpsReq)).toBe(false)

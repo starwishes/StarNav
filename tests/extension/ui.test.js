@@ -53,6 +53,7 @@ const renderDom = () => {
     <button id="openSite"></button>
     <button id="addCategoryBtn"></button>
     <button id="i18nToggle"><span class="main-char"></span><span class="badge-char"></span></button>
+    <button id="logoutBtn"></button>
     <button id="addCurrentBtn" data-i18n="addCurrent">Add Current</button>
     <button id="searchBtn" data-i18n="searchPlaceholder">Search</button>
     <div id="listTarget"></div>
@@ -74,7 +75,8 @@ const getElements = () => ({
   newCategoryName: document.getElementById('newCategoryName'),
   openSite: document.getElementById('openSite'),
   addCategoryBtn: document.getElementById('addCategoryBtn'),
-  i18nToggle: document.getElementById('i18nToggle')
+  i18nToggle: document.getElementById('i18nToggle'),
+  logoutBtn: document.getElementById('logoutBtn')
 })
 
 describe('browser extension ui helpers', () => {
@@ -89,7 +91,8 @@ describe('browser extension ui helpers', () => {
     renderDom()
     state = {
       currentLang: 'zh',
-      currentEditingId: 7
+      currentEditingId: 7,
+      config: { serverUrl: 'https://nav.example.com', token: 'signed-token' }
     }
     elements = getElements()
     onEdit = vi.fn()
@@ -117,6 +120,21 @@ describe('browser extension ui helpers', () => {
     expect(elements.newCategoryName.placeholder).toBe('分类名')
     expect(elements.i18nToggle.querySelector('.main-char').textContent).toBe('文')
     expect(elements.i18nToggle.querySelector('.badge-char').textContent).toBe('A')
+  })
+
+  it('localizes the logout button and falls back to English when the key is missing', () => {
+    i18n.zh.logout = '退出登录'
+    ui.updateUI()
+
+    expect(elements.logoutBtn.title).toBe('退出登录')
+    expect(elements.logoutBtn.getAttribute('aria-label')).toBe('退出登录')
+
+    // 字典缺 logout key（历史 bug）时回退英文，避免中文界面显示 "undefined"
+    i18n.zh.logout = undefined
+    ui.updateUI()
+
+    expect(elements.logoutBtn.title).toBe('Logout')
+    expect(elements.logoutBtn.getAttribute('aria-label')).toBe('Logout')
   })
 
   it('shows and auto-hides toasts while switching between connected and disconnected layouts', async () => {

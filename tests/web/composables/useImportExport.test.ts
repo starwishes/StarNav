@@ -33,13 +33,13 @@ describe('useImportExport', () => {
     vi.clearAllMocks()
   })
 
-  it('normalizes standard URLs and lowercases malformed input', () => {
+  it('normalizes URLs with the shared canonicalizer (lowercases host, strips trailing slash)', () => {
     const composable = useImportExport(ref([]), ref([]), vi.fn())
 
     expect(composable.normalizeUrl('https://example.com/docs/?q=1')).toBe(
       'https://example.com/docs?q=1'
     )
-    expect(composable.normalizeUrl(' EXAMPLE.COM/Docs/ ')).toBe('example.com/docs')
+    expect(composable.normalizeUrl(' EXAMPLE.COM/Docs/ ')).toBe('https://example.com/Docs')
   })
 
   it('rejects invalid json imports without mutating local state', () => {
@@ -101,9 +101,7 @@ describe('useImportExport', () => {
       { id: 10, name: 'Saved', url: 'https://saved.test', description: '', categoryId: 3 },
       { id: 11, name: 'New Link', url: 'https://new.test', description: 'new', categoryId: 4 }
     ])
-    expect(mocks.messageSuccess).toHaveBeenCalledWith(
-      'admin.importSuccess:{"count":1}. admin.importConfirm'
-    )
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('admin.importSuccess:{"count":1}')
     expect(saveDataSync).toHaveBeenCalledTimes(1)
   })
 
@@ -139,9 +137,7 @@ describe('useImportExport', () => {
     expect(items.value).toEqual([
       { id: 1, name: 'Good', url: 'https://good.test', description: '', categoryId: 1 }
     ])
-    expect(mocks.messageSuccess).toHaveBeenCalledWith(
-      'admin.importSuccess:{"count":1}. admin.importConfirm'
-    )
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('admin.importSuccess:{"count":1}')
   })
 
   it('deduplicates json imports by normalized url so trailing slashes collide', async () => {
@@ -172,8 +168,106 @@ describe('useImportExport', () => {
       { id: 10, name: 'Saved', url: 'https://x.com', description: '', categoryId: 1 },
       { id: 11, name: 'Unique', url: 'https://y.com/', description: '', categoryId: 1 }
     ])
-    expect(mocks.messageSuccess).toHaveBeenCalledWith(
-      'admin.importSuccess:{"count":1}. admin.importConfirm'
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('admin.importSuccess:{"count":1}')
+  })
+
+  it('remaps imported parentId into the target id space when a parent name merges into an existing category', async () => {
+    // Existing category with id 100 shares the name with the imported root, and an
+    // unrelated category already holds id 1 — so an unremapped parentId: 1 would
+    // dangle (or worse, attach to the unrelated category).
+    const categories = ref([
+      { id: 1, name: 'Dev' },
+      { id: 100, name: 'Root' }
+    ])
+    const items = ref([])
+    const saveDataSync = vi.fn()
+    const { handleJsonImport } = useImportExport(categories, items, saveDataSync)
+
+    await handleJsonImport({
+      meta: {
+        schemaVersion: 1,
+        exportedAt: '2026-04-13T10:00:00.000Z',
+        categoryCount: 3,
+        itemCount: 1
+      },
+      content: {
+        categories: [
+          { id: 1, name: 'Root', parentId: null },
+          { id: 2, name: 'Sub', parentId: 1 },
+          { id: 3, name: 'Nested', parentId: 2 }
+        ],
+        items: [{ id: 5, name: 'X', url: 'https://x.test', description: '', categoryId: 2 }]
+      }
+    })
+
+    expect(categories.value).toEqual([
+      { id: 1, name: 'Dev' },
+      { id: 100, name: 'Root' },
+      { id: 101, name: 'Sub', parentId: 100 },
+      { id: 102, name: 'Nested', parentId: 101 }
+    ])
+    expect(items.value[0]).toEqual(
+      expect.objectContaining({ id: 1, url: 'https://x.test', categoryId: 101 })
+    )
+  })
+
+  it('keeps imported children as root categories when the parent has no target mapping', async () => {
+    const categories = ref([])
+    const items = ref([])
+    const saveDataSync = vi.fn()
+    const { handleJsonImport } = useImportExport(categories, items, saveDataSync)
+
+    await handleJsonImport({
+      meta: {
+        schemaVersion: 1,
+        exportedAt: '2026-04-13T10:00:00.000Z',
+        categoryCount: 2,
+        itemCount: 0
+      },
+      content: {
+        categories: [
+          // parentId 999 exists in neither the backup nor the target set
+          { id: 1, name: 'Dangling Child', parentId: 999 },
+          { id: 2, name: 'Zero Parent', parentId: 0 }
+        ],
+        items: []
+      }
+    })
+
+    expect(categories.value).toEqual([
+      { id: 1, name: 'Dangling Child', parentId: null },
+      { id: 2, name: 'Zero Parent', parentId: null }
+    ])
+  })
+
+  it('uses the uncategorized id 0 when browser import has no matching category and none exist', async () => {
+    const categories = ref([])
+    const items = ref([])
+    const saveDataSync = vi.fn()
+    const { handleBookmarkImport } = useImportExport(categories, items, saveDataSync)
+
+    await expect(
+      handleBookmarkImport({
+        categories: [],
+        items: [
+          {
+            name: 'Orphan',
+            url: 'https://orphan.test',
+            description: '',
+            categoryName: 'Does Not Exist'
+          }
+        ]
+      })
+    ).resolves.toBe(1)
+
+    expect(categories.value).toEqual([])
+    expect(items.value[0]).toEqual(
+      expect.objectContaining({
+        id: 1,
+        name: 'Orphan',
+        url: 'https://orphan.test',
+        categoryId: 0
+      })
     )
   })
 
@@ -259,7 +353,7 @@ describe('useImportExport', () => {
         level: 0
       }
     ])
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('导入成功，已同步 1 个书签')
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('admin.importSuccess:{"count":1}')
     expect(saveDataSync).toHaveBeenCalledTimes(1)
   })
 

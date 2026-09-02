@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../src/server/utils/logger.js', () => ({
@@ -11,19 +12,14 @@ vi.mock('../../../src/server/services/bookmark/cache.js', () => ({
 }))
 
 vi.mock('../../../src/server/services/cache/cacheService.js', () => ({
-  default: {
+  cacheService: {
     cache: { keys: vi.fn().mockReturnValue([]) },
     del: vi.fn()
   }
 }))
 
-const {
-  clearByPrefix,
-  clearDataCache,
-  clearSearchCache,
-  clearUserCache,
-  invalidateBookmarkCaches
-} = await import('../../../src/server/services/cache/cacheInvalidationService.js')
+const { clearByPrefix, clearDataCache, clearSearchCache, invalidateBookmarkCaches } =
+  await import('../../../src/server/services/cache/cacheInvalidationService.js')
 const { invalidateCache } = await import('../../../src/server/services/bookmark/cache.js')
 const { logger } = await import('../../../src/server/utils/logger.js')
 
@@ -73,15 +69,6 @@ describe('cacheInvalidationService', () => {
 
     expect(cleared).toBe(1)
     expect(cacheService.del).toHaveBeenCalledWith('search:1:test:10')
-  })
-
-  it('should clear user-specific cache keys', () => {
-    cacheService.del.mockReturnValue(1)
-
-    const cleared = clearUserCache('alice', cacheService)
-
-    expect(cleared).toBe(1)
-    expect(cacheService.del).toHaveBeenCalledWith('user:alice')
   })
 
   it('should invalidate bookmark snapshot and TTL caches together', () => {

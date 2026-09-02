@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const cacheModulePath = '../../../src/server/services/bookmark/cache.js'

@@ -1,18 +1,14 @@
-import { errors } from '../../middleware/errorHandler.js'
+import { errors } from '../../utils/errors.js'
 import { CacheKeys, CacheTTL } from '../cache/cacheDefinitionService.js'
-import cache from '../cache/cacheService.js'
+import { cacheService as cache } from '../cache/cacheService.js'
 import { bookmarkSnapshotService } from './bookmarkSnapshotService.js'
 import { bookmarkLookupService } from './bookmarkLookupService.js'
+import { normalizeLevel } from './levelUtils.js'
 
 type LevelLike = number | string | null | undefined
 
 const MAX_SEARCH_LIMIT = 100
 const MAX_KEYWORD_LENGTH = 100
-
-const normalizeLevel = (level: LevelLike) => {
-  const parsed = Number.parseInt(String(level ?? 0), 10)
-  return Number.isNaN(parsed) ? 0 : parsed
-}
 
 const normalizeLimit = (limit: LevelLike) => {
   const parsed = Number.parseInt(String(limit ?? 10), 10)
@@ -41,12 +37,7 @@ export const bookmarkQueryService = {
     return data
   },
 
-  searchBookmarks(
-    username: string | null | undefined,
-    level: LevelLike,
-    keyword: string,
-    limit: LevelLike
-  ) {
+  searchBookmarks(level: LevelLike, keyword: string, limit: LevelLike) {
     const normalizedLevel = normalizeLevel(level)
     const normalizedLimit = normalizeLimit(limit)
     const normalizedKeyword = normalizeKeyword(keyword)
@@ -54,12 +45,7 @@ export const bookmarkQueryService = {
 
     let items = cache.get(cacheKey)
     if (!items) {
-      items = bookmarkLookupService.searchItems(
-        username,
-        normalizedKeyword,
-        normalizedLimit,
-        normalizedLevel
-      )
+      items = bookmarkLookupService.searchItems(normalizedKeyword, normalizedLimit, normalizedLevel)
       cache.set(cacheKey, items, CacheTTL.SHORT)
     }
 
@@ -79,13 +65,13 @@ export const bookmarkQueryService = {
     return { categories }
   },
 
-  checkBookmark(username: string | null | undefined, level: LevelLike, url: string) {
+  checkBookmark(level: LevelLike, url: string) {
     if (!url) {
       throw errors.badRequest('URL 不能为空')
     }
 
     const normalizedLevel = normalizeLevel(level)
-    const item = bookmarkLookupService.checkUrlItem(username, url, normalizedLevel)
+    const item = bookmarkLookupService.checkUrlItem(url, normalizedLevel)
     return {
       exists: !!item,
       item

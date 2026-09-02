@@ -6,17 +6,16 @@
     "confirm": "确定",
     "delete": "删除",
     "edit": "编辑",
-    "add": "添加",
-    "search": "搜索",
     "refresh": "刷新",
     "loading": "加载中...",
     "loadFailed": "加载失败",
     "success": "成功",
-    "error": "错误",
     "fail": "失败",
     "warning": "警告",
+    "languageSwitched": "语言已切换",
     "tips": "提示",
     "noData": "暂无数据",
+    "retry": "重试",
     "time": "时间",
     "action": "操作",
     "deleteSuccess": "删除成功",
@@ -32,37 +31,29 @@
     "login": "登录",
     "logout": "退出登录",
     "register": "注册",
-    "language": "切换语言",
     "switchToDark": "切换到夜间模式",
-    "switchToLight": "切换到白天模式"
+    "switchToLight": "切换到白天模式",
+    "toggleLanguage": "切换语言"
   },
   "menu": {
     "dataManage": "数据管理",
-    "sessions": "会话管理",
     "users": "用户管理",
     "monitor": "运行监控",
-    "stats": "访问统计",
-    "audit": "审计日志",
-    "health": "系统健康",
-    "settings": "系统设置",
-    "extension": "下载浏览器插件",
-    "extensionChromeLabel": "Chrome / Edge",
-    "extensionChromeDesc": "chrome://extensions → 加载已解压的扩展",
-    "extensionFirefoxLabel": "Firefox",
-    "extensionFirefoxDesc": "about:debugging → 此 Firefox → 加载临时附加组件"
+    "settings": "系统设置"
   },
   "auth": {
     "username": "用户名",
     "password": "密码",
-    "loginTitle": "登录",
     "registerSuccess": "注册成功",
+    "registerFailed": "注册失败",
     "passwordTip": "密码需至少8位，包含大小写字母和数字（符号可选）",
-    "passwordWeak": "密码必须至少8位，包含大小写字母和数字",
-    "registerNotice": "创建一个新账户以保存自己的导航数据",
     "loginSuccess": "登录成功",
     "loginFailed": "登录失败",
+    "loginFieldsRequired": "请输入用户名和密码",
     "rememberMe": "记住我（90 天内自动登录）",
-    "logoutSuccess": "退出登录成功"
+    "logoutSuccess": "退出登录成功",
+    "closeDialog": "关闭登录弹窗",
+    "tabsLabel": "登录注册切换"
   },
   "audit": {
     "title": "登录审计日志",
@@ -91,15 +82,11 @@
     "homeUrlPlaceholder": "输入首页“首页”按钮的跳转链接",
     "timezone": "时区",
     "timezoneTip": "首页时钟将根据此处设置的时区显示。",
-    "bgSettings": "背景图设置",
     "bgUrl": "背景图 URL",
-    "bgPlaceholder": "输入图片 URL，留空使用默认背景",
-    "bgUrlTip": "支持 https:// 开头的图片链接",
     "upload": "上传图片",
     "uploadBtn": "选择图片上传",
     "uploadTip": "支持 JPG/PNG/GIF/WEBP/ICO，最大 5MB，最长边 4096px",
     "uploadSectionTip": "上传后可直接在当前区域设置为 Logo、图标或背景。",
-    "preview": "预览",
     "uploadedFiles": "已上传的图片",
     "notConfigured": "当前未设置自定义图片",
     "resetAsset": "恢复默认",
@@ -108,10 +95,9 @@
     "setLogo": "设为 Logo",
     "noFiles": "暂无上传的图片",
     "saveSettings": "保存全局设置",
+    "saveSuccess": "设置保存成功",
     "refreshList": "刷新列表",
-    "deleteFile": "删除",
     "deleteConfirm": "确定要删除这个图片吗？",
-    "footerSettings": "底部页脚设置",
     "footerHtml": "自定义页脚",
     "footerHtmlTip": "仅保留安全 HTML 标签与安全链接，可添加备案号、友情链接等；危险脚本和非法链接会被自动移除。",
     "useDefaultTemplate": "填入默认模板",
@@ -119,9 +105,7 @@
     "siteNameSettings": "网站名称",
     "siteNameTip": "自定义网站名称，留空显示“星语导航”",
     "logoUrl": "网站 Logo",
-    "logoUrlTip": "支持图片链接，建议尺寸 64x64 或更大。留空使用默认星星 Logo。",
-    "favicon": "网站图标",
-    "faviconTip": "建议尺寸 32x32 或 192x192，支持 .ico, .png, .svg"
+    "favicon": "网站图标"
   },
   "users": {
     "addUser": "添加新用户",
@@ -136,7 +120,9 @@
     "inputUsername": "请输入用户名",
     "inputPassword": "请输入密码",
     "confirmAdd": "确定添加",
-    "saveEdit": "保存修改"
+    "saveEdit": "保存修改",
+    "closeAddDialog": "关闭添加用户弹窗",
+    "closeEditDialog": "关闭编辑用户弹窗"
   },
   "sessions": {
     "title": "会话管理",
@@ -160,7 +146,6 @@
     "sites": "网站管理"
   },
   "manage": {
-    "saveSync": "保存并同步",
     "exportJson": "导出 JSON",
     "importJson": "导入 JSON",
     "importBookmark": "导入浏览器书签",
@@ -175,8 +160,9 @@
     "categoryList": "分类列表",
     "siteList": "网站列表",
     "exportSuccess": "导出成功",
-    "importSuccess": "导入成功，请点击“保存并同步”",
-    "importFail": "导入失败"
+    "importFail": "导入失败",
+    "tabsLabel": "数据管理标签页",
+    "clearSearch": "清空搜索"
   },
   "table": {
     "id": "ID",
@@ -207,7 +193,11 @@
     "checkInvalid": "发现 {count} 个无效链接",
     "checkFail": "检查失败",
     "moveSuccess": "移动成功",
-    "moveFail": "移动失败"
+    "moveFail": "移动失败",
+    "selectAll": "全选",
+    "selectRow": "选择 {name}",
+    "linkOk": "链接正常",
+    "linkError": "链接检测失败"
   },
   "time": {
     "justNow": "刚刚",
@@ -217,17 +207,19 @@
   },
   "admin": {
     "dashboard": "管理面板",
-    "importSuccess": "智能合并完成：新增 {count} 个网站",
-    "importConfirm": "点击\"保存并同步\"生效",
+    "importSuccess": "智能合并完成：新增 {count} 个网站，改动已即时生效",
     "jsonError": "JSON 格式不正确",
+    "userFieldsRequired": "请填写完整的用户信息",
+    "sessionsRevoked": "已撤销 {count} 个会话",
+    "unnamedCategory": "未命名分类",
     "updateSuccess": "更新成功",
     "addSuccess": "添加成功",
     "deleteSuccess": "删除成功",
     "operationFailed": "操作失败",
     "confirmLogout": "确定要退出登录吗？",
     "logoutMessage": "已退出登录",
-    "userManagement": "用户管理 (管理员)",
-    "systemConfig": "系统配置 (管理员)"
+    "closeSidebar": "关闭侧边栏",
+    "toggleSidebar": "打开侧边栏"
   },
   "timezone": {
     "local": "本地时间 (跟随浏览器)",
@@ -241,13 +233,6 @@
     "sydney": "悉尼时间 (UTC+11)"
   },
   "bookmark": {
-    "name": "名称",
-    "url": "网址",
-    "description": "描述",
-    "category": "分类",
-    "clickCount": "点击量",
-    "addBookmark": "添加书签",
-    "editBookmark": "编辑书签",
     "deleteConfirm": "确定要删除这个书签吗？"
   },
   "category": {
@@ -262,7 +247,6 @@
     "id": "分类 ID",
     "placeholderName": "请输入分类名称",
     "permission": "通过权限",
-    "permissionPlaceholder": "请选择最小可见等级",
     "add": "添加分类",
     "public": "公开 (所有人可见)",
     "parent": "父级分类",
@@ -271,25 +255,26 @@
     "updateSuccess": "更新成功",
     "addSuccess": "添加成功",
     "deleteSuccess": "删除成功",
+    "closeDialog": "关闭分类弹窗",
     "subCategoryManage": "子分类管理",
     "addSubCategory": "添加子分类",
     "noSubCategories": "暂无子分类",
-    "createAndSelect": "创建并选中"
+    "createAndSelect": "创建并选中",
+    "allTab": "综合",
+    "emptyItems": "暂无书签"
   },
   "site": {
     "kicker": "书签",
     "add": "添加网站",
     "edit": "编辑网站",
     "addFirst": "添加第一个网站",
-    "id": "网站 ID",
     "name": "网站名称",
     "url": "网站地址",
     "description": "网站描述",
     "category": "所属分类",
     "permission": "访问权限",
     "pinned": "置顶显示",
-    "pinnedText": "置顶",
-    "defaultText": "默认",
+    "pinnedBadge": "已置顶",
     "placeholderName": "请输入网站名称",
     "placeholderUrl": "请输入网站地址",
     "placeholderDesc": "请输入网站描述",
@@ -297,7 +282,6 @@
     "pinnedCategory": "置顶",
     "icon": "自定义图标",
     "iconPlaceholder": "图标 URL（留空自动获取）",
-    "iconTip": "优先使用自定义图标，留空则自动获取网站 favicon",
     "upload": "上传",
     "uploadSuccess": "图标上传成功",
     "invalidUrl": "URL 无效或包含非法字符，请检查",
@@ -305,11 +289,7 @@
     "duplicateAlert": "书签已存在: \"{name}\" (所属分类: {categoryName})"
   },
   "notification": {
-    "dataLoaded": "数据加载成功",
-    "siteName": "星语导航",
-    "downloadSuccess": "插件下载成功",
-    "downloadFailed": "插件下载失败",
-    "loginRequired": "请先登录"
+    "siteName": "星语导航"
   },
   "context": {
     "pin": "置顶",
@@ -344,11 +324,53 @@
     "back": "返回",
     "importSelected": "导入选中 ({count} 个书签)",
     "emptyWarning": "未找到有效的书签数据",
-    "parseError": "文件解析失败，请确保是有效的书签文件"
+    "parseError": "文件解析失败，请确保是有效的书签文件",
+    "fileTooLarge": "文件超过 {size} 上限，请选择更小的书签文件"
+  },
+  "engine": {
+    "onlineSearchTitle": "在线搜索",
+    "dialogTitleEdit": "编辑搜索引擎",
+    "dialogTitleAdd": "添加搜索引擎",
+    "closeDialogAria": "关闭搜索引擎弹窗",
+    "nameLabel": "名称",
+    "namePlaceholder": "例如：Google",
+    "urlLabel": "地址",
+    "urlPlaceholder": "例如：https://www.google.com/search?q=",
+    "urlTip": "URL 需为合法 http/https 搜索地址，并以查询参数赋值结尾；部分引擎如 Brave 仅支持直接搜索，不提供联想词。",
+    "searchOnlyBadge": "仅搜索",
+    "searchOnlyBadgeTitle": "当前仅支持直接搜索，不提供联想词",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "edit": "编辑",
+    "delete": "删除",
+    "addEngine": "添加搜索引擎",
+    "cancel": "取消",
+    "confirm": "确定",
+    "maxEngines": "最多支持 {count} 个搜索引擎",
+    "saveSuccess": "修改成功",
+    "addSuccess": "添加成功",
+    "keepOne": "请至少保留一个搜索引擎",
+    "draftEmpty": "请填写完整信息",
+    "draftInvalidUrl": "请输入合法的 http/https 搜索地址",
+    "draftMissingSuffix": "搜索地址需以查询参数赋值结尾，例如 https://www.google.com/search?q="
+  },
+  "search": {
+    "localModeTitle": "本地书签搜索",
+    "noResults": "未找到相关书签",
+    "placeholderLocal": "搜索本地书签...",
+    "placeholderOnline": "在 {engine} 中搜索...",
+    "engineFallback": "搜索引擎",
+    "unnamedBookmark": "未命名书签",
+    "searchInput": "搜索",
+    "suggestionsLabel": "搜索建议"
+  },
+  "sidebar": {
+    "backToTop": "返回顶部",
+    "menu": "菜单",
+    "add": "添加"
   },
   "health": {
     "title": "系统监控",
-    "status": "服务状态",
     "version": "系统版本",
     "uptime": "运行时间",
     "database": "数据库状态",
@@ -375,8 +397,6 @@
     "runtimeCorsOrigins": "跨域来源配置",
     "runtimeConfigured": "已配置",
     "runtimeDefault": "未配置",
-    "runtimeDataDir": "数据目录",
-    "runtimeUploadsDir": "上传目录",
     "refresh": "刷新指标",
     "healthy": "正常运行",
     "degraded": "降级运行",
@@ -391,6 +411,24 @@
     "dbPath": "数据库路径",
     "uptimeDayUnit": "天",
     "uptimeHourUnit": "小时",
-    "uptimeMinuteUnit": "分钟"
+    "uptimeMinuteUnit": "分钟",
+    "loadFailed": "健康指标加载失败"
+  },
+  "feedback": {
+    "confirm": "确定",
+    "cancel": "取消",
+    "alert": "提示",
+    "confirmAction": "确认操作",
+    "close": "关闭",
+    "closeToast": "关闭提示",
+    "loadFailed": "加载失败",
+    "saveFailed": "保存失败",
+    "bookmarkAddFailed": "书签添加失败",
+    "bookmarkUpdateFailed": "书签更新失败",
+    "categoryCreateFailed": "分类创建失败",
+    "categoryUpdateFailed": "分类更新失败",
+    "moveFailed": "移动失败",
+    "unexpectedError": "发生了错误，请刷新页面重试",
+    "staleAssetsReload": "页面资源已更新，请刷新页面后重试"
   }
 }

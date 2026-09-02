@@ -32,11 +32,17 @@
               :category-tree="categoryTree"
               :mode="effectiveMode"
               :categories="categories"
+              :invalid-fields="invalidFields"
               @add-sub-category="handleAddSubCategory"
               @edit-sub-category="handleEditSubCategory"
             />
 
-            <BookmarkForm v-else v-model="localForm" :category-tree="categoryTree" />
+            <BookmarkForm
+              v-else
+              v-model="localForm"
+              :category-tree="categoryTree"
+              :invalid-fields="invalidFields"
+            />
           </div>
 
           <footer class="site-dialog-footer">
@@ -54,7 +60,13 @@
               {{ savingCat ? t('common.loading') : t('common.save') }}
             </button>
 
-            <button v-else type="button" class="footer-button primary" @click="handleSave">
+            <button
+              v-else
+              type="button"
+              class="footer-button primary"
+              :disabled="saving"
+              @click="handleSave"
+            >
               {{ t('common.confirm') }}
             </button>
           </footer>
@@ -79,9 +91,12 @@ const props = withDefaults(
     categories: Category[]
     isEdit: boolean
     dialogMode?: SiteDialogMode
+    /** 书签保存 in-flight：保存期间禁用确认按钮，防双击重复提交。 */
+    saving?: boolean
   }>(),
   {
-    dialogMode: 'site'
+    dialogMode: 'site',
+    saving: false
   }
 )
 
@@ -101,6 +116,7 @@ const {
   dialogKicker,
   dialogPanelRef,
   localForm,
+  invalidFields,
   savingCat,
   catEditForm,
   categoryTree,
@@ -205,7 +221,7 @@ void dialogPanelRef
 
 .site-dialog-kicker {
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;

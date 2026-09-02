@@ -1,5 +1,6 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import cache from '../../../src/server/services/cache/cacheService.js'
+import { cacheService as cache } from '../../../src/server/services/cache/cacheService.js'
 
 // Mock logger to suppress expected errors
 vi.mock('../../../src/server/utils/logger.js', () => ({

@@ -183,6 +183,13 @@ describe('Index view', () => {
     expect(wrapper.find('.background-visible').text()).toBe('true')
   })
 
+  it('starts collapsed by default so the first frame is not right-shifted', async () => {
+    const wrapper = createWrapper()
+    await flushAsync()
+
+    expect(wrapper.find('.content').classes()).toContain('sidebar-collapsed')
+  })
+
   it('wires provided toggleSidebar, collapse state, and site actions through the shell', async () => {
     const wrapper = createWrapper()
     await flushAsync()

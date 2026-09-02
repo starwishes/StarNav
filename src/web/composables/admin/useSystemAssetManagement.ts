@@ -3,6 +3,7 @@ import { ElMessage, ElMessageBox } from '@/utils/feedback'
 import { useI18n } from 'vue-i18n'
 import { adminApi, type UploadedFile } from '@/api/admin'
 import { getErrorMessage } from '@/utils/errors'
+import { readFileAsDataUrl } from '@/utils/file'
 import { createScopedLogger } from '../../../shared/logger.js'
 
 type AssetField = 'backgroundUrl' | 'faviconUrl' | 'logoUrl'
@@ -12,16 +13,6 @@ interface AssetSettingsState {
   faviconUrl?: string
   logoUrl?: string
 }
-
-const readFileAsDataUrl = (file: File) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-
-    reader.onload = () => resolve(String(reader.result || ''))
-    reader.onerror = () => reject(reader.error || new Error('Failed to read file'))
-
-    reader.readAsDataURL(file)
-  })
 
 export function useSystemAssetManagement(
   settings: AssetSettingsState,

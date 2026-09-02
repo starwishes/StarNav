@@ -6,8 +6,9 @@
 
 ## 当前版本
 
-- 主站：`v1.0.6`
-- 浏览器扩展：`v1.0.6`
+- 主站：`v1.0.7`
+- 浏览器扩展：`v1.0.7`
+
 <!-- version-sync:end -->
 
 ## 快速开始
@@ -21,7 +22,7 @@ docker compose --project-directory . -f docker/docker-compose.yml up -d --build
 # 本地开发
 npm install
 npm run serve          # API / 生产态入口，默认端口见 .env
-npm run dev            # Vite 前端，默认 http://localhost:5173
+npm run dev            # Vite 前端，默认 http://localhost:8080
 
 # 生产构建后运行
 npm run build && npm run serve

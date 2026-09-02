@@ -18,7 +18,7 @@
             <button
               type="button"
               class="dialog-close"
-              aria-label="关闭编辑用户弹窗"
+              :aria-label="t('users.closeEditDialog')"
               @click="$emit('close')"
             >
               ×
@@ -66,9 +66,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, toRef } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useFocusOnOpen } from '@/composables/useFocusOnOpen'
+import { useDialogA11y } from '@/composables/useDialogA11y'
 
 type EditForm = {
   newUsername: string
@@ -81,7 +81,7 @@ const props = defineProps<{
 
 const formModel = defineModel<EditForm>('form', { required: true })
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'close'): void
   (e: 'confirm'): void
 }>()
@@ -90,11 +90,13 @@ const { t } = useI18n()
 const dialogRef = ref<HTMLElement | null>(null)
 const usernameInputRef = ref<HTMLInputElement | null>(null)
 
-useFocusOnOpen(
-  toRef(props, 'modelValue'),
-  () => dialogRef.value,
-  () => usernameInputRef.value
-)
+// 打开聚焦、Tab 焦点陷阱、Esc 关闭、关闭后焦点归还触发元素。
+useDialogA11y({
+  isOpen: () => props.modelValue,
+  getDialog: () => dialogRef.value,
+  getInitialFocus: () => usernameInputRef.value,
+  onClose: () => emit('close')
+})
 </script>
 
 <style scoped lang="scss">

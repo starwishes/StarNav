@@ -20,13 +20,15 @@ StarNav 是单仓、单进程的全栈应用：
 
 需要区分两类依赖和产物：
 
-- 构建期 / 开发期链路：`vite`、`@vitejs/plugin-vue`、`vite-plugin-pwa`、`vite-plugin-compression`、`vitest`、`eslint`、`prettier`
-- 非生产诊断链路：`swagger-jsdoc`、`swagger-ui-express`，仅在非生产环境生成和挂载 `/api-docs` / `/api-docs.json`
+- 构建期 / 开发期链路：`vite`、`@vitejs/plugin-vue`、`vite-plugin-pwa`、`vitest`、`eslint`、`prettier`
+- 非生产诊断链路：`swagger-jsdoc`、`swagger-ui-express`，仅用于非生产 `/api-docs` 交互页与动态生成 `/api-docs.json`
 - 运行时链路：`server.ts`（`tsx`）、`src/server/**/*.ts`、`src/shared/**/*.ts`、生产依赖、SQLite、上传目录，以及已经生成好的 `dist/**`
 
 这意味着：
 
 - PWA 相关依赖只参与 `vite build`，生产环境真正运行的是生成出来的 `dist/sw.js`、`dist/workbox-*.js` 和静态资源
+- 前端运行时库（`vue`、`vue-router`、`pinia`、`pinia-plugin-persistedstate`、`vue-i18n`）自第 16 轮审查起归类为 `dependencies`：它们被打包进 `dist` 由浏览器消费，在容器 node_modules 中并不执行，归类目的是让 `npm audit --omit=dev`（`audit:prod`）覆盖前端运行时攻击面；代价是 prod-deps 安装的 node_modules 体积相应增加
+- `/api-docs.json` 在构建期写入 `dist/api-docs.json`（openapi-typescript 类型链读取该文件）；生产默认不向匿名访客公开，需显式 `API_DOCS_PUBLIC=true` 才放行，且只服务静态产物（无静态产物时 404，不会在运行时 import devDependency `swagger-jsdoc`）
 - Swagger 依赖不属于生产镜像运行面的核心能力；它们的真实健康度应通过非生产环境的 `/api-docs.json` 生成验证，而不是靠运行时接口流量间接证明
 - 处理构建链依赖升级时，必须至少同时验证 `npm run build`、`npm run test:browser` 和 `npm run docker:smoke`，避免“本地 audit 绿了，但产物链坏了”
 
@@ -51,11 +53,10 @@ StarNav 是单仓、单进程的全栈应用：
 - `auth.ts`: 登录、注册、会话、用户和审计
 - `bookmarks.ts`: 导航数据、分类、书签、点击统计
 - `system.ts`: 公共设置、后台设置、健康检查、上传和工具接口
-- `stats.ts`: PV/UV 与缓存统计
 
 ## Auth and session model
 
-- Web 管理端登录成功后，`authController` 会在响应里同时返回 JWT，并下发 HttpOnly Cookie `starnav_auth`
+- Web 管理端登录成功后，`authController` 下发 HttpOnly Cookie `starnav_auth`；响应体是否包含 JWT 按请求来源分流：浏览器 Web 页面请求（http/https 的 `Origin`/`Referer`）响应体剥离 `token`（避免 XSS 窃取长效令牌），浏览器扩展（`chrome-extension://` 等）与 CLI/脚本等无 `Origin` 客户端响应体保留 `token` 供 Bearer 使用
 - `src/server/middleware/auth.ts` 认证顺序是 Bearer 优先、Cookie 回退，因此浏览器扩展和脚本客户端可作为独立客户端直接登录 `/api/login`
 - 对于走 Cookie 的 `POST` / `PUT` / `PATCH` / `DELETE` 请求，后端会额外校验 `Origin` / `Referer` 是否属于当前站点或受信开发来源，用来降低 CSRF 风险
 
@@ -68,7 +69,7 @@ StarNav 是单仓、单进程的全栈应用：
 核心业务按域集中在 `src/server/services/`（实现位于子目录；根级 re-export stub 已移除，调用方直接 import 域路径）：
 
 - `bookmark/`：查询/命令编排（`bookmarkQueryService`、`bookmarkCommandService`）、快照与查重、读写底层、`cache.ts` 书签快照
-- `cache/`：TTL 缓存运行时、键定义、失效（含 `invalidateBookmarkCaches`）、预热
+- `cache/`：TTL 缓存运行时、键定义、失效（含 `invalidateBookmarkCaches`）
 - `database/`：SQLite 连接（`database/database.ts`）、路径、schema、维护、统计
 - `identity/`：账号、会话、登录/注册、后台用户与审计、bootstrap 管理员
 - `system/`：初始化编排（`initService.ts` / `initRuntimeService.ts`）、设置、健康检查、资源上传、定时备份
@@ -109,8 +110,6 @@ StarNav 是单仓、单进程的全栈应用：
 - `settings`
 - `categories`
 - `items`
-- `daily_stats`
-- `visit_logs`
 
 `items` 表当前已经移除旧版 `tags` 字段，书签组织方式以多级分类为主。
 

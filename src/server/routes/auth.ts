@@ -1,6 +1,6 @@
 import express from 'express'
 import { authenticate, requireAdmin } from '../middleware/auth.js'
-import { loginLimiter } from '../middleware/limiter.js'
+import { loginLimiter, loginIpLimiter } from '../middleware/limiter.js'
 import { authController } from '../controllers/authController.js'
 import { adminController } from '../controllers/adminController.js'
 import { sessionController } from '../controllers/sessionController.js'
@@ -27,14 +27,18 @@ const router = express.Router()
  *               remember: { type: boolean, description: 记住登录（延长令牌有效期） }
  *     responses:
  *       200:
- *         description: Login successful
+ *         description: >-
+ *           Login successful. Response body is source-conditional: browser web
+ *           requests (http/https Origin/Referer) OMIT `token` — auth is carried
+ *           by the HttpOnly Cookie only; browser extensions (chrome-extension://)
+ *           and CLI/no-Origin clients KEEP `token` in the body for Bearer usage.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 success: { type: boolean, example: true }
- *                 token: { type: string }
+ *                 token: { type: string, description: 仅浏览器扩展与 CLI/无 Origin 客户端返回；浏览器 Web 请求响应体剥离 }
  *                 user: { $ref: '#/components/schemas/User' }
  *       401:
  *         description: Invalid credentials
@@ -42,7 +46,7 @@ const router = express.Router()
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-router.post('/login', loginLimiter, authController.login)
+router.post('/login', loginIpLimiter, loginLimiter, authController.login)
 
 /**
  * @swagger
@@ -77,7 +81,7 @@ router.post('/logout', authenticate, authController.logout)
  *       201:
  *         description: 注册成功
  */
-router.post('/register', loginLimiter, authController.register)
+router.post('/register', loginIpLimiter, loginLimiter, authController.register)
 
 /**
  * @swagger

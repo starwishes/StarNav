@@ -56,6 +56,7 @@ const showDefaultArt = computed(() => !hasCustomBackground.value && props.visibl
 .bg {
   position: absolute;
   inset: 0;
+  transition: opacity 0.6s ease;
 
   /* Transparent over body-level custom wallpaper; default art paints its own base. */
   &.is-custom {
@@ -68,6 +69,7 @@ const showDefaultArt = computed(() => !hasCustomBackground.value && props.visibl
 
   &.is-default-art.is-deferred {
     background: transparent;
+    opacity: 0;
   }
 }
 

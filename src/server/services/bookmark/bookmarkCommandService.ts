@@ -1,18 +1,7 @@
 import { DEFAULT_ADMIN_NAME } from '../../config/index.js'
-import { errors } from '../../middleware/errorHandler.js'
+import { errors } from '../../utils/errors.js'
 import { normalizeOptionalUrl } from '../../../shared/security/urlSafety.js'
 import { categoryReadService } from './categoryReadService.js'
-import {
-  bookmarkCreateSchema,
-  bookmarkBatchDeleteSchema,
-  bookmarkBatchMoveSchema,
-  bookmarkMoveSchema,
-  bookmarkUpdateSchema,
-  categoryCreateSchema,
-  categoryReorderSchema,
-  categoryUpdateSchema,
-  dataSchema
-} from '../../middleware/validation.js'
 import { bookmarkMutationService } from './bookmarkMutationService.js'
 import { logger } from '../../utils/logger.js'
 import { validators } from '../../utils/validators.js'
@@ -29,13 +18,6 @@ import type {
 
 type IdLike = number | string
 type UsernameLike = string | null | undefined
-
-type JoiLikeSchema = {
-  validate: (
-    payload: unknown,
-    options?: Record<string, unknown>
-  ) => { error?: unknown; value: unknown }
-}
 
 const resolveUsername = (username: UsernameLike) => username || DEFAULT_ADMIN_NAME
 
@@ -65,19 +47,6 @@ const normalizeBulkPayload = (payload: BulkDataContent = {}) => {
 const isUniqueConstraintError = (error: unknown) => {
   const err = error as { code?: string; message?: string } | null | undefined
   return err?.code === 'SQLITE_CONSTRAINT_UNIQUE' || !!err?.message?.includes('unique')
-}
-
-const validatePayload = <T>(schema: JoiLikeSchema, payload: unknown, message: string): T => {
-  const { error, value } = schema.validate(payload, {
-    abortEarly: false,
-    convert: true
-  })
-
-  if (error) {
-    throw errors.badRequest(message)
-  }
-
-  return value as T
 }
 
 const normalizeBookmarkPayload = (
@@ -168,8 +137,7 @@ const normalizeCategoryReorderPayload = (payload: CategoryReorderPayload = {}) =
 export const bookmarkCommandService = {
   saveData(username: UsernameLike, payload: BulkDataContent = {}) {
     const normalizedUsername = resolveUsername(username)
-    const validatedPayload = validatePayload<BulkDataContent>(dataSchema, payload, '数据格式不正确')
-    const { categories, items, action } = normalizeBulkPayload(validatedPayload)
+    const { categories, items, action } = normalizeBulkPayload(payload)
 
     if (!BULK_DATA_ACTIONS.has(action)) {
       throw errors.badRequest(
@@ -177,38 +145,30 @@ export const bookmarkCommandService = {
       )
     }
 
-    if (
-      !bookmarkMutationService.saveData(normalizedUsername, {
-        categories,
-        items
-      })
-    ) {
-      throw errors.internal('数据保存失败')
-    }
+    // saveData 失败时直接抛错（500），无需布尔握手
+    bookmarkMutationService.saveData({
+      categories,
+      items
+    })
 
     logger.info(`数据保存成功: ${normalizedUsername} (${action})`)
 
     return successPayload(undefined, '数据保存成功')
   },
 
-  trackClick(itemId: IdLike) {
-    const updatedItem = bookmarkMutationService.trackClick(itemId)
+  trackClick(itemId: IdLike, level: number | string | null | undefined = 0) {
+    const updatedItem = bookmarkMutationService.trackClick(itemId, level)
 
     if (!updatedItem) {
+      // 不可见（等级/分类权限不足）或不存在，统一按未找到处理，不暴露存在性
       throw errors.notFound('书签未找到')
     }
 
     return { item: updatedItem }
   },
 
-  addBookmark(username: UsernameLike, payload: BookmarkPayload = {}) {
-    const normalizedUsername = resolveUsername(username)
-    const validatedPayload = validatePayload<BookmarkPayload>(
-      bookmarkCreateSchema,
-      payload,
-      '书签参数不正确'
-    )
-    const bookmarkPayload = normalizeBookmarkPayload(validatedPayload, { includeDefaults: true })
+  addBookmark(payload: BookmarkPayload = {}) {
+    const bookmarkPayload = normalizeBookmarkPayload(payload, { includeDefaults: true })
 
     if (!validators.isValidUrl(bookmarkPayload.url)) {
       throw errors.badRequest('无效的 URL 格式')
@@ -220,7 +180,7 @@ export const bookmarkCommandService = {
     }
 
     try {
-      const newItem = bookmarkMutationService.addItem(normalizedUsername, bookmarkPayload)
+      const newItem = bookmarkMutationService.addItem(bookmarkPayload)
 
       if (!newItem) {
         throw errors.internal('书签添加失败')
@@ -236,16 +196,10 @@ export const bookmarkCommandService = {
     }
   },
 
-  createCategory(username: UsernameLike, payload: CategoryPayload = {}) {
-    const normalizedUsername = resolveUsername(username)
-    const validatedPayload = validatePayload<CategoryPayload>(
-      categoryCreateSchema,
-      payload,
-      '分类参数不正确'
-    )
-    const categoryPayload = normalizeCategoryCreatePayload(validatedPayload)
+  createCategory(payload: CategoryPayload = {}) {
+    const categoryPayload = normalizeCategoryCreatePayload(payload)
 
-    const newCategory = bookmarkMutationService.addCategory(normalizedUsername, categoryPayload)
+    const newCategory = bookmarkMutationService.addCategory(categoryPayload)
 
     if (!newCategory) {
       throw errors.internal('分类创建失败')
@@ -254,20 +208,10 @@ export const bookmarkCommandService = {
     return { item: newCategory }
   },
 
-  updateCategory(username: UsernameLike, categoryId: IdLike, updateData: CategoryPayload = {}) {
-    const normalizedUsername = resolveUsername(username)
-    const validatedPayload = validatePayload<CategoryPayload>(
-      categoryUpdateSchema,
-      updateData,
-      '分类更新参数不正确'
-    )
-    const categoryPayload = normalizeCategoryUpdatePayload(validatedPayload)
+  updateCategory(categoryId: IdLike, updateData: CategoryPayload = {}) {
+    const categoryPayload = normalizeCategoryUpdatePayload(updateData)
 
-    const updatedCategory = bookmarkMutationService.updateCategory(
-      normalizedUsername,
-      categoryId,
-      categoryPayload
-    )
+    const updatedCategory = bookmarkMutationService.updateCategory(categoryId, categoryPayload)
 
     if (!updatedCategory) {
       throw errors.notFound('更新失败或分类不存在')
@@ -276,9 +220,8 @@ export const bookmarkCommandService = {
     return { item: updatedCategory }
   },
 
-  deleteCategory(username: UsernameLike, categoryId: IdLike) {
-    const normalizedUsername = resolveUsername(username)
-    const result = bookmarkMutationService.deleteCategory(normalizedUsername, categoryId)
+  deleteCategory(categoryId: IdLike) {
+    const result = bookmarkMutationService.deleteCategory(categoryId)
 
     if (!result) {
       throw errors.notFound('删除失败或分类不存在')
@@ -287,19 +230,10 @@ export const bookmarkCommandService = {
     return successPayload(undefined, '删除成功')
   },
 
-  reorderCategories(username: UsernameLike, payload: CategoryReorderPayload = {}) {
-    const normalizedUsername = resolveUsername(username)
-    const validatedPayload = validatePayload<CategoryReorderPayload>(
-      categoryReorderSchema,
-      payload,
-      '分类排序参数不正确'
-    )
-    const reorderPayload = normalizeCategoryReorderPayload(validatedPayload)
+  reorderCategories(payload: CategoryReorderPayload = {}) {
+    const reorderPayload = normalizeCategoryReorderPayload(payload)
 
-    const categories = bookmarkMutationService.reorderCategories(
-      normalizedUsername,
-      reorderPayload.orderedIds
-    )
+    const categories = bookmarkMutationService.reorderCategories(reorderPayload.orderedIds)
 
     if (categories === null) {
       throw errors.internal('分类排序失败')
@@ -308,14 +242,8 @@ export const bookmarkCommandService = {
     return { categories }
   },
 
-  updateBookmark(username: UsernameLike, itemId: IdLike, updateData: BookmarkPayload = {}) {
-    const normalizedUsername = resolveUsername(username)
-    const validatedPayload = validatePayload<BookmarkPayload>(
-      bookmarkUpdateSchema,
-      updateData,
-      '书签更新参数不正确'
-    )
-    const normalizedPayload = normalizeBookmarkPayload(validatedPayload)
+  updateBookmark(itemId: IdLike, updateData: BookmarkPayload = {}) {
+    const normalizedPayload = normalizeBookmarkPayload(updateData)
 
     if (normalizedPayload.url !== undefined && !validators.isValidUrl(normalizedPayload.url)) {
       throw errors.badRequest('无效的 URL 格式')
@@ -328,11 +256,7 @@ export const bookmarkCommandService = {
       }
     }
 
-    const updatedItem = bookmarkMutationService.updateItem(
-      normalizedUsername,
-      itemId,
-      normalizedPayload
-    )
+    const updatedItem = bookmarkMutationService.updateItem(itemId, normalizedPayload)
 
     if (!updatedItem) {
       throw errors.notFound('更新失败或书签不存在')
@@ -341,9 +265,8 @@ export const bookmarkCommandService = {
     return { item: updatedItem }
   },
 
-  deleteBookmark(username: UsernameLike, itemId: IdLike) {
-    const normalizedUsername = resolveUsername(username)
-    const success = bookmarkMutationService.deleteItem(normalizedUsername, itemId)
+  deleteBookmark(itemId: IdLike) {
+    const success = bookmarkMutationService.deleteItem(itemId)
 
     if (!success) {
       throw errors.notFound('删除失败或书签不存在')
@@ -352,17 +275,10 @@ export const bookmarkCommandService = {
     return successPayload(undefined, '删除成功')
   },
 
-  moveBookmark(username: UsernameLike, itemId: IdLike, payload: BookmarkMovePayload = {}) {
-    const normalizedUsername = resolveUsername(username)
-    const validatedPayload = validatePayload<BookmarkMovePayload>(
-      bookmarkMoveSchema,
-      payload,
-      '书签移动参数不正确'
-    )
-    const movePayload = normalizeBookmarkMovePayload(validatedPayload)
+  moveBookmark(itemId: IdLike, payload: BookmarkMovePayload = {}) {
+    const movePayload = normalizeBookmarkMovePayload(payload)
 
     const updatedItem = bookmarkMutationService.moveItem(
-      normalizedUsername,
       itemId,
       movePayload.categoryId,
       movePayload.targetIndex
@@ -375,24 +291,10 @@ export const bookmarkCommandService = {
     return { item: updatedItem }
   },
 
-  batchMoveBookmarks(username: UsernameLike, payload: BookmarkBatchMovePayload = {}) {
-    const normalizedUsername = resolveUsername(username)
-    const validatedPayload = validatePayload<BookmarkBatchMovePayload>(
-      bookmarkBatchMoveSchema,
-      payload,
-      '批量移动参数不正确'
-    )
-    const movePayload = normalizeBookmarkBatchMovePayload(validatedPayload)
+  batchMoveBookmarks(payload: BookmarkBatchMovePayload = {}) {
+    const movePayload = normalizeBookmarkBatchMovePayload(payload)
 
-    const items = bookmarkMutationService.batchMoveItems(
-      normalizedUsername,
-      movePayload.ids,
-      movePayload.categoryId
-    )
-
-    if (items === null) {
-      throw errors.internal('批量移动失败')
-    }
+    const items = bookmarkMutationService.batchMoveItems(movePayload.ids, movePayload.categoryId)
 
     return {
       count: items.length,
@@ -400,23 +302,10 @@ export const bookmarkCommandService = {
     }
   },
 
-  batchDeleteBookmarks(username: UsernameLike, payload: BookmarkBatchPayload = {}) {
-    const normalizedUsername = resolveUsername(username)
-    const validatedPayload = validatePayload<BookmarkBatchPayload>(
-      bookmarkBatchDeleteSchema,
-      payload,
-      '批量删除参数不正确'
-    )
-    const deletePayload = normalizeBookmarkBatchPayload(validatedPayload)
+  batchDeleteBookmarks(payload: BookmarkBatchPayload = {}) {
+    const deletePayload = normalizeBookmarkBatchPayload(payload)
 
-    const deletedCount = bookmarkMutationService.batchDeleteItems(
-      normalizedUsername,
-      deletePayload.ids
-    )
-
-    if (deletedCount === null) {
-      throw errors.internal('批量删除失败')
-    }
+    const deletedCount = bookmarkMutationService.batchDeleteItems(deletePayload.ids)
 
     return {
       count: deletedCount

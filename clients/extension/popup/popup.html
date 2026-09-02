@@ -26,6 +26,13 @@
             <line x1="10" y1="14" x2="21" y2="3" />
           </svg>
         </button>
+        <button id="logoutBtn" class="icon-btn" title="Logout" aria-label="Logout" style="display: none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
         <button id="themeToggle" class="icon-btn" title="Toggle light/dark mode" aria-label="Toggle theme">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -44,15 +51,15 @@
         <h1 class="not-connected-title">Connect to StarNav</h1>
         <p class="not-connected-copy">Enter your server URL and credentials to connect.</p>
         <div class="form-group">
-          <label data-i18n="serverUrl">Server URL</label>
+          <label for="reconnectServerUrl" data-i18n="serverUrl">Server URL</label>
           <input type="url" id="reconnectServerUrl" class="form-input" autocomplete="url" />
         </div>
         <div class="form-group">
-          <label data-i18n="username">Username</label>
+          <label for="reconnectUsername" data-i18n="username">Username</label>
           <input type="text" id="reconnectUsername" class="form-input" autocomplete="username" />
         </div>
         <div class="form-group">
-          <label data-i18n="password">Password</label>
+          <label for="reconnectPassword" data-i18n="password">Password</label>
           <input type="password" id="reconnectPassword" class="form-input" autocomplete="current-password" />
         </div>
         <div class="form-group form-group-checkbox">
@@ -91,23 +98,23 @@
           ⚠️ <span data-i18n="urlStored">URL already stored:</span><span id="duplicateName"></span>
         </div>
         <div class="form-group">
-          <label data-i18n="name">Name</label>
+          <label for="bookmarkName" data-i18n="name">Name</label>
           <input type="text" id="bookmarkName" class="form-input" />
         </div>
         <div class="form-group">
-          <label data-i18n="url">URL</label>
+          <label for="bookmarkUrl" data-i18n="url">URL</label>
           <input type="text" id="bookmarkUrl" class="form-input" />
         </div>
         <div class="form-row">
           <div class="form-group flex-1">
-            <label data-i18n="category">Category</label>
+            <label for="bookmarkCategory" data-i18n="category">Category</label>
             <div class="select-with-add">
               <select id="bookmarkCategory" class="form-select"></select>
               <button id="addCategoryBtn" class="add-category-btn" title="New Category">+</button>
             </div>
           </div>
           <div class="form-group flex-1">
-            <label data-i18n="level">Visibility</label>
+            <label for="bookmarkLevel" data-i18n="level">Visibility</label>
             <select id="bookmarkLevel" class="form-select">
               <option value="0" data-i18n="level0">Guest</option>
               <option value="1" data-i18n="level1">User</option>
@@ -117,7 +124,7 @@
           </div>
         </div>
         <div class="form-group">
-          <label data-i18n="description">Description (Optional)</label>
+          <label for="bookmarkDesc" data-i18n="description">Description (Optional)</label>
           <input type="text" id="bookmarkDesc" class="form-input" />
         </div>
         <div class="form-actions">
@@ -132,17 +139,17 @@
             <button id="closeCategoryModal" class="icon-btn">×</button>
           </div>
           <div class="form-group">
-            <label data-i18n="parentCategory">Parent Category</label>
+            <label for="newCategoryParent" data-i18n="parentCategory">Parent Category</label>
             <select id="newCategoryParent" class="form-select">
               <option value="" data-i18n="rootCategory">None (Root)</option>
             </select>
           </div>
           <div class="form-group">
-            <label data-i18n="categoryName">Category Name</label>
+            <label for="newCategoryName" data-i18n="categoryName">Category Name</label>
             <input type="text" id="newCategoryName" class="form-input" />
           </div>
           <div class="form-group">
-            <label data-i18n="level">Visibility</label>
+            <label for="newCategoryLevel" data-i18n="level">Visibility</label>
             <select id="newCategoryLevel" class="form-select">
               <option value="0" data-i18n="level0">Guest</option>
               <option value="1" data-i18n="level1">User</option>
@@ -160,7 +167,7 @@
     <div id="loading" class="loading-overlay" style="display: none">
       <div class="spinner"></div>
     </div>
-    <div id="toast" class="toast" style="display: none"></div>
+    <div id="toast" class="toast" role="status" aria-live="polite" style="display: none"></div>
   </div>
   <script type="module" src="popup.js"></script>
 </body>

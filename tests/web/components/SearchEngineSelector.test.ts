@@ -5,6 +5,12 @@ vi.mock('@/config', () => ({
   Favicon: 'https://favicon.test/?url='
 }))
 
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({
+    t: (key: string) => `translated:${key}`
+  })
+}))
+
 const SearchEngineSelector = (await import('@/components/index/SearchEngineSelector.vue')).default
 const wrappers: Array<ReturnType<typeof mount>> = []
 
@@ -77,7 +83,12 @@ describe('SearchEngineSelector', () => {
     await wrapper.vm.$nextTick()
 
     const actionIcons = document.body.querySelectorAll<HTMLElement>('.action-group .action-icon')
+    // 第一项的“上移”为 disabled 按钮：jsdom 不会派发 click，也不应产生 move
+    expect((actionIcons[0] as HTMLButtonElement).disabled).toBe(true)
     actionIcons[0].click()
+    await wrapper.vm.$nextTick()
+    // 第一项的“下移”有效
+    actionIcons[1].click()
     await wrapper.vm.$nextTick()
     actionIcons[2].click()
     await wrapper.vm.$nextTick()
@@ -88,7 +99,7 @@ describe('SearchEngineSelector', () => {
     document.body.querySelector<HTMLButtonElement>('.add-btn')?.click()
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.emitted('move')).toEqual([[0, -1]])
+    expect(wrapper.emitted('move')).toEqual([[0, 1]])
     expect(wrapper.emitted('edit')).toEqual([
       [{ name: '百度', url: 'https://www.baidu.com/s?wd=' }, 0]
     ])
@@ -180,7 +191,9 @@ describe('SearchEngineSelector', () => {
     await wrapper.find('.engine-btn').trigger('click')
     await wrapper.vm.$nextTick()
 
-    expect(document.body.querySelector('.search-capability-badge')?.textContent).toContain('仅搜索')
+    expect(document.body.querySelector('.search-capability-badge')?.textContent).toContain(
+      'translated:engine.searchOnlyBadge'
+    )
   })
 
   it('renders fallback icon state when the current engine has no url', () => {

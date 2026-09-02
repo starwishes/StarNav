@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../src/server/services/identity/auditService.js', () => ({
@@ -16,7 +17,8 @@ vi.mock('../../../src/server/services/identity/sessionService.js', () => ({
 
 const { auditService } = await import('../../../src/server/services/identity/auditService.js')
 const { sessionService } = await import('../../../src/server/services/identity/sessionService.js')
-const { sessionAccessService } = await import('../../../src/server/services/identity/sessionAccessService.js')
+const { sessionAccessService } =
+  await import('../../../src/server/services/identity/sessionAccessService.js')
 
 describe('sessionAccessService', () => {
   beforeEach(() => {
@@ -36,11 +38,11 @@ describe('sessionAccessService', () => {
 
     expect(sessionService.getByUsername).toHaveBeenCalledWith('alice')
     expect(result).toEqual({
-        sessions: [
-          { sessionId: 'session-1', ip: '1.1.1.1', isCurrent: false },
-          { sessionId: 'session-2', ip: '1.1.1.2', isCurrent: true }
-        ]
-      })
+      sessions: [
+        { sessionId: 'session-1', ip: '1.1.1.1', isCurrent: false },
+        { sessionId: 'session-2', ip: '1.1.1.2', isCurrent: true }
+      ]
+    })
   })
 
   it('revokes other sessions and logs the revoke count', () => {
@@ -58,8 +60,8 @@ describe('sessionAccessService', () => {
       ip: '1.1.1.1'
     })
     expect(result).toEqual({
-        revokedCount: 3
-      })
+      revokedCount: 3
+    })
   })
 
   it('rejects revoking foreign sessions and logs successful revocations', () => {

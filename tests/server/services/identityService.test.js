@@ -1,10 +1,11 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { accountService } from '../../../src/server/services/identity/accountService.js'
 import { clearBootstrapPasswordFile } from '../../../src/server/services/identity/adminBootstrapService.js'
 import { auditService } from '../../../src/server/services/identity/auditService.js'
 import { sessionService } from '../../../src/server/services/identity/sessionService.js'
 import { settingsService } from '../../../src/server/services/system/settingsService.js'
-import { loginSchema, strongPasswordSchema } from '../../../src/server/middleware/validation.js'
+import { loginSchema, strongPasswordSchema } from '../../../src/server/validation.js'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import { adminIdentityService } from '../../../src/server/services/identity/adminIdentityService.js'
@@ -18,7 +19,7 @@ vi.mock('../../../src/server/services/identity/adminBootstrapService.js', () => 
 vi.mock('../../../src/server/services/identity/auditService.js')
 vi.mock('../../../src/server/services/identity/sessionService.js')
 vi.mock('../../../src/server/services/system/settingsService.js')
-vi.mock('../../../src/server/middleware/validation.js')
+vi.mock('../../../src/server/validation.js')
 vi.mock('jsonwebtoken')
 vi.mock('bcryptjs')
 

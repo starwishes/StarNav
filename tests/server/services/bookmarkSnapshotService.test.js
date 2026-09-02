@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -96,7 +97,8 @@ describe('BookmarkSnapshotService', () => {
 
     const result = bookmarkSnapshotService.getCategories()
 
-    expect(mocks.categoryGetAll).toHaveBeenCalledWith(999)
+    // ALL_LEVELS 哨兵经 normalizeLevel 钳制到 ADMIN(3)，等价于"全部等级"
+    expect(mocks.categoryGetAll).toHaveBeenCalledWith(3)
     expect(result).toBe(categories)
   })
 })

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const logger = {
@@ -11,9 +12,13 @@ const backupDatabaseImpl = vi.fn()
 const getDbStatsImpl = vi.fn()
 const close = vi.fn()
 const pragma = vi.fn()
+const prepare = vi.fn(() => ({ all: vi.fn(), get: vi.fn(), run: vi.fn() }))
+const exec = vi.fn()
 const databaseInstance = {
   pragma,
-  close
+  close,
+  prepare,
+  exec
 }
 const Database = vi.fn(function Database() {
   return databaseInstance

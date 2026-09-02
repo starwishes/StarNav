@@ -7,6 +7,8 @@ const createLoadMainModule = async (options: { themeMode?: string } = {}) => {
   const getStoredThemeModeMock = vi.fn(() => options.themeMode ?? 'light')
   const recoverFromStaleAssetsMock = vi.fn().mockResolvedValue('recovered')
   const clearStaleAssetRecoveryFlagMock = vi.fn()
+  const notifyUnexpectedErrorMock = vi.fn()
+  const notifyStaleAssetReloadNeededMock = vi.fn()
   let swOptions: Record<string, unknown> | undefined
   const registerSWMock = vi.fn((options: Record<string, unknown>) => {
     swOptions = options
@@ -17,10 +19,12 @@ const createLoadMainModule = async (options: { themeMode?: string } = {}) => {
 
   const useMock = vi.fn().mockReturnThis()
   const mountMock = vi.fn()
-  const createAppMock = vi.fn(() => ({
+  const appMock = {
+    config: {} as Record<string, unknown>,
     use: useMock,
     mount: mountMock
-  }))
+  }
+  const createAppMock = vi.fn(() => appMock)
   const piniaUseMock = vi.fn()
   const createPiniaMock = vi.fn(() => ({
     use: piniaUseMock
@@ -55,6 +59,10 @@ const createLoadMainModule = async (options: { themeMode?: string } = {}) => {
     recoverFromStaleAssets: recoverFromStaleAssetsMock,
     clearStaleAssetRecoveryFlag: clearStaleAssetRecoveryFlagMock
   }))
+  vi.doMock('../../src/web/utils/unexpectedErrorFeedback.ts', () => ({
+    notifyUnexpectedError: notifyUnexpectedErrorMock,
+    notifyStaleAssetReloadNeeded: notifyStaleAssetReloadNeededMock
+  }))
   vi.doMock('virtual:pwa-register', () => ({
     registerSW: registerSWMock
   }))
@@ -68,6 +76,7 @@ const createLoadMainModule = async (options: { themeMode?: string } = {}) => {
     createAppMock,
     useMock,
     mountMock,
+    appMock,
     piniaUseMock,
     routerStub,
     i18nStub,
@@ -76,6 +85,8 @@ const createLoadMainModule = async (options: { themeMode?: string } = {}) => {
     getStoredThemeModeMock,
     recoverFromStaleAssetsMock,
     clearStaleAssetRecoveryFlagMock,
+    notifyUnexpectedErrorMock,
+    notifyStaleAssetReloadNeededMock,
     registerSWMock,
     swOptions,
     loggerMock,
@@ -161,21 +172,26 @@ describe('frontend main bootstrap', () => {
     expect(runtime.recoverFromStaleAssetsMock).toHaveBeenCalledWith()
   })
 
-  it('logs a loop warning when stale-asset recovery is skipped', { timeout: 15_000 }, async () => {
-    const runtime = await createLoadMainModule()
-    runtime.recoverFromStaleAssetsMock.mockResolvedValue('skipped')
+  it(
+    'logs a loop warning and notifies the user when stale-asset recovery is skipped',
+    { timeout: 15_000 },
+    async () => {
+      const runtime = await createLoadMainModule()
+      runtime.recoverFromStaleAssetsMock.mockResolvedValue('skipped')
 
-    const event = new Event('vite:preloadError') as Event & { payload?: unknown }
-    ;(event as { payload?: unknown }).payload = new Error('chunk')
-    Object.defineProperty(event, 'preventDefault', { value: () => {} })
-    window.dispatchEvent(event)
+      const event = new Event('vite:preloadError') as Event & { payload?: unknown }
+      ;(event as { payload?: unknown }).payload = new Error('chunk')
+      Object.defineProperty(event, 'preventDefault', { value: () => {} })
+      window.dispatchEvent(event)
 
-    await vi.waitFor(() => {
-      expect(runtime.loggerMock.error).toHaveBeenCalledWith(
-        expect.stringContaining('Stale asset recovery already attempted')
-      )
-    })
-  })
+      await vi.waitFor(() => {
+        expect(runtime.loggerMock.error).toHaveBeenCalledWith(
+          expect.stringContaining('Stale asset recovery already attempted')
+        )
+      })
+      expect(runtime.notifyStaleAssetReloadNeededMock).toHaveBeenCalled()
+    }
+  )
 
   it('reloads the page when the service worker takes control', { timeout: 15_000 }, async () => {
     let controllerListener: (() => void) | null = null
@@ -233,6 +249,43 @@ describe('frontend main bootstrap', () => {
       )
 
       delete (navigator as any).serviceWorker
+    }
+  )
+
+  it(
+    'wires a global Vue error handler that logs and notifies the user',
+    { timeout: 15_000 },
+    async () => {
+      const runtime = await createLoadMainModule()
+
+      const errorHandler = runtime.appMock.config.errorHandler as (err: unknown) => void
+      expect(typeof errorHandler).toBe('function')
+
+      errorHandler(new Error('render boom'))
+      expect(runtime.loggerMock.error).toHaveBeenCalledWith(
+        'Unhandled Vue error.',
+        expect.any(Error),
+        expect.any(Object)
+      )
+      expect(runtime.notifyUnexpectedErrorMock).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it(
+    'listens to window unhandledrejection events and notifies the user',
+    { timeout: 15_000 },
+    async () => {
+      const runtime = await createLoadMainModule()
+
+      const event = new Event('unhandledrejection')
+      ;(event as { reason?: unknown }).reason = new Error('async boom')
+      window.dispatchEvent(event)
+
+      expect(runtime.loggerMock.error).toHaveBeenCalledWith(
+        'Unhandled promise rejection.',
+        expect.any(Error)
+      )
+      expect(runtime.notifyUnexpectedErrorMock).toHaveBeenCalledTimes(1)
     }
   )
 })

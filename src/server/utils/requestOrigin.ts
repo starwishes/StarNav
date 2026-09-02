@@ -83,7 +83,8 @@ const normalizeOriginValue = (value: unknown): string | null => {
   }
 }
 
-const isExtensionOrigin = (origin: string | null | undefined): boolean =>
+/** 判断来源是否为浏览器扩展（chrome-extension:// 或 moz-extension://）。 */
+export const isExtensionOrigin = (origin: string | null | undefined): boolean =>
   typeof origin === 'string' && EXTENSION_ORIGIN_PATTERN.test(origin)
 
 const getConfiguredOrigins = (): string[] => {

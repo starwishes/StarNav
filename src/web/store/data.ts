@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
+import i18n from '@/plugins/i18n'
 import { dataApi } from '@/api'
 import type { Category, Item, SiteConfig } from '@/types'
 import {
@@ -25,8 +26,13 @@ export const useDataStore = defineStore('data', () => {
   const categories = ref<Category[]>([])
   const items = ref<Item[]>([])
   const loading = ref(false)
-  const saving = ref(false)
+  // 并发写计数：多个操作同时在途时，只有最后一个完成才把 saving 置回 false，
+  // 避免单个 ref 被先完成者提前清零而误报"空闲"。
+  const savingCount = ref(0)
+  const saving = computed(() => savingCount.value > 0)
   const initialized = ref(false)
+  /** 最近一次 loadData 失败的错误信息；空串表示无错误（用于区分“加载失败”与“确实无数据”）。 */
+  const loadError = ref('')
   /** In-flight load so concurrent callers share one request (search + homepage). */
   let loadDataPromise: Promise<void> | null = null
 
@@ -38,11 +44,11 @@ export const useDataStore = defineStore('data', () => {
   }
 
   const withSaving = async <T>(operation: () => Promise<T>): Promise<T> => {
-    saving.value = true
+    savingCount.value += 1
     try {
       return await operation()
     } finally {
-      saving.value = false
+      savingCount.value -= 1
     }
   }
 
@@ -81,6 +87,13 @@ export const useDataStore = defineStore('data', () => {
   }
 
   const loadData = async () => {
+    // 本地写操作在途时跳过刷新：并发返回的旧快照可能覆盖刚完成的乐观结果
+    //（如 moveItem/batchDelete 已本地更新、服务端旧数据仍在返回）。写完成后
+    // 下一次 visibilitychange / 手动刷新会正常拉取最新数据。
+    if (saving.value) {
+      return
+    }
+
     if (loadDataPromise) {
       return loadDataPromise
     }
@@ -88,11 +101,21 @@ export const useDataStore = defineStore('data', () => {
     loadDataPromise = (async () => {
       loading.value = true
       try {
-        applyLoadedContent(await dataApi.getContent())
+        const content = await dataApi.getContent()
+        // 若请求期间有写操作进入在途（saving 已置真），本次快照可能已过期，
+        // 不应用以免覆盖刚完成的乐观结果；下次刷新会拉到最新数据。
+        if (saving.value) {
+          return
+        }
+        applyLoadedContent(content)
+        loadError.value = ''
       } catch (error) {
         logger.error('Failed to load data.', error)
-        const message = error instanceof Error ? error.message : '加载失败'
-        ElMessage.error('加载失败: ' + message)
+        // UI 只显示固定文案，不把 error.message 原文上屏（error 可能携带服务端堆栈/内部
+        // 路径等敏感细节，见第 16 轮审查）；完整错误进 logger 供排查。
+        const message = i18n.global.t('feedback.loadFailed')
+        loadError.value = message
+        ElMessage.error(message)
       } finally {
         loading.value = false
         loadDataPromise = null
@@ -112,7 +135,7 @@ export const useDataStore = defineStore('data', () => {
       await dataApi.saveContent(buildSyncPayload(categories.value, items.value, action))
     }).catch((error) => {
       logger.error('Full content sync failed.', error)
-      const message = error instanceof Error ? error.message : '保存失败'
+      const message = error instanceof Error ? error.message : i18n.global.t('feedback.saveFailed')
       ElMessage.error(message)
       throw error
     })
@@ -122,7 +145,7 @@ export const useDataStore = defineStore('data', () => {
     withSaving(async () => {
       const createdCategory = await dataApi.addCategory(catData)
       if (!createdCategory) {
-        throw new Error('分类创建失败')
+        throw new Error(i18n.global.t('feedback.categoryCreateFailed'))
       }
 
       const normalizedCategory = normalizeCategory(createdCategory)
@@ -138,7 +161,7 @@ export const useDataStore = defineStore('data', () => {
     await withSaving(async () => {
       const updatedCategory = await dataApi.updateCategory(Number(catData.id), catData)
       if (!updatedCategory) {
-        throw new Error('分类更新失败')
+        throw new Error(i18n.global.t('feedback.categoryUpdateFailed'))
       }
 
       replaceCategory(normalizeCategory(updatedCategory))
@@ -158,7 +181,13 @@ export const useDataStore = defineStore('data', () => {
   }
 
   const moveCategory = async (fromIndex: number, toIndex: number) => {
+    if (fromIndex < 0 || fromIndex >= categories.value.length) {
+      return
+    }
     if (toIndex < 0 || toIndex >= categories.value.length) {
+      return
+    }
+    if (fromIndex === toIndex) {
       return
     }
 
@@ -178,7 +207,7 @@ export const useDataStore = defineStore('data', () => {
       }
     } catch (error) {
       categories.value = originalCategories
-      const message = error instanceof Error ? error.message : '保存失败'
+      const message = error instanceof Error ? error.message : i18n.global.t('feedback.saveFailed')
       ElMessage.error(message)
       throw error
     }
@@ -188,7 +217,7 @@ export const useDataStore = defineStore('data', () => {
     withSaving(async () => {
       const createdItem = await dataApi.addItem(itemData)
       if (!createdItem) {
-        throw new Error('书签添加失败')
+        throw new Error(i18n.global.t('feedback.bookmarkAddFailed'))
       }
 
       const normalizedItem = normalizeItem(createdItem)
@@ -209,7 +238,7 @@ export const useDataStore = defineStore('data', () => {
     await withSaving(async () => {
       const updatedItem = await dataApi.updateItem(Number(itemData.id), itemData)
       if (!updatedItem) {
-        throw new Error('书签更新失败')
+        throw new Error(i18n.global.t('feedback.bookmarkUpdateFailed'))
       }
 
       const normalizedItem = normalizeItem(updatedItem)
@@ -248,7 +277,7 @@ export const useDataStore = defineStore('data', () => {
       await withSaving(() => dataApi.batchDeleteItems(Array.from(targetIds)))
     } catch (error) {
       restoreState(originalState)
-      const message = error instanceof Error ? error.message : '保存失败'
+      const message = error instanceof Error ? error.message : i18n.global.t('feedback.saveFailed')
       ElMessage.error(message)
       throw error
     }
@@ -272,7 +301,7 @@ export const useDataStore = defineStore('data', () => {
       await withSaving(() => dataApi.batchMoveItems(ids, normalizedTargetCatId))
     } catch (error) {
       restoreState(originalState)
-      const message = error instanceof Error ? error.message : '保存失败'
+      const message = error instanceof Error ? error.message : i18n.global.t('feedback.saveFailed')
       ElMessage.error(message)
       throw error
     }
@@ -292,11 +321,11 @@ export const useDataStore = defineStore('data', () => {
         dataApi.moveItem(itemId, { categoryId: targetCatId, targetIndex })
       )
       if (!movedItem) {
-        throw new Error('移动失败')
+        throw new Error(i18n.global.t('feedback.moveFailed'))
       }
     } catch (error) {
       restoreState(originalState)
-      const message = error instanceof Error ? error.message : '保存失败'
+      const message = error instanceof Error ? error.message : i18n.global.t('feedback.saveFailed')
       ElMessage.error(message)
       throw error
     }
@@ -306,12 +335,24 @@ export const useDataStore = defineStore('data', () => {
     return findDuplicateItemByUrl(items.value, url, excludeId)
   }
 
+  /** 应用点击统计响应：本地即时更新 clickCount/lastVisited，游客无需整页刷新 */
+  const patchItemClick = (itemId: number, clickCount: number, lastVisited: string | null) => {
+    const target = items.value.find((item) => item.id === itemId)
+    if (target) {
+      target.clickCount = clickCount
+      if (lastVisited) {
+        target.lastVisited = lastVisited
+      }
+    }
+  }
+
   return {
     categories,
     items,
     loading,
     saving,
     initialized,
+    loadError,
     loadData,
     addCategory,
     updateCategory,
@@ -324,6 +365,7 @@ export const useDataStore = defineStore('data', () => {
     batchMoveItems,
     moveItem,
     findDuplicateItem,
+    patchItemClick,
     saveData: sync
   }
 })

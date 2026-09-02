@@ -1,4 +1,4 @@
-import { customRef } from 'vue'
+import { customRef, getCurrentScope, onScopeDispose } from 'vue'
 
 /**
  * 防抖 Hook
@@ -13,7 +13,16 @@ import { customRef } from 'vue'
  * // 用户输入会在停止输入 300ms 后才更新 searchQuery.value
  */
 export function useDebounce<T>(value: T, delay = 300) {
-  let timeout: ReturnType<typeof setTimeout>
+  let timeout: ReturnType<typeof setTimeout> | undefined
+
+  // 组件卸载时清掉待执行的防抖定时器，避免已卸载组件仍触发副作用
+  if (getCurrentScope()) {
+    onScopeDispose(() => {
+      if (timeout) {
+        clearTimeout(timeout)
+      }
+    })
+  }
 
   return customRef((track, trigger) => {
     return {
@@ -30,48 +39,4 @@ export function useDebounce<T>(value: T, delay = 300) {
       }
     }
   })
-}
-
-/**
- * 防抖函数（通用版本）
- *
- * @param fn - 要防抖的函数
- * @param delay - 延迟时间（毫秒）
- * @returns 防抖后的函数
- */
-export function debounce<T extends (...args: never[]) => unknown>(
-  fn: T,
-  delay = 300
-): (...args: Parameters<T>) => void {
-  let timeout: ReturnType<typeof setTimeout>
-
-  return function (this: ThisParameterType<T>, ...args: Parameters<T>) {
-    clearTimeout(timeout)
-    timeout = setTimeout(() => {
-      fn.apply(this, args)
-    }, delay)
-  }
-}
-
-/**
- * 节流函数
- * 限制函数在指定时间内只执行一次（如滚动事件）
- *
- * @param fn - 要节流的函数
- * @param delay - 时间间隔（毫秒）
- * @returns 节流后的函数
- */
-export function throttle<T extends (...args: never[]) => unknown>(
-  fn: T,
-  delay = 300
-): (...args: Parameters<T>) => void {
-  let lastCall = 0
-
-  return function (this: ThisParameterType<T>, ...args: Parameters<T>) {
-    const now = Date.now()
-    if (now - lastCall >= delay) {
-      lastCall = now
-      fn.apply(this, args)
-    }
-  }
 }

@@ -10,7 +10,9 @@ import Footer from '@/components/index/Footer.vue'
 import CollapsibleSidebar from '@/components/index/CollapsibleSidebar.vue'
 import { createScopedLogger } from '../../../shared/logger.js'
 
-const isSidebarCollapsed = ref(false)
+// 初始值必须与 CollapsibleSidebar 的默认折叠状态一致(true = 折叠)，
+// 否则首帧会按 248px 展开宽度渲染导致内容偏右；onMounted emit 是兜底同步。
+const isSidebarCollapsed = ref(true)
 const collapsibleSidebarRef = ref<InstanceType<typeof CollapsibleSidebar> | null>(null)
 
 const toggleSidebar = () => {
@@ -18,6 +20,7 @@ const toggleSidebar = () => {
 }
 
 provide('toggleSidebar', toggleSidebar)
+provide('isSidebarCollapsed', isSidebarCollapsed)
 
 const siteRef = ref<InstanceType<typeof Site> | null>(null)
 const configStore = useConfigStore()
@@ -31,13 +34,7 @@ const logger = createScopedLogger('web:home-view')
 const checkReady = () => {
   if (siteLoaded.value && settingsLoaded.value) {
     nextTick(() => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            isReady.value = true
-          }, 200)
-        })
-      })
+      isReady.value = true
     })
   }
 }
@@ -113,10 +110,7 @@ onMounted(async () => {
   width: 100%;
   min-height: 100%;
   overflow: hidden;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
+  /* user-select 收窄到卡片（SiteCard .site-card），不再禁用整页文本选择 */
 }
 
 .content {
@@ -127,7 +121,6 @@ onMounted(async () => {
   min-height: 100vh;
   margin-left: var(--sidebar-width);
   padding-top: 86px;
-  opacity: 0;
   transition:
     opacity 0.35s ease,
     margin-left 0.35s ease,
@@ -138,9 +131,8 @@ onMounted(async () => {
     margin-left: 88px;
   }
 
-  &.is-ready {
-    opacity: 1;
-  }
+  /* 内容默认可见：骨架屏在数据加载期间立即可见，避免首帧空白。
+     is-ready 仅用于控制背景艺术（见 Background :visible）的淡入。 */
 
   @media screen and (max-width: 768px) {
     --sidebar-width: 0px;

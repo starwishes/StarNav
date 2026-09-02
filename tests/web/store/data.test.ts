@@ -236,7 +236,9 @@ describe('data store', () => {
 
     expect(store.loading).toBe(false)
     expect(store.initialized).toBe(false)
-    expect(mocks.messageError).toHaveBeenCalledWith('加载失败: network down')
+    // 第 16 轮审查：UI 只显示固定文案，原始 error.message 不直接上屏（原文进 logger）
+    expect(mocks.messageError).toHaveBeenCalledWith('加载失败')
+    expect(store.loadError).toBe('加载失败')
   })
 
   it('dedupes concurrent loadData callers into one request', async () => {
@@ -358,5 +360,151 @@ describe('data store', () => {
 
     await expect(store.batchDeleteItems([10, 11])).rejects.toThrow('delete failed')
     expect(store.items.map((item) => item.id)).toEqual([10, 11])
+  })
+
+  it('skips loadData refreshes while a local save is in flight', async () => {
+    let resolveAdd!: (value: unknown) => void
+    mocks.addCategory.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveAdd = resolve
+      })
+    )
+
+    const store = useDataStore()
+    const addPromise = store.addCategory({ name: 'Pending' })
+
+    await store.loadData()
+    expect(mocks.getContent).not.toHaveBeenCalled()
+
+    resolveAdd({ id: 1, name: 'Pending' })
+    await addPromise
+    expect(store.saving).toBe(false)
+  })
+
+  it('does not apply a stale snapshot that resolves while a save is in flight', async () => {
+    let resolveContent!: (value: unknown) => void
+    let resolveAdd!: (value: unknown) => void
+    mocks.getContent.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveContent = resolve
+      })
+    )
+    mocks.addCategory.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveAdd = resolve
+      })
+    )
+
+    const store = useDataStore()
+    const loadPromise = store.loadData()
+    const addPromise = store.addCategory({ name: 'Optimistic' })
+
+    // The load resolves while the mutation is still in flight — its snapshot is stale.
+    resolveContent({
+      categories: [{ id: 99, name: 'Stale Snapshot', parentId: null }],
+      items: []
+    })
+    await loadPromise
+
+    expect(store.categories).toEqual([])
+    expect(store.initialized).toBe(false)
+
+    resolveAdd({ id: 1, name: 'Optimistic' })
+    await addPromise
+    expect(store.categories.map((category) => category.id)).toEqual([1])
+  })
+
+  it('keeps saving true while any concurrent mutation is still in flight', async () => {
+    mocks.getContent.mockResolvedValue({ categories: [], items: [] })
+    let resolveAdd!: (value: unknown) => void
+    mocks.addCategory.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveAdd = resolve
+      })
+    )
+    mocks.deleteItem.mockResolvedValueOnce({ success: true })
+
+    const store = useDataStore()
+    await store.loadData()
+
+    const addPromise = store.addCategory({ name: 'Slow' })
+    await store.deleteItem(999)
+    expect(store.saving).toBe(true)
+
+    resolveAdd({ id: 1, name: 'Slow' })
+    await addPromise
+    expect(store.saving).toBe(false)
+  })
+
+  it('ignores moveCategory when fromIndex is out of range or unchanged', async () => {
+    mocks.getContent.mockResolvedValue({
+      categories: [
+        { id: 1, name: 'One', parentId: null },
+        { id: 2, name: 'Two', parentId: null }
+      ],
+      items: []
+    })
+    const store = useDataStore()
+    await store.loadData()
+
+    await store.moveCategory(5, 0)
+    await store.moveCategory(-1, 1)
+    await store.moveCategory(1, 1)
+
+    expect(mocks.reorderCategories).not.toHaveBeenCalled()
+    expect(store.categories.map((category) => category.id)).toEqual([1, 2])
+  })
+
+  it('syncs the full content tree through saveContent', async () => {
+    mocks.getContent.mockResolvedValue({
+      categories: [{ id: 1, name: 'Root', parentId: null }],
+      items: [{ id: 10, name: 'A', url: 'https://a.test', description: '', categoryId: 1 }]
+    })
+    mocks.saveContent.mockResolvedValue({ success: true })
+
+    const store = useDataStore()
+    await store.loadData()
+    await store.saveData('import')
+
+    expect(mocks.saveContent).toHaveBeenCalledTimes(1)
+    expect(mocks.saveContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'import',
+        categories: [expect.objectContaining({ id: 1, name: 'Root', parentId: null })]
+      })
+    )
+    expect(store.saving).toBe(false)
+  })
+
+  it('surfaces full-content sync failures as an error toast and rethrows', async () => {
+    mocks.saveContent.mockRejectedValueOnce(new Error('sync boom'))
+
+    const store = useDataStore()
+    await expect(store.saveData('import')).rejects.toThrow('sync boom')
+    expect(mocks.messageError).toHaveBeenCalledWith('sync boom')
+    expect(store.saving).toBe(false)
+  })
+
+  it('patches click statistics into the local item and guards missing targets', async () => {
+    mocks.getContent.mockResolvedValue({
+      categories: [{ id: 1, name: 'Root', parentId: null }],
+      items: [{ id: 10, name: 'A', url: 'https://a.test', description: '', categoryId: 1 }]
+    })
+
+    const store = useDataStore()
+    await store.loadData()
+
+    store.patchItemClick(10, 7, '2026-04-13T10:00:00.000Z')
+    expect(store.items[0].clickCount).toBe(7)
+    expect(store.items[0].lastVisited).toBe('2026-04-13T10:00:00.000Z')
+
+    // tracked == null guard: missing target is a no-op
+    store.patchItemClick(999, 1, null)
+    expect(store.items).toHaveLength(1)
+
+    // null lastVisited keeps the previous value
+    store.patchItemClick(10, 8, null)
+    expect(store.items[0].clickCount).toBe(8)
+    expect(store.items[0].lastVisited).toBe('2026-04-13T10:00:00.000Z')
   })
 })

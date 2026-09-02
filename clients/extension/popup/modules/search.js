@@ -104,6 +104,12 @@ export function createSearchController({ apiRequest, elements, state, i18n, ui }
   }
 
   const clearSearch = () => {
+    // 先取消挂起的 debounce 定时器，避免陈旧搜索在清除后仍触发弹回搜索视图
+    if (state.debounceTimer) {
+      window.clearTimeout(state.debounceTimer)
+      state.debounceTimer = null
+    }
+
     if (elements.searchInput) {
       elements.searchInput.value = ''
     }

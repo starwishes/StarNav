@@ -71,14 +71,14 @@ export interface HealthSummary {
       authCookieSecureMode: 'auto' | 'always' | 'never'
       cspUpgradeInsecureRequests: boolean
       corsOriginsConfigured: boolean
-      dataDir: string
-      uploadsDir: string
     }
   }
 }
 
 export interface LoginResponse {
-  token: string
+  // 浏览器 Web 请求（http/https Origin/Referer）响应体剥离 token（仅 HttpOnly Cookie）；
+  // 扩展（chrome-extension:// 等）与 CLI/无 Origin 客户端响应体保留 token 供 Bearer 使用。
+  token?: string
   user: AuthUser
   sessionId: string
 }

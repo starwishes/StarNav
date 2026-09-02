@@ -13,6 +13,7 @@
           :placeholder="placeholder"
           @focus="handleFocus"
           @blur="handleBlur"
+          @keydown="handleSearchKeydown"
           @enter="handleEnter"
           @clear="clearSearch"
         >
@@ -51,22 +52,24 @@
       <transition name="engine-dialog">
         <div v-if="showDialog" class="engine-dialog-backdrop" @click.self="closeDialog">
           <div
+            ref="engineDialogRef"
             class="engine-dialog"
             role="dialog"
             aria-modal="true"
             aria-labelledby="search-engine-dialog-title"
+            tabindex="-1"
           >
             <div class="engine-dialog__header">
               <div>
                 <p class="engine-dialog__eyebrow">Search Engine</p>
                 <h3 id="search-engine-dialog-title" class="engine-dialog__title">
-                  {{ isEditing ? '编辑搜索引擎' : '添加搜索引擎' }}
+                  {{ isEditing ? t('engine.dialogTitleEdit') : t('engine.dialogTitleAdd') }}
                 </h3>
               </div>
               <button
                 type="button"
                 class="engine-dialog__close"
-                aria-label="关闭搜索引擎弹窗"
+                :aria-label="t('engine.closeDialogAria')"
                 @click="closeDialog"
               >
                 ×
@@ -75,34 +78,35 @@
 
             <form class="engine-form" @submit.prevent="saveEngine">
               <label class="engine-form__field">
-                <span class="engine-form__label">名称</span>
+                <span class="engine-form__label">{{ t('engine.nameLabel') }}</span>
                 <input
                   ref="engineNameInputRef"
                   v-model="engineForm.name"
                   class="engine-form__input"
-                  placeholder="例如：Google"
+                  :placeholder="t('engine.namePlaceholder')"
                   autocomplete="off"
                 />
               </label>
 
               <label class="engine-form__field">
-                <span class="engine-form__label">地址</span>
+                <span class="engine-form__label">{{ t('engine.urlLabel') }}</span>
                 <input
                   v-model="engineForm.url"
                   class="engine-form__input"
-                  placeholder="例如：https://www.google.com/search?q="
+                  :placeholder="t('engine.urlPlaceholder')"
                   autocomplete="off"
                   spellcheck="false"
                 />
                 <span class="form-tip">
-                  URL 需为合法 http/https 搜索地址，并以查询参数赋值结尾，例如
-                  https://www.google.com/search?q=；部分引擎如 Brave 仅支持直接搜索，不提供联想词。
+                  {{ t('engine.urlTip') }}
                 </span>
               </label>
 
               <div class="engine-dialog__footer">
-                <button type="button" class="engine-btn ghost" @click="closeDialog">取消</button>
-                <button type="submit" class="engine-btn primary">确定</button>
+                <button type="button" class="engine-btn ghost" @click="closeDialog">
+                  {{ t('engine.cancel') }}
+                </button>
+                <button type="submit" class="engine-btn primary">{{ t('engine.confirm') }}</button>
               </div>
             </form>
           </div>
@@ -114,17 +118,21 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAdminStore } from '@/store/admin'
+import { useDialogA11y } from '@/composables/useDialogA11y'
 import SearchBox from './SearchBox.vue'
 import SearchEngineSelector from './SearchEngineSelector.vue'
 import SearchResults from './SearchResults.vue'
 import { useSearchEngineManagement } from './useSearchEngineManagement'
 import { useSearchExecution } from './useSearchExecution'
 
+const { t } = useI18n()
 const adminStore = useAdminStore()
 const searchContainerRef = ref<HTMLElement | null>(null)
 const searchBoxRef = ref<InstanceType<typeof SearchBox> | null>(null)
 const engineNameInputRef = ref<HTMLInputElement | null>(null)
+const engineDialogRef = ref<HTMLElement | null>(null)
 const isEngineMenuOpen = ref(false)
 const searchMode = ref<'local' | 'online'>('local')
 const emit = defineEmits<{
@@ -146,6 +154,14 @@ const {
   moveEngine
 } = useSearchEngineManagement(engineNameInputRef)
 
+// 打开聚焦、Tab 焦点陷阱、Esc 关闭、关闭后焦点归还触发元素。
+useDialogA11y({
+  isOpen: showDialog,
+  getDialog: () => engineDialogRef.value,
+  getInitialFocus: () => engineNameInputRef.value,
+  onClose: closeDialog
+})
+
 const {
   searchText,
   searchResults,
@@ -158,6 +174,7 @@ const {
   handleFocus,
   handleBlur,
   handleEnter,
+  handleSearchKeydown,
   clearSearch,
   handleItemClick,
   handleSuggestionClick
@@ -231,6 +248,9 @@ watch(
 
 .engine-dialog {
   width: min(100%, 440px);
+  /* 移动端软键盘/横屏下限制高度，内容可滚动而不被视口裁剪 */
+  max-height: min(86vh, 860px);
+  overflow-y: auto;
   padding: 28px;
   border-radius: 28px;
   border: 1px solid rgba(255, 255, 255, 0.42);
@@ -251,7 +271,7 @@ watch(
 
 .engine-dialog__eyebrow {
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -430,4 +450,3 @@ watch(
   color: var(--ui-text-primary, #f8fafc);
 }
 </style>
-

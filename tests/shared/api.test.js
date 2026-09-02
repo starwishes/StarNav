@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -45,7 +46,7 @@ describe('shared api helpers', () => {
     expect(extractApiErrorMessage({}, 500)).toBe('HTTP Error 500')
   })
 
-  it('supports ApiError payload metadata plus content envelopes', () => {
+  it('supports ApiError payload metadata and unwraps the data envelope', () => {
     const error = new ApiError('Boom', {
       status: 418,
       payload: { ok: false }
@@ -57,10 +58,10 @@ describe('shared api helpers', () => {
       status: 418,
       payload: { ok: false }
     })
-    expect(unwrapApiPayload({ content: { token: 'signed-token' } })).toEqual({
+    expect(unwrapApiPayload({ data: { token: 'signed-token' } })).toEqual({
       token: 'signed-token'
     })
-    expect(getApiField({ content: { total: 3 } }, 'total', 0)).toBe(3)
+    expect(getApiField({ data: { total: 3 } }, 'total', 0)).toBe(3)
   })
 
   it('falls back when response json parsing fails', async () => {

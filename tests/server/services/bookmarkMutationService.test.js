@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -69,10 +70,13 @@ vi.mock('../../../src/server/services/bookmark/cache.js', () => ({
 
 const { bookmarkMutationService } =
   await import('../../../src/server/services/bookmark/bookmarkMutationService.js')
+const { resetBackupThrottle } =
+  await import('../../../src/server/services/database/backupThrottle.js')
 
 describe('BookmarkMutationService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetBackupThrottle()
     mocks.backupDatabase.mockReturnValue({ success: true })
   })
 
@@ -86,7 +90,7 @@ describe('BookmarkMutationService', () => {
 
     mocks.getDb.mockReturnValue(db)
 
-    const result = bookmarkMutationService.saveData('alice', {
+    const result = bookmarkMutationService.saveData({
       categories: [{ id: 1 }],
       items: [{ id: 2 }]
     })
@@ -99,7 +103,7 @@ describe('BookmarkMutationService', () => {
     expect(mocks.invalidateBookmarkCaches).toHaveBeenCalled()
     expect(mocks.forceCheckpoint).toHaveBeenCalled()
     expect(mocks.loggerInfo).toHaveBeenCalledWith('数据保存成功: 1 分类, 1 书签')
-    expect(result).toBe(true)
+    expect(result).toBeUndefined()
   })
 
   it('should report failed bulk saves without invalidating caches', () => {
@@ -113,12 +117,13 @@ describe('BookmarkMutationService', () => {
 
     mocks.getDb.mockReturnValue(db)
 
-    const result = bookmarkMutationService.saveData('alice', {
-      categories: [],
-      items: []
-    })
-
-    expect(result).toBe(false)
+    // 失败时直接抛错（500），不再用布尔握手
+    expect(() =>
+      bookmarkMutationService.saveData({
+        categories: [],
+        items: []
+      })
+    ).toThrow('数据保存失败')
     expect(mocks.invalidateBookmarkCaches).not.toHaveBeenCalled()
     expect(mocks.forceCheckpoint).not.toHaveBeenCalled()
     expect(mocks.loggerError).toHaveBeenCalledWith('数据保存失败', error)
@@ -129,9 +134,9 @@ describe('BookmarkMutationService', () => {
     mocks.bookmarkTrackClick.mockReturnValue(item)
     mocks.patchItemClickInCache.mockReturnValue(true)
 
-    const result = bookmarkMutationService.trackClick('3')
+    const result = bookmarkMutationService.trackClick('3', 0)
 
-    expect(mocks.bookmarkTrackClick).toHaveBeenCalledWith('3')
+    expect(mocks.bookmarkTrackClick).toHaveBeenCalledWith('3', 0)
     expect(mocks.patchItemClickInCache).toHaveBeenCalledWith(3, 2, '2026-07-26T00:00:00.000Z')
     expect(mocks.invalidateBookmarkCaches).toHaveBeenCalledWith(undefined, {
       includeSnapshot: false,
@@ -155,25 +160,19 @@ describe('BookmarkMutationService', () => {
     mocks.categoryReorder.mockReturnValue([{ id: 8, sortOrder: 0 }])
     mocks.categoryDelete.mockReturnValue({ id: 8, targetCategoryId: 0 })
 
-    expect(bookmarkMutationService.addItem('alice', { name: 'GitHub' })).toBe(newItem)
-    expect(bookmarkMutationService.updateItem('alice', '4', { name: 'Updated' })).toBe(updatedItem)
-    expect(bookmarkMutationService.moveItem('alice', '4', 2, 1)).toEqual({ id: 4, categoryId: 2 })
-    expect(bookmarkMutationService.batchMoveItems('alice', [4], 2)).toEqual([
-      { id: 4, categoryId: 2 }
-    ])
-    expect(bookmarkMutationService.batchDeleteItems('alice', [4])).toBe(1)
-    expect(bookmarkMutationService.deleteItem('alice', '4')).toBe(true)
-    expect(bookmarkMutationService.addCategory('alice', { name: 'Dev' })).toEqual({ id: 8 })
-    expect(
-      bookmarkMutationService.updateCategory('alice', '8', { name: 'Updated category' })
-    ).toEqual({
+    expect(bookmarkMutationService.addItem({ name: 'GitHub' })).toBe(newItem)
+    expect(bookmarkMutationService.updateItem('4', { name: 'Updated' })).toBe(updatedItem)
+    expect(bookmarkMutationService.moveItem('4', 2, 1)).toEqual({ id: 4, categoryId: 2 })
+    expect(bookmarkMutationService.batchMoveItems([4], 2)).toEqual([{ id: 4, categoryId: 2 }])
+    expect(bookmarkMutationService.batchDeleteItems([4])).toBe(1)
+    expect(bookmarkMutationService.deleteItem('4')).toBe(true)
+    expect(bookmarkMutationService.addCategory({ name: 'Dev' })).toEqual({ id: 8 })
+    expect(bookmarkMutationService.updateCategory('8', { name: 'Updated category' })).toEqual({
       id: 8,
       name: 'Updated category'
     })
-    expect(bookmarkMutationService.reorderCategories('alice', [8])).toEqual([
-      { id: 8, sortOrder: 0 }
-    ])
-    expect(bookmarkMutationService.deleteCategory('alice', '8')).toEqual({
+    expect(bookmarkMutationService.reorderCategories([8])).toEqual([{ id: 8, sortOrder: 0 }])
+    expect(bookmarkMutationService.deleteCategory('8')).toEqual({
       id: 8,
       targetCategoryId: 0
     })
@@ -194,16 +193,16 @@ describe('BookmarkMutationService', () => {
     mocks.categoryDelete.mockReturnValue(null)
 
     expect(bookmarkMutationService.trackClick('99')).toBeNull()
-    expect(bookmarkMutationService.addItem('alice', { name: 'Missing' })).toBeNull()
-    expect(bookmarkMutationService.updateItem('alice', '99', { name: 'Missing' })).toBeNull()
-    expect(bookmarkMutationService.moveItem('alice', '99', 2, 0)).toBeNull()
-    expect(bookmarkMutationService.batchMoveItems('alice', [99], 2)).toEqual([])
-    expect(bookmarkMutationService.batchDeleteItems('alice', [99])).toBe(0)
-    expect(bookmarkMutationService.deleteItem('alice', '99')).toBe(false)
-    expect(bookmarkMutationService.addCategory('alice', { name: 'Missing' })).toBeNull()
-    expect(bookmarkMutationService.updateCategory('alice', '99', { name: 'Missing' })).toBeNull()
-    expect(bookmarkMutationService.reorderCategories('alice', [99])).toEqual([])
-    expect(bookmarkMutationService.deleteCategory('alice', '99')).toBeNull()
+    expect(bookmarkMutationService.addItem({ name: 'Missing' })).toBeNull()
+    expect(bookmarkMutationService.updateItem('99', { name: 'Missing' })).toBeNull()
+    expect(bookmarkMutationService.moveItem('99', 2, 0)).toBeNull()
+    expect(bookmarkMutationService.batchMoveItems([99], 2)).toEqual([])
+    expect(bookmarkMutationService.batchDeleteItems([99])).toBe(0)
+    expect(bookmarkMutationService.deleteItem('99')).toBe(false)
+    expect(bookmarkMutationService.addCategory({ name: 'Missing' })).toBeNull()
+    expect(bookmarkMutationService.updateCategory('99', { name: 'Missing' })).toBeNull()
+    expect(bookmarkMutationService.reorderCategories([99])).toEqual([])
+    expect(bookmarkMutationService.deleteCategory('99')).toBeNull()
     expect(mocks.invalidateBookmarkCaches).not.toHaveBeenCalled()
   })
 })

@@ -5,17 +5,8 @@ import type { SearchSuggestionProviderType } from '../../shared/searchSuggestion
 
 export type { SystemSettings, User } from '@/types'
 
-// API 响应类型定义
-export interface LoginResponse {
-  token: string
-  user: { login: string; name: string; level: number }
-  sessionId: string
-}
-
 export type DataSavePayload =
-  | SiteConfig
-  | (SiteConfig & { action?: string })
-  | { content: SiteConfig; action?: string }
+  SiteConfig | (SiteConfig & { action?: string }) | { content: SiteConfig; action?: string }
 
 export interface LinkCheckResult {
   url: string
@@ -54,6 +45,11 @@ type BookmarkBatchMutationResponse = ApiResponse<{ items: Item[]; count: number 
 }
 type CountResponse = ApiResponse<{ count: number }> & {
   count?: number
+}
+
+type TrackClickItem = { id: number; clickCount: number; lastVisited: string | null }
+type TrackClickResponse = ApiResponse<{ item: TrackClickItem }> & {
+  item?: TrackClickItem
 }
 
 const readMutationItem = <T>(
@@ -124,9 +120,11 @@ export const dataApi = {
 
   deleteItem: (itemId: number) => api.del<ApiResponse>(`/bookmark/${itemId}`),
 
-  // 记录点击
+  // 记录点击（公开端点，仅返回最小负载）
   trackClick: (itemId: number) => {
-    return api.post<ApiResponse<{ item: Item }>>(`/sites/${itemId}/click`, {})
+    return api
+      .post<TrackClickResponse>(`/sites/${itemId}/click`, {})
+      .then((payload) => getApiField<TrackClickItem | null>(payload, 'item', null))
   }
 }
 

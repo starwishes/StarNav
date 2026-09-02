@@ -1,4 +1,5 @@
 import type { Category, Item } from '@/types'
+import { readFileAsDataUrl } from '@/utils/file'
 
 export interface CategoryTreeNode {
   id: number
@@ -71,12 +72,4 @@ export const cloneItemDraft = (item: Partial<Item> = {}): Partial<Item> => ({
   ...item
 })
 
-export const readFileAsDataUrl = (file: File) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-
-    reader.onload = () => resolve(String(reader.result || ''))
-    reader.onerror = () => reject(reader.error || new Error('Failed to read file'))
-
-    reader.readAsDataURL(file)
-  })
+export { readFileAsDataUrl }

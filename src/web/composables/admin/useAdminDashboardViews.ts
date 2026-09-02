@@ -42,6 +42,8 @@ interface UseAdminDashboardViewsOptions {
   categories: Ref<Category[]>
   items: Ref<Item[]>
   filteredItems: Ref<Item[]>
+  loadError: Ref<string>
+  loadData: () => MaybePromise
   users: Ref<User[]>
   systemSettings: Ref<Partial<SystemSettings>>
   fetchUserList: () => MaybePromise
@@ -122,7 +124,8 @@ export function useAdminDashboardViews(options: UseAdminDashboardViewsOptions) {
             filterCategory: options.filterCategory.value,
             categories: options.categories.value,
             items: options.items.value,
-            filteredItems: options.filteredItems.value
+            filteredItems: options.filteredItems.value,
+            loadError: options.loadError.value
           },
           events: {
             'update:active-tab': (value: unknown) => {
@@ -134,14 +137,19 @@ export function useAdminDashboardViews(options: UseAdminDashboardViewsOptions) {
             'update:filter-category': (value: unknown) => {
               options.filterCategory.value = Number(value)
             },
+            retry: () => void Promise.resolve(options.loadData()).catch(() => {}),
             'add-category': options.handleAddCategory,
             'edit-category': options.handleEditCategory,
             'delete-category': options.handleDeleteCategory,
             'add-item': options.handleAddItem,
             'edit-item': options.handleEditItem,
             'delete-item': options.handleDeleteItem,
-            'batch-delete': options.handleBatchDelete,
-            'batch-move': options.handleBatchMove,
+            // 事件监听无法把 Promise 回传给子组件，这里吞掉 rejection：
+            // 错误 toast 与状态回滚已在 store 内完成，避免产生未处理的 Promise rejection。
+            'batch-delete': (ids: number[]) =>
+              void Promise.resolve(options.handleBatchDelete(ids)).catch(() => {}),
+            'batch-move': (ids: number[], categoryId: number) =>
+              void Promise.resolve(options.handleBatchMove(ids, categoryId)).catch(() => {}),
             'show-bookmark-import': options.openBookmarkImport,
             'json-import': options.handleJsonImport,
             'move-category': options.moveCategory,

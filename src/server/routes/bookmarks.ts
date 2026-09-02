@@ -1,6 +1,11 @@
 import express from 'express'
 import { bookmarkController } from '../controllers/bookmarkController.js'
-import { authenticate, optionalAuth, requireAdmin } from '../middleware/auth.js'
+import {
+  authenticate,
+  ensureTrustedCookieWriteOriginMiddleware,
+  optionalAuth,
+  requireAdmin
+} from '../middleware/auth.js'
 import { clickIpLimiter, clickLimiter, dataUpdateLimiter } from '../middleware/limiter.js'
 const router = express.Router()
 
@@ -152,6 +157,30 @@ router.get('/bookmark/check', authenticate, bookmarkController.checkBookmark)
  */
 router.get('/categories/simple', authenticate, bookmarkController.getSimpleCategories)
 
+/**
+ * @swagger
+ * /categories/reorder:
+ *   put:
+ *     tags: [Categories]
+ *     summary: 批量调整分类顺序
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [orderedIds]
+ *             properties:
+ *               orderedIds:
+ *                 type: array
+ *                 items: { type: integer }
+ *                 description: 新的分类顺序（仅需包含需要排序的分类 id）
+ *     responses:
+ *       200:
+ *         $ref: '#/components/responses/CategoriesResponse'
+ */
 router.put('/categories/reorder', authenticate, requireAdmin, bookmarkController.reorderCategories)
 
 /**
@@ -227,18 +256,117 @@ router.post('/category', authenticate, requireAdmin, bookmarkController.createCa
 router.put('/category/:id', authenticate, requireAdmin, bookmarkController.updateCategory)
 router.delete('/category/:id', authenticate, requireAdmin, bookmarkController.deleteCategory)
 
+/**
+ * @swagger
+ * /bookmark/batch-move:
+ *   post:
+ *     tags: [Bookmarks]
+ *     summary: 批量移动书签到指定分类
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ids, categoryId]
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items: { type: integer }
+ *               categoryId: { type: integer, minimum: 0 }
+ *     responses:
+ *       200:
+ *         description: 批量移动成功，返回移动后的书签列表
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - { $ref: '#/components/schemas/SuccessEnvelope' }
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         count: { type: integer }
+ *                         items:
+ *                           type: array
+ *                           items: { $ref: '#/components/schemas/Bookmark' }
+ */
 router.post(
   '/bookmark/batch-move',
   authenticate,
   requireAdmin,
   bookmarkController.batchMoveBookmarks
 )
+/**
+ * @swagger
+ * /bookmark/batch-delete:
+ *   post:
+ *     tags: [Bookmarks]
+ *     summary: 批量删除书签
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ids]
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items: { type: integer }
+ *     responses:
+ *       200:
+ *         description: 批量删除成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - { $ref: '#/components/schemas/SuccessEnvelope' }
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         count: { type: integer }
+ */
 router.post(
   '/bookmark/batch-delete',
   authenticate,
   requireAdmin,
   bookmarkController.batchDeleteBookmarks
 )
+/**
+ * @swagger
+ * /bookmark/{id}/move:
+ *   put:
+ *     tags: [Bookmarks]
+ *     summary: 移动书签到指定分类与位置
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [categoryId, targetIndex]
+ *             properties:
+ *               categoryId: { type: integer, minimum: 0, description: 目标分类 id，0 表示未分类 }
+ *               targetIndex: { type: integer, minimum: 0, description: 目标分类内的插入位置 }
+ *     responses:
+ *       200:
+ *         $ref: '#/components/responses/BookmarkResponse'
+ */
 router.put('/bookmark/:id/move', authenticate, requireAdmin, bookmarkController.moveBookmark)
 
 /**
@@ -299,10 +427,32 @@ router.delete('/bookmark/:id', authenticate, requireAdmin, bookmarkController.de
  *         schema: { type: integer }
  *     responses:
  *       200:
- *         $ref: '#/components/responses/BookmarkResponse'
+ *         description: 点击统计成功，返回最小负载（不泄漏完整书签内容）
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     item:
+ *                       type: object
+ *                       properties:
+ *                         id: { type: integer }
+ *                         clickCount: { type: integer }
+ *                         lastVisited: { type: string, nullable: true }
  *       404:
- *         description: 书签不存在
+ *         $ref: '#/components/responses/NotFound'
  */
-router.post('/sites/:id/click', clickLimiter, clickIpLimiter, bookmarkController.trackClick)
+router.post(
+  '/sites/:id/click',
+  optionalAuth,
+  ensureTrustedCookieWriteOriginMiddleware,
+  clickLimiter,
+  clickIpLimiter,
+  bookmarkController.trackClick
+)
 
 export default router

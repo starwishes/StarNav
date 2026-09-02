@@ -1,6 +1,7 @@
 import { getDb, forceCheckpoint } from '../database/database.js'
 import { backupDatabaseThrottled } from '../database/backupThrottle.js'
 import { logger } from '../../utils/logger.js'
+import { ApiError, errors } from '../../utils/errors.js'
 import { bookmarkWriteService } from './bookmarkWriteService.js'
 import { categoryWriteService } from './categoryWriteService.js'
 import { patchItemClickInCache } from './cache.js'
@@ -20,13 +21,17 @@ type BulkItemRow = BookmarkPayload & {
 }
 
 export const bookmarkMutationService = {
-  saveData(_username: string | null | undefined, content: BulkDataContent = {}) {
+  saveData(content: BulkDataContent = {}) {
     const db = getDb()
     const { categories = [], items = [] } = content
 
     // 整库备份：整树替换是破坏性最大的操作（DELETE 全部后重建），
     // 强制备份（忽略 5s 节流窗口），确保删除前始终有写前快照。
-    backupDatabaseThrottled(true)
+    const backedUp = backupDatabaseThrottled(true)
+    if (!backedUp) {
+      // 写前备份未真正执行（force 窗口/退避/复制失败）——拒绝无快照的全量替换
+      throw errors.internal('写前备份未完成，已中止数据保存')
+    }
 
     const transaction = db.transaction(() => {
       db.prepare('DELETE FROM items').run()
@@ -41,15 +46,25 @@ export const bookmarkMutationService = {
       invalidateBookmarkCaches()
       forceCheckpoint()
       logger.info(`数据保存成功: ${categories.length} 分类, ${items.length} 书签`)
-      return true
     } catch (error) {
+      // 领域校验错误（如分类环引用，400）直接透传，不做转换也不按服务端错误记录
+      if (error instanceof ApiError) throw error
       logger.error('数据保存失败', error)
-      return false
+      // 约束冲突（重复 URL / 悬空分类）是导入数据问题，按 400 返回并给出可操作提示
+      const sqliteError = error as { code?: string }
+      if (
+        typeof sqliteError?.code === 'string' &&
+        sqliteError.code.startsWith('SQLITE_CONSTRAINT')
+      ) {
+        throw errors.badRequest('数据校验失败：导入数据包含重复 URL 或引用了不存在的分类')
+      }
+      // 其余真实异常向上抛出（500）
+      throw errors.internal('数据保存失败')
     }
   },
 
-  trackClick(itemId: IdLike) {
-    const result = bookmarkWriteService.trackClick(itemId)
+  trackClick(itemId: IdLike, level: number | string | null | undefined = 0) {
+    const result = bookmarkWriteService.trackClick(itemId, level)
     if (result) {
       // Hot path: keep snapshot when possible; still drop data TTL so /api/data is fresh.
       // Search TTL can lag on clickCount without user-visible harm.
@@ -66,7 +81,7 @@ export const bookmarkMutationService = {
     return result
   },
 
-  deleteItem(_username: string | null | undefined, itemId: IdLike) {
+  deleteItem(itemId: IdLike) {
     const success = bookmarkWriteService.delete(itemId)
     if (success) {
       invalidateBookmarkCaches()
@@ -74,12 +89,7 @@ export const bookmarkMutationService = {
     return success
   },
 
-  moveItem(
-    _username: string | null | undefined,
-    itemId: IdLike,
-    targetCategoryId: IdLike,
-    targetIndex: IdLike
-  ) {
+  moveItem(itemId: IdLike, targetCategoryId: IdLike, targetIndex: IdLike) {
     const result = bookmarkWriteService.move(itemId, targetCategoryId, targetIndex)
     if (result) {
       invalidateBookmarkCaches()
@@ -87,11 +97,7 @@ export const bookmarkMutationService = {
     return result
   },
 
-  batchMoveItems(
-    _username: string | null | undefined,
-    itemIds: IdLike[],
-    targetCategoryId: IdLike
-  ) {
+  batchMoveItems(itemIds: IdLike[], targetCategoryId: IdLike) {
     const result = bookmarkWriteService.batchMove(itemIds, targetCategoryId)
     if (Array.isArray(result) && result.length > 0) {
       invalidateBookmarkCaches()
@@ -99,7 +105,7 @@ export const bookmarkMutationService = {
     return result
   },
 
-  batchDeleteItems(_username: string | null | undefined, itemIds: IdLike[]) {
+  batchDeleteItems(itemIds: IdLike[]) {
     const result = bookmarkWriteService.batchDelete(itemIds)
     if (result) {
       invalidateBookmarkCaches()
@@ -107,7 +113,7 @@ export const bookmarkMutationService = {
     return result
   },
 
-  updateItem(_username: string | null | undefined, itemId: IdLike, updateData: BookmarkPayload) {
+  updateItem(itemId: IdLike, updateData: BookmarkPayload) {
     const result = bookmarkWriteService.update(itemId, updateData)
     if (result) {
       invalidateBookmarkCaches()
@@ -115,7 +121,7 @@ export const bookmarkMutationService = {
     return result
   },
 
-  addItem(_username: string | null | undefined, itemData: BookmarkPayload) {
+  addItem(itemData: BookmarkPayload) {
     const result = bookmarkWriteService.add(itemData)
     if (result) {
       invalidateBookmarkCaches()
@@ -123,7 +129,7 @@ export const bookmarkMutationService = {
     return result
   },
 
-  addCategory(_username: string | null | undefined, categoryData: CategoryPayload) {
+  addCategory(categoryData: CategoryPayload) {
     const result = categoryWriteService.add(categoryData)
     if (result) {
       invalidateBookmarkCaches()
@@ -131,11 +137,7 @@ export const bookmarkMutationService = {
     return result
   },
 
-  updateCategory(
-    _username: string | null | undefined,
-    categoryId: IdLike,
-    updateData: CategoryPayload | BookmarkPayload
-  ) {
+  updateCategory(categoryId: IdLike, updateData: CategoryPayload | BookmarkPayload) {
     const result = categoryWriteService.update(categoryId, updateData)
     if (result) {
       invalidateBookmarkCaches()
@@ -143,7 +145,7 @@ export const bookmarkMutationService = {
     return result
   },
 
-  deleteCategory(_username: string | null | undefined, categoryId: IdLike) {
+  deleteCategory(categoryId: IdLike) {
     const result = categoryWriteService.delete(categoryId)
     if (result) {
       invalidateBookmarkCaches()
@@ -151,7 +153,7 @@ export const bookmarkMutationService = {
     return result
   },
 
-  reorderCategories(_username: string | null | undefined, orderedIds: IdLike[]) {
+  reorderCategories(orderedIds: IdLike[]) {
     const result = categoryWriteService.reorder(orderedIds)
     if (Array.isArray(result) && result.length > 0) {
       invalidateBookmarkCaches()

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import path from 'path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -68,11 +69,13 @@ describe('backupDatabase script', () => {
     await import('../../../src/server/tools/backupDatabase.js')
 
     expect(getDb).toHaveBeenCalledTimes(1)
-    expect(backupDatabase).toHaveBeenCalledWith({
-      dbPath: '/data/starnav.db',
-      checkpoint: forceCheckpoint,
-      outputPath: path.resolve('./tmp/custom.db.bak')
-    })
+    expect(backupDatabase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dbPath: '/data/starnav.db',
+        checkpoint: forceCheckpoint,
+        outputPath: path.resolve('./tmp/custom.db.bak')
+      })
+    )
     expect(console.log).toHaveBeenCalledWith('数据库路径: /data/starnav.db')
     expect(console.log).toHaveBeenCalledWith('备份文件: /tmp/backup/starnav.db.bak')
     expect(closeDb).toHaveBeenCalledTimes(1)

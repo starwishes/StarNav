@@ -7,6 +7,7 @@
         class="dialog-input"
         :placeholder="t('category.placeholderName')"
         autocomplete="off"
+        :aria-invalid="invalidFields?.categoryName || undefined"
       />
     </label>
 
@@ -48,7 +49,7 @@
           {{ uploadingIcon ? t('common.loading') : t('site.upload') }}
         </button>
 
-        <img v-if="formData.icon" :src="formData.icon" class="cat-icon-preview" />
+        <img v-if="formData.icon" :src="formData.icon" class="cat-icon-preview" alt="" />
       </div>
     </div>
 
@@ -123,6 +124,10 @@ interface Props {
   categoryTree: CategoryTreeNode[]
   mode: 'category' | 'subcategory'
   categories: Category[]
+  /** 校验失败标记（categoryName），由父级校验后注入以绑定 aria-invalid */
+  invalidFields?: {
+    categoryName?: boolean
+  }
 }
 
 const props = defineProps<Props>()
@@ -464,4 +469,3 @@ const handleDeleteSubCategory = async (sub: Category) => {
   }
 }
 </style>
-

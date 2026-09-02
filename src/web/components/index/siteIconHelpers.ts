@@ -93,7 +93,8 @@ export const isRenderableIconUrl = (url: string) => {
     return false
   }
 
-  return url.startsWith('http') || url.startsWith('/') || url.startsWith('data:')
+  // data: 仅允许图片类型（data:image/...），data:text/html 等禁止作为图标源
+  return url.startsWith('http') || url.startsWith('/') || url.startsWith('data:image/')
 }
 
 export const buildIconCandidates = (
@@ -106,6 +107,15 @@ export const buildIconCandidates = (
     return isRenderableIconUrl(fallbackIcon) ? [fallbackIcon] : []
   }
 
+  // 候选顺序取舍（第 16 轮审查确认，有意为之）：
+  // [explicit → 第三方 origin 直连 /favicon.ico → 代理 → 兜底]。
+  // - origin-first：由浏览器直接拉取站点图标，命中浏览器 HTTP 缓存时不产生任何服务端
+  //   往返，避免首页成百卡片同时触发 /api/favicon（受 faviconLimiter 按 IP 限流配额）
+  //   打满配额或撑爆代理缓存；origin 404/失败后由 onerror 推进到代理。
+  // - 隐私/性能权衡：origin 直连会向目标站点暴露客户端 IP 与访问行为，但本应用是
+  //   单租户自托管（客户端本就持有全部站点 URL），且只在 origin 图标缺失时才走
+  //   代理/第三方图标 CDN，不扩大暴露面。
+  // - 不要改为代理优先：那会使每次首页渲染都消费 /api/favicon 配额并串行化图标加载。
   return [
     normalizeIconCandidate(explicitIcon),
     buildOriginFaviconUrl(targetUrl),

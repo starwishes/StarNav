@@ -41,6 +41,18 @@ describe('browser extension api utils', () => {
     })
   })
 
+  it('refuses to send credentials to non-https, non-loopback origins', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({}) })
+
+    const { loginToServer } = await import('../../clients/extension/utils/api.js')
+
+    await expect(loginToServer('http://nav.example.com', 'alice', 'secret')).rejects.toThrow(
+      /HTTPS/
+    )
+    await expect(loginToServer('ftp://nav.example.com', 'alice', 'secret')).rejects.toThrow(/HTTPS/)
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
   it('normalizes auth failures and forwards the shared error message to the callback', async () => {
     global.chrome = {
       storage: {
@@ -67,30 +79,8 @@ describe('browser extension api utils', () => {
       message: '令牌已过期',
       status: 401
     })
-    expect(onAuthError).toHaveBeenCalledWith('令牌已过期')
-  })
-
-  it('can validate a stored token through an authenticated public helper', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        success: true,
-        data: {
-          sessions: [{ id: 'session-1' }]
-        }
-      })
-    })
-
-    const { validateSession } = await import('../../clients/extension/utils/api.js')
-
-    await expect(validateSession('https://nav.example.com', 'secret-token')).resolves.toEqual({
-      sessions: [{ id: 'session-1' }]
-    })
-    expect(global.fetch).toHaveBeenCalledWith('https://nav.example.com/api/sessions', {
-      headers: {
-        Authorization: 'Bearer secret-token'
-      }
-    })
+    expect(onAuthError).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'ApiError', message: '令牌已过期', status: 401 })
+    )
   })
 })

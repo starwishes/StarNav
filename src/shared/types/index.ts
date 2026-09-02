@@ -20,12 +20,15 @@ export interface Item {
   name: string
   url: string
   description: string
+  /** 0 = 未分类（DB 层为 NULL，API 输出统一归一为 0） */
   categoryId: number
   pinned?: boolean
   level?: number
   clickCount?: number
-  lastVisited?: string
+  lastVisited?: string | null
   icon?: string
+  /** 仅部分写接口返回（update/move/reorder） */
+  sortOrder?: number
 }
 
 /** Alias used in some docs/tools */
@@ -40,6 +43,8 @@ export interface Category {
   isVirtual?: boolean
   parentId?: number | null
   children?: Category[]
+  /** 仅部分写接口返回（update/reorder） */
+  sortOrder?: number
 }
 
 export interface SiteConfig {
@@ -110,7 +115,7 @@ export type ApiResponse<T = unknown> = GenericApiResponse<T>
 
 export type { GenericApiResponse }
 
-// ==================== Stats / audit (optional shared) ====================
+// ==================== Audit / pagination (optional shared) ====================
 
 export interface Pagination {
   page: number
@@ -125,19 +130,6 @@ export interface PaginatedResponse<T> {
   error?: string
   message?: string
   code?: string
-}
-
-export interface SiteStats {
-  totalBookmarks: number
-  totalCategories: number
-  totalUsers: number
-  totalClicks: number
-}
-
-export interface DailyStats {
-  date: string
-  visits: number
-  unique_visitors: number
 }
 
 export interface AuditLog {

@@ -32,21 +32,25 @@ export const systemHealthService = {
 
     try {
       const { getDbStats } = await import('../database/database.js')
-      checks.database = getDbStats()
-    } catch (error: unknown) {
+      const { dbPath, ...publicDbStats } = getDbStats()
+      void dbPath
+      // 公开端点不暴露本地文件系统路径（与 getRuntimeChecks 的注释约定一致）
+      checks.database = publicDbStats
+    } catch {
+      // 公开端点不泄露原始异常（SQLite 错误可能内嵌本地文件路径）
       checks.database = {
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: '数据库检查失败',
         quickCheck: 'failed'
       }
     }
 
     try {
-      const cacheService = (await import('../cache/cacheService.js')).default
+      const { cacheService } = await import('../cache/cacheService.js')
       checks.cache = cacheService.getStats()
-    } catch (error: unknown) {
+    } catch {
       checks.cache = {
-        error: error instanceof Error ? error.message : String(error)
+        error: '缓存检查失败'
       }
     }
 
@@ -61,9 +65,9 @@ export const systemHealthService = {
           at: entry.timestamp
         }))
       }
-    } catch (error: unknown) {
+    } catch {
       checks.queries = {
-        error: error instanceof Error ? error.message : String(error)
+        error: '慢查询检查失败'
       }
     }
 

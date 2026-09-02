@@ -1,6 +1,13 @@
 <template>
   <div class="site-table-container">
-    <div v-if="paginatedData.length === 0" class="sn-empty-state">
+    <div v-if="error && items.length === 0" class="sn-error-state" role="status">
+      <p class="sn-error-state__text">{{ t('common.loadFailed') }}</p>
+      <button type="button" class="table-action primary" @click="$emit('retry')">
+        {{ t('common.retry') }}
+      </button>
+    </div>
+
+    <div v-else-if="paginatedData.length === 0" class="sn-empty-state">
       {{ t('common.noData') }}
     </div>
 
@@ -11,7 +18,12 @@
             <tr>
               <th class="is-center col-meta col-check" style="width: 56px">
                 <label class="sn-check-cell">
-                  <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
+                  <input
+                    type="checkbox"
+                    :aria-label="t('table.selectAll')"
+                    :checked="allSelected"
+                    @change="toggleSelectAll"
+                  />
                 </label>
               </th>
               <th class="is-center col-meta col-id" style="width: 72px">{{ t('table.id') }}</th>
@@ -43,6 +55,7 @@
                 <label class="sn-check-cell">
                   <input
                     type="checkbox"
+                    :aria-label="t('table.selectRow', { name: row.name })"
                     :checked="selectedIds.includes(row.id)"
                     @change="toggleSelection(row, $event)"
                   />
@@ -61,21 +74,21 @@
                     {{ row.url }}
                   </a>
                   <span
-                    v-if="linkStatus[row.url] === 'ok'"
+                    v-if="linkStatus[row.id] === 'ok'"
                     class="sn-badge status-chip is-success"
-                    aria-label="ok"
+                    :aria-label="t('table.linkOk')"
                   >
                     ✓
                   </span>
                   <span
-                    v-else-if="linkStatus[row.url] === 'error'"
+                    v-else-if="linkStatus[row.id] === 'error'"
                     class="sn-badge status-chip is-danger"
-                    aria-label="error"
+                    :aria-label="t('table.linkError')"
                   >
                     ✗
                   </span>
                   <span
-                    v-else-if="linkStatus[row.url] === 'checking'"
+                    v-else-if="linkStatus[row.id] === 'checking'"
                     class="status-spinner"
                     aria-hidden="true"
                   ></span>
@@ -217,6 +230,8 @@ const getSafeHref = (url: string) =>
 const props = defineProps<{
   items: Item[]
   categories: Category[]
+  /** 数据加载失败信息；非空且无数据时展示错误态 + 重试，而非“暂无数据”。 */
+  error?: string
 }>()
 
 const emit = defineEmits<{
@@ -224,6 +239,7 @@ const emit = defineEmits<{
   (e: 'delete', item: Item): void
   (e: 'batch-delete', ids: number[]): void
   (e: 'batch-move', ids: number[], categoryId: number): void
+  (e: 'retry'): void
 }>()
 
 const {
@@ -353,6 +369,22 @@ const formatDate = (dateString: string) => formatRelativeDate(dateString, t)
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.sn-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 220px;
+  color: var(--gray-500);
+}
+
+.sn-error-state__text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .site-link {

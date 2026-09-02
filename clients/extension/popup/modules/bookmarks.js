@@ -9,7 +9,9 @@ export function createBookmarkController({
   i18n,
   ui,
   loadRecentBookmarks,
-  performSearch
+  performSearch,
+  // 保存成功后消费展示过的待捕获项（由 popup.js 传入：清除存储 + badge）。
+  onPendingCaptureConsumed
 }) {
   const logger = createScopedLogger('extension:bookmarks')
   const getTexts = () => i18n[state.currentLang]
@@ -69,6 +71,9 @@ export function createBookmarkController({
       } else {
         state.currentEditingId = null
         clearDuplicateWarning()
+        // 默认选中第一个分类：与 Web 端"默认未分类(0)"不同，这是有意的取舍——
+        // 扩展捕获表单的提交校验要求必填 categoryId，预选首个分类可让用户一键保存；
+        // 若对齐 Web 的 0 则每次捕获都需手动选分类，破坏快速捕获的 UX。
         fillBookmarkForm(
           {
             name: title || '',
@@ -170,7 +175,7 @@ export function createBookmarkController({
 
         showDuplicateWarning(existingItem, categoryName)
         ui.showToast(
-          `${getTexts().addFailed}: ${getTexts().duplicateIn} "${categoryName}"`,
+          getTexts().duplicateWithName.replace(/\{name\}/g, () => categoryName),
           'error'
         )
         return
@@ -189,6 +194,10 @@ export function createBookmarkController({
           minLevel
         })
       })
+
+      // 保存成功后消费展示过的待捕获项（清存储 + badge）。
+      // 回调内部自带容错，失败只 warn，不阻塞保存成功反馈。
+      await onPendingCaptureConsumed?.()
 
       ui.showToast(
         state.currentEditingId ? getTexts().updateSuccess : getTexts().addSuccess,

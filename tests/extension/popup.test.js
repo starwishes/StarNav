@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   initApi: vi.fn(),
   apiRequest: vi.fn(),
   loginToServer: vi.fn(),
+  isAllowedLoginOrigin: vi.fn(() => true),
   normalizeServerUrl: vi.fn((value) => String(value || '').replace(/\/+$/, '')),
   normalizeUrl: vi.fn((value) => value),
   getStorage: vi.fn(),
@@ -117,7 +118,7 @@ const getElements = () => ({
   loading: document.getElementById('loading')
 })
 
-vi.mock('../../clients/extension/utils/url.js', () => ({
+vi.mock('../../clients/extension/common/url.js', () => ({
   normalizeUrl: (...args) => mocks.normalizeUrl(...args)
 }))
 
@@ -125,6 +126,7 @@ vi.mock('../../clients/extension/utils/api.js', () => ({
   initApi: (...args) => mocks.initApi(...args),
   apiRequest: (...args) => mocks.apiRequest(...args),
   loginToServer: (...args) => mocks.loginToServer(...args),
+  isAllowedLoginOrigin: (...args) => mocks.isAllowedLoginOrigin(...args),
   normalizeServerUrl: (...args) => mocks.normalizeServerUrl(...args)
 }))
 
@@ -369,6 +371,89 @@ describe('browser extension popup bootstrap', () => {
     expect(mocks.uiShowNotConnected).toHaveBeenCalledWith('tokenExpired', 'reconnect')
   })
 
+  it('detects expired sessions from the server error code with regex fallback', async () => {
+    mocks.getMergedStorage.mockResolvedValue({})
+    mocks.initApi.mockImplementation(async (callback) => {
+      mocks.authErrorCallback = callback
+      return { serverUrl: 'https://nav.example.com', token: 'signed-token' }
+    })
+
+    await loadPopup()
+    await mocks.authErrorCallback({
+      message: '令牌已过期',
+      status: 401,
+      payload: { code: 'TOKEN_EXPIRED' }
+    })
+    expect(mocks.uiShowNotConnected).toHaveBeenLastCalledWith('tokenExpired', 'reconnect')
+
+    await mocks.authErrorCallback({
+      message: '无效令牌',
+      status: 401,
+      payload: { code: 'INVALID_TOKEN' }
+    })
+    expect(mocks.uiShowNotConnected).toHaveBeenLastCalledWith('tokenInvalid', 'reconnect')
+
+    await mocks.authErrorCallback('session expired on server')
+    expect(mocks.uiShowNotConnected).toHaveBeenLastCalledWith('tokenExpired', 'reconnect')
+  })
+
+  it('discards stale pending captures older than 24 hours', async () => {
+    // 固定过期时间戳：peek 与 discard 两次读取必须拿到同一 ts，
+    // 否则 ts 不匹配守卫会误判为"不是同一个捕获"而跳过删除。
+    const staleTs = Date.now() - 25 * 60 * 60 * 1000
+    mocks.getMergedStorage.mockImplementation(async (keys) => {
+      if (Array.isArray(keys) && keys.includes('pendingCapture')) {
+        return {
+          pendingCapture: {
+            url: 'https://old.example.com',
+            title: 'Old Page',
+            ts: staleTs,
+            source: 'context-or-command'
+          }
+        }
+      }
+      return {}
+    })
+    mocks.initApi.mockImplementation(async (callback) => {
+      mocks.authErrorCallback = callback
+      return { serverUrl: 'https://nav.example.com', token: 'signed-token' }
+    })
+
+    await loadPopup()
+
+    expect(mocks.removeStorage).toHaveBeenCalledWith(['pendingCapture'], 'local')
+    expect(mocks.bookmarkShowAddFormFromCapture).not.toHaveBeenCalled()
+  })
+
+  it('keeps a pending capture while showing its form instead of discarding on display', async () => {
+    mocks.getMergedStorage.mockImplementation(async (keys) => {
+      if (Array.isArray(keys) && keys.includes('pendingCapture')) {
+        return {
+          pendingCapture: {
+            url: 'https://capture.example.com',
+            title: 'Captured Page',
+            ts: Date.now()
+          }
+        }
+      }
+      return {}
+    })
+    mocks.initApi.mockImplementation(async (callback) => {
+      mocks.authErrorCallback = callback
+      return { serverUrl: 'https://nav.example.com', token: 'signed-token' }
+    })
+
+    await loadPopup()
+
+    // 展示阶段必须保留 pendingCapture：popup 失焦即关，展示即弃会导致内容丢失。
+    expect(mocks.bookmarkShowAddFormFromCapture).toHaveBeenCalledWith({
+      url: 'https://capture.example.com',
+      title: 'Captured Page',
+      ts: expect.any(Number)
+    })
+    expect(mocks.removeStorage).not.toHaveBeenCalledWith(['pendingCapture'], 'local')
+  })
+
   it('shows the inline reconnect card and reconnects without opening settings', async () => {
     mocks.getMergedStorage.mockImplementation(async (keys) => {
       if (Array.isArray(keys) && keys.includes('serverUrl')) {
@@ -409,9 +494,10 @@ describe('browser extension popup bootstrap', () => {
       'secret',
       true
     )
+    expect(mocks.setStorage).toHaveBeenCalledWith({ serverUrl: 'https://nav.example.com' }, 'sync')
     expect(mocks.setStorage).toHaveBeenCalledWith(
-      { serverUrl: 'https://nav.example.com', savedUsername: 'alice', rememberLogin: true },
-      'sync'
+      { savedUsername: 'alice', rememberLogin: true },
+      'local'
     )
     expect(mocks.setStorage).toHaveBeenCalledWith(
       { token: 'new-token', user: { login: 'alice' } },

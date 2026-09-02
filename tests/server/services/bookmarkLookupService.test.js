@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -14,11 +15,7 @@ vi.mock('../../../src/server/services/bookmark/bookmarkReadService.js', () => ({
 }))
 
 vi.mock('../../../src/server/services/bookmark/SearchEngine.js', () => ({
-  SearchEngine: class {
-    search(...args) {
-      return mocks.search(...args)
-    }
-  }
+  searchBookmarks: (...args) => mocks.search(...args)
 }))
 
 vi.mock('../../../src/server/services/bookmark/cache.js', () => ({
@@ -26,7 +23,8 @@ vi.mock('../../../src/server/services/bookmark/cache.js', () => ({
   getCache: mocks.getCache
 }))
 
-const { bookmarkLookupService } = await import('../../../src/server/services/bookmark/bookmarkLookupService.js')
+const { bookmarkLookupService } =
+  await import('../../../src/server/services/bookmark/bookmarkLookupService.js')
 
 describe('BookmarkLookupService', () => {
   beforeEach(() => {
@@ -41,7 +39,7 @@ describe('BookmarkLookupService', () => {
       categories: [{ id: 7, level: 1 }]
     })
 
-    const result = bookmarkLookupService.checkUrlItem('alice', item.url, 1)
+    const result = bookmarkLookupService.checkUrlItem(item.url, 1)
 
     expect(mocks.checkUrl).not.toHaveBeenCalled()
     expect(result).toBe(item)
@@ -55,7 +53,7 @@ describe('BookmarkLookupService', () => {
       categories: []
     })
 
-    const result = bookmarkLookupService.checkUrlItem('alice', item.url, 0)
+    const result = bookmarkLookupService.checkUrlItem(item.url, 0)
 
     expect(mocks.checkUrl).not.toHaveBeenCalled()
     expect(result).toBe(item)
@@ -66,7 +64,7 @@ describe('BookmarkLookupService', () => {
     mocks.hasCache.mockReturnValue(false)
     mocks.checkUrl.mockReturnValue(item)
 
-    const result = bookmarkLookupService.checkUrlItem('alice', item.url, 1)
+    const result = bookmarkLookupService.checkUrlItem(item.url, 1)
 
     expect(mocks.checkUrl).toHaveBeenCalledWith(item.url, 1)
     expect(result).toBe(item)
@@ -81,7 +79,7 @@ describe('BookmarkLookupService', () => {
     })
     mocks.checkUrl.mockReturnValue(null)
 
-    const result = bookmarkLookupService.checkUrlItem('alice', hiddenItem.url, 1)
+    const result = bookmarkLookupService.checkUrlItem(hiddenItem.url, 1)
 
     expect(mocks.checkUrl).toHaveBeenCalledWith(hiddenItem.url, 1)
     expect(result).toBeNull()
@@ -91,7 +89,7 @@ describe('BookmarkLookupService', () => {
     const items = [{ id: 3, name: 'GitHub' }]
     mocks.search.mockReturnValue(items)
 
-    const result = bookmarkLookupService.searchItems('alice', 'git', 5, 1)
+    const result = bookmarkLookupService.searchItems('git', 5, 1)
 
     expect(mocks.search).toHaveBeenCalledWith('git', 1, 5)
     expect(result).toBe(items)

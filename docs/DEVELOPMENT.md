@@ -12,10 +12,10 @@
 
 仓库在 Windows 盘（如 `D:\...`）上开发时，**默认使用 Windows 工具链**，不要和 WSL 混用同一套二进制 / `node_modules`：
 
-| 环境 | Node | 用途 |
-|------|------|------|
-| Windows | Scoop / 本机 Node 24（见 `.nvmrc`） | 日常 `npm run serve|dev|test:*|build` |
-| WSL | 发行版内 fnm/nvm 的 Node 24 | 仅 Linux 侧脚本或需要 Linux 原生绑定的工作 |
+| 环境    | Node                                | 用途                                       |
+| ------- | ----------------------------------- | ------------------------------------------ |
+| Windows | Scoop / 本机 Node 24（见 `.nvmrc`） | 日常 `npm run serve                        | dev | test:* | build` |
+| WSL     | 发行版内 fnm/nvm 的 Node 24         | 仅 Linux 侧脚本或需要 Linux 原生绑定的工作 |
 
 硬性约定：
 
@@ -131,7 +131,7 @@ npm run lint:ops
 npm run audit:prod
 
 # 自动修复 Lint 错误
-npm run lint -- --fix
+npm run lint:fix
 
 # 格式化代码
 npm run format
@@ -213,7 +213,7 @@ npm run test -- --watch
 - `npm audit` 关注的是依赖安全，不能代替构建产物验证；像 `vite-plugin-pwa`、`workbox-build`、`swagger-jsdoc` 这类构建/诊断链路升级后，至少还要补跑 `npm run build`、`npm run test:browser`、`npm run docker:smoke`。
 - Swagger 文档链路属于非生产诊断面：`swagger-jsdoc` / `swagger-ui-express` 只在非生产环境用于 `/api-docs` 和 `/api-docs.json`，真实兼容性应通过对应测试和非生产启动验证，而不是把它视为生产运行时依赖。
 - 书签/分类读写直接使用 `bookmarkReadService` / `bookmarkWriteService` / `categoryReadService` / `categoryWriteService`；`BookmarkManager` / `CategoryManager` 兼容 facade 已删除。
-- 本地执行 `npm run docker:build` / `npm run docker:smoke` 时，若未显式传 `APT_DEBIAN_MIRROR` / `APT_DEBIAN_SECURITY_MIRROR`，脚本会默认切到 TUNA 的 HTTP Debian 镜像（`http://mirrors.tuna.tsinghua.edu.cn/debian` / `http://mirrors.tuna.tsinghua.edu.cn/debian-security`）；`CI` / `GITHUB_ACTIONS` 环境保持不注入镜像源。
+- 本地执行 `npm run docker:build` / `npm run docker:smoke` 时，脚本默认走 Debian 官方源、**不会**自动切换镜像源；如网络受限可显式传 `APT_DEBIAN_MIRROR` / `APT_DEBIAN_SECURITY_MIRROR` 指向镜像站（例如 TUNA 的 HTTP Debian 镜像 `http://mirrors.tuna.tsinghua.edu.cn/debian` / `http://mirrors.tuna.tsinghua.edu.cn/debian-security`）；`CI` / `GITHUB_ACTIONS` 环境同样不注入镜像源。
 - Docker 构建默认固定到 `node:24.14.1-slim`，如需做受控升级，可在本地显式覆盖：
 
 ```bash

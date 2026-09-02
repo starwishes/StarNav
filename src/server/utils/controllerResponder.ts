@@ -1,8 +1,8 @@
 import type { Response } from 'express'
 
 import { logger } from './logger.js'
-import { formatError } from '../middleware/errorHandler.js'
 import {
+  formatError,
   isApiEnvelope,
   isStructuredResponse,
   successPayload,

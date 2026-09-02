@@ -1,3 +1,4 @@
+// @vitest-environment node
 import fs from 'fs'
 import path from 'path'
 
@@ -28,7 +29,8 @@ describe('InitRuntimeService', () => {
     testDataDir = createTestDataDir('starnav-init-runtime-test')
     process.env.NODE_ENV = 'development'
     uploadsDir = path.join(testDataDir, 'uploads')
-    ;({ initRuntimeService } = await import('../../../src/server/services/system/initRuntimeService.js'))
+    ;({ initRuntimeService } =
+      await import('../../../src/server/services/system/initRuntimeService.js'))
   })
 
   afterEach(async () => {

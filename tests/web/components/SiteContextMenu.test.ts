@@ -22,7 +22,9 @@ const mountedWrappers: Array<ReturnType<typeof mount>> = []
 
 const createWrapper = (props: Record<string, unknown> = {}) => {
   const wrapper = mount(SiteContextMenu, {
-    props: { visible: true, x: 10, y: 20, ...props }
+    props: { visible: true, x: 10, y: 20, ...props },
+    // 挂载到文档树：jsdom 中脱离文档的元素无法被 focus()
+    attachTo: document.body
   })
   mountedWrappers.push(wrapper)
   return wrapper
@@ -93,7 +95,7 @@ describe('SiteContextMenu', () => {
 
     const items = wrapper.findAll('.menu-item')
     // move-up is disabled (isFirstCategory), move-down enabled
-    expect(items[0].classes()).toContain('disabled')
+    expect(items[0].attributes('disabled')).toBeDefined()
 
     // move-down click emits 1
     await items[1].trigger('click')
@@ -113,7 +115,7 @@ describe('SiteContextMenu', () => {
     })
 
     const items = wrapper.findAll('.menu-item')
-    expect(items[1].classes()).toContain('disabled')
+    expect(items[1].attributes('disabled')).toBeDefined()
 
     await items[0].trigger('click')
     await items[2].trigger('click')
@@ -135,5 +137,65 @@ describe('SiteContextMenu', () => {
     expect(root.exists()).toBe(true)
     stopPropagation()
     expect(stopPropagation).toHaveBeenCalled()
+  })
+
+  it('emits close when Escape is pressed', async () => {
+    const item = { id: 1, name: 'Ex', pinned: false, url: '', categoryId: 1 }
+    const wrapper = createWrapper({ item })
+
+    await wrapper.find('.context-menu').trigger('keydown', { key: 'Escape' })
+
+    expect(wrapper.emitted('close')).toBeTruthy()
+  })
+
+  it('moves the highlighted item with arrow keys and wraps at boundaries', async () => {
+    const item = { id: 1, name: 'Ex', pinned: false, url: '', categoryId: 1 }
+    const wrapper = createWrapper({ item })
+    const menu = wrapper.find('.context-menu')
+    const items = wrapper.findAll('.menu-item')
+    const lastIndex = items.length - 1
+
+    // 无聚焦项：ArrowDown 落到首项（回归：曾因 off-by-one 跳到第 2 项）
+    await menu.trigger('keydown', { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(items[0].element)
+
+    // 首项 ArrowDown → 第二项
+    await menu.trigger('keydown', { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(items[1].element)
+
+    // 第二项 ArrowUp → 回到首项
+    await menu.trigger('keydown', { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(items[0].element)
+
+    // 首项 ArrowUp → 回绕到末项
+    await menu.trigger('keydown', { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(items[lastIndex].element)
+
+    // 末项 ArrowDown → 回绕到首项
+    await menu.trigger('keydown', { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(items[0].element)
+
+    // 无聚焦项：ArrowUp 落到末项
+    ;(document.activeElement as HTMLElement).blur()
+    await menu.trigger('keydown', { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(items[lastIndex].element)
+  })
+
+  it('clamps the position within the viewport when coordinates would overflow', () => {
+    const originalWidth = window.innerWidth
+    const originalHeight = window.innerHeight
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 200 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 200 })
+
+    try {
+      // 菜单默认尺寸 200x260 超出 200x200 视口，坐标被钳到 (0,0) 而非 (120,80)
+      const wrapper = createWrapper({ x: 120, y: 80 })
+      const menu = wrapper.find('.context-menu')
+      expect((menu.element as HTMLElement).style.left).toBe('0px')
+      expect((menu.element as HTMLElement).style.top).toBe('0px')
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalHeight })
+    }
   })
 })

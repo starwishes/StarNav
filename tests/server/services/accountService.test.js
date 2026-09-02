@@ -1,4 +1,6 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import bcrypt from 'bcryptjs'
 import { accountService } from '../../../src/server/services/identity/accountService.js'
 import { getDb } from '../../../src/server/services/database/database.js'
 import { cleanupTestDataDir, createTestDataDir } from '../../setup/testDataDir.js'
@@ -23,6 +25,8 @@ describe('AccountService', () => {
       expect(result).toBeTruthy()
       expect(result.username).toBe('testuser1')
       expect(result.password).toBeTruthy() // password 会被返回，但已哈希
+      // 第 16 轮审查：cost 固定 12（旧哈希登录验证读取 hash 内 cost，不受影响）
+      expect(bcrypt.getRounds(result.password)).toBe(12)
     })
 
     it('should reject duplicate username', () => {
@@ -89,6 +93,8 @@ describe('AccountService', () => {
       // 验证新密码
       const isValid = accountService.verifyPassword('testuser6', 'newpass')
       expect(isValid).toBeTruthy()
+      // 更新后的密码同样以 cost 12 重哈希
+      expect(bcrypt.getRounds(result.password)).toBe(12)
     })
 
     it('should reject update for non-existent user', () => {

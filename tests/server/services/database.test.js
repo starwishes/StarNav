@@ -1,6 +1,8 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import fs from 'fs'
 import { getDb, backupDatabase } from '../../../src/server/services/database/database.js'
+import { queryMonitor } from '../../../src/server/utils/queryMonitor.js'
 import { resetTestDatabase } from '../../setup/testHelpers.js'
 
 describe('Database Service 备份功能测试', () => {
@@ -39,5 +41,15 @@ describe('Database Service 备份功能测试', () => {
     const result = backupDatabase()
     expect(result.success).toBe(true)
     expect(fs.existsSync(result.path)).toBe(true)
+  })
+
+  it('wires query monitor so prepared statements are observable', () => {
+    queryMonitor.reset()
+
+    const db = getDb()
+    db.prepare('SELECT COUNT(*) as count FROM categories').get()
+
+    const stats = queryMonitor.getStats()
+    expect(stats['SELECT COUNT(*) as count FROM categories']?.count).toBeGreaterThanOrEqual(1)
   })
 })

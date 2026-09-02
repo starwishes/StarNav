@@ -1,16 +1,13 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 
 import { validators } from '../../../src/server/utils/validators.js'
 
 describe('validators', () => {
-  it('validates urls, usernames, passwords, and plain strings', () => {
+  it('validates urls, passwords, and plain strings', () => {
     expect(validators.isValidUrl('https://example.com')).toBe(true)
     expect(validators.isValidUrl('http://example.com')).toBe(true)
     expect(validators.isValidUrl('ftp://example.com')).toBe(false)
-
-    expect(validators.isValidUsername('user_123')).toBe(true)
-    expect(validators.isValidUsername('ab')).toBe(false)
-    expect(validators.isValidUsername('user@123')).toBe(false)
 
     expect(validators.isStrongPassword('12345678')).toBe(true)
     expect(validators.isStrongPassword('1234567')).toBe(false)

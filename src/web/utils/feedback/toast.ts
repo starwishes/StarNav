@@ -1,5 +1,6 @@
 import { TOAST_ICONS, TOAST_ROOT_ID } from './constants'
 import { ensureRoot, ensureStyles, hasDOM, normalizeText, onNextFrame } from './dom'
+import { feedbackText } from './locale'
 import type { MessageHandle, MessageOptions, MessageType } from './types'
 
 const activeToastClosers = new Set<() => void>()
@@ -31,10 +32,14 @@ export const createToast = (type: MessageType, input: unknown): MessageHandle =>
   if (!root) {
     return { close() {} }
   }
+  root.setAttribute('role', 'status')
+  root.setAttribute('aria-live', 'polite')
 
   const { message, duration, showClose } = normalizeMessageOptions(input)
   const toast = document.createElement('article')
   toast.className = `sn-feedback-toast is-${type}`
+  // 错误 toast 用 alert role 让读屏以断言语气播报；其余走容器 aria-live 温和播报。
+  toast.setAttribute('role', type === 'error' ? 'alert' : 'status')
 
   const icon = document.createElement('span')
   icon.className = 'sn-feedback-toast-icon'
@@ -64,7 +69,7 @@ export const createToast = (type: MessageType, input: unknown): MessageHandle =>
     const closeButton = document.createElement('button')
     closeButton.type = 'button'
     closeButton.className = 'sn-feedback-toast-close'
-    closeButton.setAttribute('aria-label', '关闭提示')
+    closeButton.setAttribute('aria-label', feedbackText('feedback.closeToast'))
     closeButton.textContent = '×'
     closeButton.addEventListener('click', close)
     toast.appendChild(closeButton)

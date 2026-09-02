@@ -1,10 +1,9 @@
 import jwt from 'jsonwebtoken'
 
 import { accountService } from './accountService.js'
-import { sessionService } from './sessionService.js'
 import { JWT_SECRET } from '../../config/index.js'
-import { strongPasswordSchema } from '../../middleware/validation.js'
-import { errors } from '../../middleware/errorHandler.js'
+import { strongPasswordSchema } from '../../validation.js'
+import { errors } from '../../utils/errors.js'
 import type { AuthCredentials, AuthUserLike } from '../../types/domain.js'
 
 const TOKEN_EXPIRES_IN = '7d'
@@ -52,10 +51,4 @@ export const ensureExistingUser = (username: string) => {
   }
 
   return user
-}
-
-export const syncRenamedSessions = (oldUsername: string, newUsername?: string | null) => {
-  if (newUsername && newUsername !== oldUsername) {
-    sessionService.renameUsername(oldUsername, newUsername)
-  }
 }

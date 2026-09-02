@@ -129,9 +129,6 @@ export type {
   UserTableRow,
   SettingsValueRow,
   SettingsKeyValueRow,
-  DailyStatTotalsRow,
-  DailyStatRow,
-  NameValueStatRow,
   CategoryRow,
   CategoryIdRow,
   ItemIdRow,
@@ -142,6 +139,5 @@ export type {
   SessionListRow,
   AuditLogRow,
   CountRow,
-  MaxIdRow,
   NextSortOrderRow
 } from './sqliteRows.js'

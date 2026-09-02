@@ -2,11 +2,9 @@ import { getDb } from '../database/database.js'
 import { adminBootstrapService } from '../identity/adminBootstrapService.js'
 import { bootstrapDefaultsService } from './bootstrapDefaultsService.js'
 import { initRuntimeService } from './initRuntimeService.js'
-import { cacheWarmupService } from '../cache/cacheWarmupService.js'
 
 import { runMigration } from '../migrate.js'
 import { logger } from '../../utils/logger.js'
-import cacheService from '../cache/cacheService.js'
 
 /**
  * 系统初始化编排入口
@@ -25,10 +23,17 @@ export const initService = {
     bootstrapDefaultsService.initSettings()
     bootstrapDefaultsService.initDefaultData()
     if (process.env.NODE_ENV !== 'test') {
-      const { backupSchedulerService } = await import('./backupSchedulerService.js')
-      await backupSchedulerService.startAutoBackup()
+      // 定时备份/会话清理属可降级调度：node-cron 动态 import 失败（如依赖缺失）
+      // 不应阻断整个进程启动，降级为日志告警。
+      try {
+        const { backupSchedulerService } = await import('./backupSchedulerService.js')
+        await backupSchedulerService.startAutoBackup()
+      } catch (error: unknown) {
+        // 降级日志需明确提示：定时清理（过期会话/定时备份）不可用，
+        // 否则运维会误以为调度仍在运行、过期会话被静默累积。
+        logger.warn('定时备份/会话清理调度不可用，已降级跳过；定时清理将不会执行', error)
+      }
     }
-    await cacheWarmupService.warmup(cacheService)
 
     logger.info('系统初始化完成')
   }

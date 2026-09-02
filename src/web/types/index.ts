@@ -18,8 +18,6 @@ export type {
   GenericApiResponse,
   Pagination,
   PaginatedResponse,
-  SiteStats,
-  DailyStats,
   AuditLog,
   OpenAPI
 } from '../../shared/types/index.ts'

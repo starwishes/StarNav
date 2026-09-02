@@ -1,7 +1,13 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import jwt from 'jsonwebtoken'
 
-import { authenticate, optionalAuth, requireAdmin } from '../../../src/server/middleware/auth.js'
+import {
+  authenticate,
+  optionalAuth,
+  requireAdmin,
+  ensureTrustedCookieWriteOriginMiddleware
+} from '../../../src/server/middleware/auth.js'
 import { accountService } from '../../../src/server/services/identity/accountService.js'
 import { sessionService } from '../../../src/server/services/identity/sessionService.js'
 
@@ -269,6 +275,102 @@ describe('auth middleware', () => {
     expect(sessionService.validate).toHaveBeenCalledWith('session-3')
     expect(req.user).toBeUndefined()
     expect(next).toHaveBeenCalled()
+  })
+
+  describe('ensureTrustedCookieWriteOriginMiddleware', () => {
+    it('blocks cookie-backed POST requests without a trusted origin', () => {
+      const req = {
+        method: 'POST',
+        path: '/api/sites/1/click',
+        authTokenSource: 'cookie',
+        headers: {
+          cookie: 'starnav_auth=cookie-token'
+        }
+      }
+      const res = createResponse()
+      const next = vi.fn()
+
+      ensureTrustedCookieWriteOriginMiddleware(req, res, next)
+
+      expect(next).not.toHaveBeenCalled()
+      expect(res.status).toHaveBeenCalledWith(403)
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        error: '请求来源无效',
+        code: 'INVALID_REQUEST_ORIGIN'
+      })
+    })
+
+    it('allows cookie-backed POST requests from trusted configured origins', () => {
+      process.env.CORS_ORIGINS = 'https://panel.example.com'
+      const req = {
+        method: 'POST',
+        path: '/api/sites/1/click',
+        authTokenSource: 'cookie',
+        headers: {
+          cookie: 'starnav_auth=cookie-token',
+          origin: 'https://panel.example.com'
+        }
+      }
+      const res = createResponse()
+      const next = vi.fn()
+
+      ensureTrustedCookieWriteOriginMiddleware(req, res, next)
+
+      expect(res.status).not.toHaveBeenCalledWith(403)
+      expect(next).toHaveBeenCalled()
+    })
+
+    it('passes guest requests through without an origin', () => {
+      const req = {
+        method: 'POST',
+        path: '/api/sites/1/click',
+        authTokenSource: null,
+        headers: {}
+      }
+      const res = createResponse()
+      const next = vi.fn()
+
+      ensureTrustedCookieWriteOriginMiddleware(req, res, next)
+
+      expect(res.status).not.toHaveBeenCalledWith(403)
+      expect(next).toHaveBeenCalled()
+    })
+
+    it('passes bearer-authenticated requests through without an origin', () => {
+      const req = {
+        method: 'POST',
+        path: '/api/sites/1/click',
+        authTokenSource: 'bearer',
+        headers: {
+          authorization: 'Bearer token-1'
+        }
+      }
+      const res = createResponse()
+      const next = vi.fn()
+
+      ensureTrustedCookieWriteOriginMiddleware(req, res, next)
+
+      expect(res.status).not.toHaveBeenCalledWith(403)
+      expect(next).toHaveBeenCalled()
+    })
+
+    it('passes cookie-backed safe-method requests (GET) through without an origin', () => {
+      const req = {
+        method: 'GET',
+        path: '/api/data',
+        authTokenSource: 'cookie',
+        headers: {
+          cookie: 'starnav_auth=cookie-token'
+        }
+      }
+      const res = createResponse()
+      const next = vi.fn()
+
+      ensureTrustedCookieWriteOriginMiddleware(req, res, next)
+
+      expect(next).toHaveBeenCalled()
+    })
   })
 
   it('clears the auth cookie when a cookie token is invalid', () => {

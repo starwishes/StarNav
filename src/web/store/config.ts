@@ -74,7 +74,13 @@ const readStoredConfig = (): PublicSiteConfig => {
 }
 
 const persistConfig = (config: PublicSiteConfig) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+  // localStorage 写入可能因配额/隐私模式等失败；读侧已有 try/catch，写侧同步补齐，
+  // 静默失败只记日志，不把配置保存问题误判为"保存失败"打扰用户。
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+  } catch (error) {
+    logger.error('Failed to persist site config.', error)
+  }
 }
 
 export const useConfigStore = defineStore('config', () => {
@@ -137,6 +143,16 @@ export const useConfigStore = defineStore('config', () => {
 
     if (!force && inflightRequest) {
       return inflightRequest
+    }
+
+    // force 时也要先等已有的 in-flight 请求结束再发新请求，
+    // 否则覆盖 inflightRequest 会让先前的调用方拿到被丢弃的引用（去重失效）。
+    if (force && inflightRequest) {
+      try {
+        await inflightRequest
+      } catch {
+        // 忽略 in-flight 失败：force 刷新仍应尝试一次全新请求
+      }
     }
 
     inflightRequest = (async () => {

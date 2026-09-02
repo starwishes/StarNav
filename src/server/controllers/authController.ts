@@ -6,8 +6,8 @@ import {
   shouldUseSecureAuthCookie
 } from '../utils/authCookie.js'
 import { buildRequestContext } from '../utils/requestContext.js'
-import { validateTrustedWriteOrigin } from '../utils/requestOrigin.js'
-import { errors } from '../middleware/errorHandler.js'
+import { isExtensionOrigin, validateTrustedWriteOrigin } from '../utils/requestOrigin.js'
+import { errors } from '../utils/errors.js'
 import { respondWithService } from '../utils/controllerResponder.js'
 import { buildSuccessBody } from '../utils/response.js'
 import {
@@ -22,6 +22,24 @@ const withCookieHeader = (body: unknown, cookieHeader: string) => ({
   },
   body
 })
+
+/** 读取 Origin 请求头（可能为数组），取首个值。 */
+const readOriginHeader = (req: Request): string | undefined => {
+  const header = req.headers?.origin
+  return Array.isArray(header) ? header[0] : header
+}
+
+/**
+ * 判断请求是否来自浏览器 Web 页面：POST + JSON 的浏览器请求会携带
+ * http/https 的 Origin（同源 fetch 也会），或至少 Referer。
+ * CLI/脚本/扩展等非浏览器客户端无此头，也不存在 XSS 窃取场景。
+ */
+const isBrowserWebRequest = (req: Request): boolean => {
+  const refererHeader = req.headers?.referer
+  const referer = Array.isArray(refererHeader) ? refererHeader[0] : refererHeader
+  const value = (readOriginHeader(req) || referer || '').trim()
+  return /^https?:\/\//i.test(value)
+}
 
 export const authController = {
   login: (req: Request, res: Response) => {
@@ -41,8 +59,20 @@ export const authController = {
       const expiresInDays =
         result.expiresInDays || (remember ? REMEMBER_SESSION_DAYS : DEFAULT_SESSION_DAYS)
       const maxAgeMs = expiresInDays * 24 * 60 * 60 * 1000
+      // 会话由 HttpOnly Cookie 承载；浏览器 Web 页面请求（http/https Origin/Referer）
+      // 响应体剥离 token，避免 XSS 窃取长效令牌。浏览器扩展（chrome-extension://）与
+      // CLI/脚本等无 Origin 的客户端依赖 Bearer token 调用 API，响应体保留 token。
+      const isExtensionClient = isExtensionOrigin(readOriginHeader(req))
+      const keepTokenInBody = !isBrowserWebRequest(req) || isExtensionClient
+      const body = keepTokenInBody
+        ? buildSuccessBody(result)
+        : buildSuccessBody({
+            user: result.user,
+            sessionId: result.sessionId,
+            expiresInDays
+          })
       return withCookieHeader(
-        buildSuccessBody(result),
+        body,
         createAuthCookieHeader(result.token, {
           maxAge: maxAgeMs,
           expires: new Date(Date.now() + maxAgeMs),

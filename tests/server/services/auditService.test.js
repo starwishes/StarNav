@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { auditService } from '../../../src/server/services/identity/auditService.js'
@@ -68,13 +69,14 @@ describe('auditService', () => {
     ])
   })
 
-  it('trims old entries past the retention limit and clears logs', () => {
+  it('trims old entries past the shared retention limit and clears logs', () => {
     const db = getDb()
     const insert = db.prepare(
       'INSERT INTO audit_logs (username, action, details, ip, created_at) VALUES (?, ?, ?, ?, ?)'
     )
     const seed = db.transaction(() => {
-      for (let index = 1; index <= 2000; index += 1) {
+      // 内联裁剪上限与 cron 策略共用 AUDIT_LOG_MAX_ROWS（10000），种子数需超过上限才能触发裁剪
+      for (let index = 1; index <= 10000; index += 1) {
         insert.run(`user-${index}`, `action-${index}`, '{}', '127.0.0.1', '2000-01-01 00:00:00')
       }
     })
@@ -82,7 +84,7 @@ describe('auditService', () => {
 
     auditService.log('latest', { username: 'newest' })
 
-    expect(db.prepare('SELECT COUNT(*) AS count FROM audit_logs').get().count).toBe(2000)
+    expect(db.prepare('SELECT COUNT(*) AS count FROM audit_logs').get().count).toBe(10000)
     expect(
       db.prepare('SELECT COUNT(*) AS count FROM audit_logs WHERE username = ?').get('newest').count
     ).toBe(1)

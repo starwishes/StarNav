@@ -5,6 +5,9 @@
         v-if="isMobile"
         type="button"
         class="header-button icon-button menu-toggle-btn"
+        :aria-label="t('admin.toggleSidebar')"
+        :aria-expanded="sidebarOpen"
+        aria-controls="admin-sidebar"
         @click="$emit('open-sidebar')"
       >
         <AppIcon name="icon-md-menu" class="button-icon" />
@@ -40,6 +43,7 @@
 import AppIcon from '@/components/AppIcon.vue'
 import { useI18n } from 'vue-i18n'
 import { getLocale, setLocale } from '@/plugins/i18n'
+import { buildLangIconHtml } from '@/utils/langIcon'
 import { ElMessage } from '@/utils/feedback'
 import { computed, onMounted, ref } from 'vue'
 import {
@@ -54,9 +58,7 @@ import {
 const { t } = useI18n()
 const themeMode = ref<ThemeMode>('light')
 
-const langIcon = computed(() => {
-  return getLocale() === 'zh-CN' ? '文<sub>A</sub>' : 'A<sub>文</sub>'
-})
+const langIcon = computed(() => buildLangIconHtml(getLocale()))
 
 const themeActionLabel = computed(() =>
   t(themeMode.value === 'dark' ? 'nav.switchToLight' : 'nav.switchToDark')
@@ -65,7 +67,7 @@ const themeActionLabel = computed(() =>
 const toggleLang = () => {
   const newLang = getLocale() === 'zh-CN' ? 'en-US' : 'zh-CN'
   setLocale(newLang)
-  ElMessage.success(newLang === 'zh-CN' ? '已切换至中文' : 'Switched to English')
+  ElMessage.success(t('common.languageSwitched'))
 }
 
 const syncThemeTokens = (mode: ThemeMode) => {
@@ -80,6 +82,7 @@ const toggleTheme = () => {
 defineProps<{
   isMobile: boolean
   currentViewLabel: string
+  sidebarOpen?: boolean
 }>()
 
 defineEmits(['open-sidebar', 'go-home'])
@@ -285,4 +288,3 @@ onMounted(() => {
   }
 }
 </style>
-

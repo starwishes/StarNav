@@ -1,3 +1,12 @@
+/*
+ * 说明（第 12 轮审查）：
+ * - @font-face 仅引用 woff2；iconfont.woff / iconfont.ttf 已无任何引用，
+ *   属死资产，已从仓库删除。
+ * - 保留全部 icon-* 类（含未被模板静态引用的 glyph 映射）：AppIcon.vue
+ *   通过 :name 动态绑定类名（如管理端菜单 icon），删除未引用类存在
+ *   动态类名风险，保守保留。
+ * - 页面使用的 iconfont 类名必须存在于本文件，缺失时会出现空字形。
+ */
 @font-face {
   font-family: 'iconfont';
   font-display: swap;

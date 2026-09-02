@@ -1,7 +1,13 @@
 <template>
   <div class="head" :class="{ headsp: change }">
     <div class="head-shell">
-      <button type="button" class="sidebar-toggle-btn utility-chip" @click="toggleSidebar">
+      <button
+        type="button"
+        class="sidebar-toggle-btn utility-chip"
+        :aria-label="t('sidebar.menu')"
+        :aria-expanded="isSidebarCollapsed ? 'false' : 'true'"
+        @click="toggleSidebar"
+      >
         <i class="iconfont icon-md-menu"></i>
       </button>
 
@@ -20,17 +26,27 @@
 
       <div class="flex-grow" />
 
-      <button type="button" class="utility-chip lang-toggle" @click="toggleLang">
+      <button
+        type="button"
+        class="utility-chip lang-toggle"
+        :aria-label="t('nav.toggleLanguage')"
+        @click="toggleLang"
+      >
         <span class="translate-icon" v-html="langIcon"></span>
       </button>
 
-      <button type="button" class="utility-chip theme-toggle" @click="toggleTheme">
+      <button
+        type="button"
+        class="utility-chip theme-toggle"
+        :aria-label="themeActionLabel"
+        @click="toggleTheme"
+      >
         <span class="theme-glyph">{{ themeMode === 'dark' ? '◐' : '◑' }}</span>
       </button>
 
       <template v-if="adminStore.isAuthenticated">
         <button
-          v-if="adminStore.user?.level === 3"
+          v-if="adminStore.user?.level === USER_LEVEL.ADMIN"
           type="button"
           class="admin-menu-item utility-chip"
           @click="goToAdmin"
@@ -59,6 +75,7 @@ import { ref, onMounted, onUnmounted, computed, inject, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getLocale, setLocale } from '@/plugins/i18n'
+import { buildLangIconHtml } from '@/utils/langIcon'
 import Clock from './Clock.vue'
 import LoginDialog from '@/components/admin/LoginDialog.vue'
 import { useConfigStore } from '@/store/config'
@@ -74,11 +91,13 @@ import {
 } from '@/utils/theme'
 import { isSafeHttpUrl, isSafeRelativePath } from '../../../shared/security/urlSafety.js'
 import { createScopedLogger } from '../../../shared/logger.js'
+import { USER_LEVEL } from '@common/constants'
 
 const { t } = useI18n()
 const logger = createScopedLogger('web:page-header')
 
 const toggleSidebar = inject<() => void>('toggleSidebar', () => {})
+const isSidebarCollapsed = inject<boolean>('isSidebarCollapsed', true)
 
 const change = ref(false)
 const configStore = useConfigStore()
@@ -100,14 +119,16 @@ watch(
   { immediate: true }
 )
 
-const langIcon = computed(() => {
-  return getLocale() === 'zh-CN' ? '文<sub>A</sub>' : 'A<sub>文</sub>'
-})
+const langIcon = computed(() => buildLangIconHtml(getLocale()))
+
+const themeActionLabel = computed(() =>
+  t(themeMode.value === 'dark' ? 'nav.switchToLight' : 'nav.switchToDark')
+)
 
 const toggleLang = () => {
   const newLang = getLocale() === 'zh-CN' ? 'en-US' : 'zh-CN'
   setLocale(newLang)
-  ElMessage.success(newLang === 'zh-CN' ? '已切换至中文' : 'Switched to English')
+  ElMessage.success(t('common.languageSwitched'))
 }
 
 const syncThemeTokens = (mode: ThemeMode) => {
@@ -120,7 +141,7 @@ const toggleTheme = () => {
 }
 
 const goToAdmin = async () => {
-  if (adminStore.user?.level !== 3) {
+  if (adminStore.user?.level !== USER_LEVEL.ADMIN) {
     return
   }
 
@@ -384,6 +405,13 @@ onUnmounted(() => {
     gap: 8px;
   }
 
+  /* 移动端侧栏已 display:none（CollapsibleSidebar ≤768px），
+     汉堡按钮调用 toggleSidebar 是 no-op；分类树由首页纵向区块承载，
+     隐藏该 no-op 控件避免误导点击。 */
+  .sidebar-toggle-btn {
+    display: none;
+  }
+
   .admin-menu-item .admin-text {
     display: none;
   }
@@ -416,4 +444,3 @@ onUnmounted(() => {
   }
 }
 </style>
-

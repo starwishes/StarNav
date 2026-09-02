@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
 
 import { systemHealthService } from '../../../src/server/services/system/systemHealthService.js'

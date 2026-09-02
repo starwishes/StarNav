@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { categoryReadService } from '../../../src/server/services/bookmark/categoryReadService.js'

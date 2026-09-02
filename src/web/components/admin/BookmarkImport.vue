@@ -28,101 +28,32 @@
             </button>
           </header>
 
-          <div v-if="step === 1" class="import-step">
-            <input
-              ref="fileInputRef"
-              class="sr-only-input"
-              type="file"
-              accept=".html,.htm,text/html"
-              @change="handleFileSelection"
-            />
+          <input
+            ref="fileInputRef"
+            class="sr-only-input"
+            type="file"
+            accept=".html,.htm,text/html"
+            @change="handleFileSelection"
+          />
 
-            <button
-              type="button"
-              class="upload-dropzone"
-              :class="{ active: dragActive }"
-              @click="triggerFilePicker"
-              @dragenter.prevent="dragActive = true"
-              @dragover.prevent="dragActive = true"
-              @dragleave.prevent="dragActive = false"
-              @drop.prevent="handleDrop"
-            >
-              <span class="upload-icon" aria-hidden="true">↥</span>
-              <span class="upload-title">{{ t('bookmarkImport.dropzoneTitle') }}</span>
-              <span class="upload-copy">{{ t('bookmarkImport.dropzoneCopy') }}</span>
-              <span v-if="selectedFileName" class="upload-file">{{ selectedFileName }}</span>
-            </button>
-
-            <div class="import-help">
-              <h4>{{ t('bookmarkImport.helpTitle') }}</h4>
-              <ul>
-                <li><strong>Chrome:</strong> {{ t('bookmarkImport.chromeGuide') }}</li>
-                <li><strong>Firefox:</strong> {{ t('bookmarkImport.firefoxGuide') }}</li>
-                <li><strong>Edge:</strong> {{ t('bookmarkImport.edgeGuide') }}</li>
-              </ul>
-            </div>
-          </div>
-
-          <div v-else-if="step === 2" class="import-step">
-            <div class="preview-header">
-              <span class="sn-badge is-success">{{ t('bookmarkImport.parsedBadge') }}</span>
-              <span>
-                {{
-                  t('bookmarkImport.previewSummary', {
-                    categories: parsedCategories.length,
-                    bookmarks: totalBookmarks
-                  })
-                }}
-              </span>
-            </div>
-
-            <div class="preview-list">
-              <div v-for="cat in parsedCategories" :key="cat.name" class="preview-category">
-                <label class="category-header">
-                  <span class="checkbox-row">
-                    <input v-model="cat.selected" type="checkbox" class="category-checkbox" />
-                    <strong>{{ cat.name }}</strong>
-                  </span>
-                  <span class="sn-badge is-info preview-count">
-                    {{ t('bookmarkImport.bookmarkCount', { count: cat.items.length }) }}
-                  </span>
-                </label>
-                <div v-if="cat.selected" class="category-items">
-                  <div v-for="item in cat.items.slice(0, 5)" :key="item.url" class="preview-item">
-                    <span class="item-name">{{ item.name }}</span>
-                    <span class="item-url">{{ item.url }}</span>
-                  </div>
-                  <div v-if="cat.items.length > 5" class="more-items">
-                    {{ t('bookmarkImport.moreItems', { count: cat.items.length - 5 }) }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div v-else class="import-step import-result">
-            <div class="result-panel">
-              <div class="result-icon" :class="{ importing }">{{ importing ? '…' : '✓' }}</div>
-              <h4 class="result-title">
-                {{ importing ? t('bookmarkImport.importingTitle') : t('bookmarkImport.doneTitle') }}
-              </h4>
-              <p class="result-copy">
-                {{
-                  importing
-                    ? t('bookmarkImport.importingCopy')
-                    : t('bookmarkImport.resultCopy', { count: importedCount })
-                }}
-              </p>
-              <button
-                v-if="!importing"
-                type="button"
-                class="dialog-button primary"
-                @click="handleClose"
-              >
-                {{ t('bookmarkImport.doneAction') }}
-              </button>
-            </div>
-          </div>
+          <BookmarkImportStepUpload
+            v-if="step === 1"
+            :selected-file-name="selectedFileName"
+            @pick="triggerFilePicker"
+            @drop="handleDrop"
+          />
+          <BookmarkImportStepPreview
+            v-else-if="step === 2"
+            :parsed-categories="parsedCategories"
+            :total-bookmarks="totalBookmarks"
+            @toggle-category="onToggleCategory"
+          />
+          <BookmarkImportStepResult
+            v-else
+            :importing="importing"
+            :imported-count="importedCount"
+            @close="handleClose"
+          />
 
           <footer v-if="step !== 3" class="dialog-footer">
             <div v-if="step === 1" class="footer-actions single">
@@ -154,6 +85,9 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ImportedBookmarkItem } from '@/types'
+import BookmarkImportStepUpload from '@/components/admin/BookmarkImportStepUpload.vue'
+import BookmarkImportStepPreview from '@/components/admin/BookmarkImportStepPreview.vue'
+import BookmarkImportStepResult from '@/components/admin/BookmarkImportStepResult.vue'
 import { useBookmarkImportDialog } from '@/composables/useBookmarkImportDialog'
 
 const { t } = useI18n()
@@ -180,7 +114,6 @@ const {
   parsedCategories,
   importing,
   importedCount,
-  dragActive,
   selectedFileName,
   fileInputRef,
   dialogPanelRef,
@@ -196,6 +129,15 @@ const {
   setModelValue: (value) => emit('update:modelValue', value),
   importAction: (...args) => props.importAction?.(...args)
 })
+
+const onToggleCategory = (name: string, checked: boolean) => {
+  // 子组件 emit (name, checked)，这里按 name 映射更新父组件持有的 parsedCategories 对象，
+  // 避免跨组件边界按引用修改 prop 数组元素（vue/no-mutating-props）。
+  const cat = parsedCategories.value.find((c) => c.name === name)
+  if (cat) {
+    cat.selected = checked
+  }
+}
 
 // Template binds via ref="..."; vue-tsc noUnusedLocals does not count that as a read
 void fileInputRef
@@ -244,6 +186,9 @@ void dialogPanelRef
 
 .bookmark-import-shell {
   width: min(100%, 720px);
+  /* 移动端软键盘/横屏下限制高度，内容可滚动而不被视口裁剪 */
+  max-height: min(86vh, 860px);
+  overflow-y: auto;
   border-radius: 24px;
   border: 1px solid var(--bookmark-import-border);
   background: var(--bookmark-import-bg);
@@ -265,7 +210,7 @@ void dialogPanelRef
 
 .dialog-kicker {
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -286,8 +231,7 @@ void dialogPanelRef
 }
 
 .dialog-close,
-.dialog-button,
-.upload-dropzone {
+.dialog-button {
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease,
@@ -318,209 +262,6 @@ void dialogPanelRef
 .import-step {
   min-height: 300px;
   padding: 22px;
-}
-
-.upload-dropzone {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 30px 24px;
-  border: 2px dashed rgba(var(--ui-theme-rgb), 0.26);
-  border-radius: 18px;
-  background: rgba(var(--ui-theme-rgb), 0.05);
-  color: var(--gray-700);
-  cursor: pointer;
-  text-align: center;
-
-  &:hover,
-  &.active {
-    border-color: rgba(var(--ui-theme-rgb), 0.48);
-    background: rgba(var(--ui-theme-rgb), 0.1);
-    transform: translateY(-2px);
-    box-shadow: 0 18px 36px rgba(var(--ui-theme-rgb), 0.12);
-  }
-}
-
-.upload-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
-  background: rgba(var(--ui-theme-rgb), 0.12);
-  color: rgb(var(--ui-theme-rgb));
-  font-size: 28px;
-}
-
-.upload-title {
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.upload-copy,
-.upload-file {
-  font-size: 14px;
-  color: var(--gray-500);
-}
-
-.upload-file {
-  color: rgb(var(--ui-theme-rgb));
-  font-weight: 600;
-}
-
-.import-help {
-  margin-top: 20px;
-  padding: 15px;
-  background: var(--el-fill-color-light);
-  border-radius: 8px;
-
-  h4 {
-    margin: 0 0 10px 0;
-    font-size: 14px;
-    color: var(--el-text-color-primary);
-  }
-
-  ul {
-    margin: 0;
-    padding-left: 20px;
-    font-size: 13px;
-    color: var(--el-text-color-secondary);
-
-    li {
-      margin: 5px 0;
-    }
-  }
-}
-
-.preview-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 15px;
-  padding: 10px;
-  background: var(--el-fill-color-light);
-  border-radius: 8px;
-}
-
-.preview-list {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.preview-category {
-  margin-bottom: 15px;
-  padding: 14px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-  background: var(--bookmark-import-surface);
-}
-
-.category-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 8px;
-  cursor: pointer;
-}
-
-.checkbox-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.category-checkbox {
-  width: 16px;
-  height: 16px;
-}
-
-.preview-count {
-  min-height: 20px;
-  padding: 3px 8px;
-}
-
-.category-items {
-  padding-left: 26px;
-}
-
-.preview-item {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 5px 0;
-  font-size: 13px;
-  border-bottom: 1px dashed var(--el-border-color-lighter);
-}
-
-.item-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.item-url {
-  flex: 1;
-  color: var(--el-text-color-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-}
-
-.more-items {
-  padding: 5px 0;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.import-result {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.result-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  text-align: center;
-}
-
-.result-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 74px;
-  height: 74px;
-  border-radius: 50%;
-  background: rgba(34, 197, 94, 0.12);
-  color: #15803d;
-  font-size: 40px;
-  font-weight: 700;
-}
-
-.result-icon.importing {
-  background: rgba(59, 130, 246, 0.12);
-  color: #1d4ed8;
-  animation: pulse 1s ease-in-out infinite;
-}
-
-.result-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.result-copy {
-  margin: 0;
-  color: var(--gray-500);
 }
 
 .dialog-footer {
@@ -571,35 +312,15 @@ void dialogPanelRef
   display: none;
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.05);
-  }
-}
-
 @media (max-width: 768px) {
   .bookmark-import-backdrop {
     padding: 16px;
   }
 
   .dialog-header,
-  .category-header,
   .footer-actions {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .preview-item {
-    flex-direction: column;
-  }
-
-  .item-url {
-    text-align: left;
   }
 }
 </style>

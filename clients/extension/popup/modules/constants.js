@@ -28,6 +28,7 @@ export const elements = {
   themeToggle: document.getElementById('themeToggle'),
   toast: document.getElementById('toast'),
   openSite: document.getElementById('openSite'),
+  logoutBtn: document.getElementById('logoutBtn'),
   notConnected: document.getElementById('notConnected'),
   connectCard: document.getElementById('connectCard'),
   reconnectServerUrl: document.getElementById('reconnectServerUrl'),
@@ -74,7 +75,7 @@ export const i18n = {
     fillRequired: '请填写必要信息',
     addSuccess: '书签添加成功',
     addFailed: '添加失败',
-    duplicateIn: '已存在于',
+    duplicateWithName: '已存在于“{name}”，添加失败',
     catAddSuccess: '分类创建成功',
     catAddFailed: '创建失败',
     newCatTip: '新建分类',
@@ -91,7 +92,10 @@ export const i18n = {
     connect: '连接',
     connecting: '连接中…',
     connected: '已连接',
+    logout: '退出登录',
+    loggedOut: '已退出登录',
     connectFailed: '连接失败',
+    connectInsecure: '仅允许连接 HTTPS 或本地回环地址（http://127.0.0.1 / localhost）',
     connectMissingCredentials: '请输入服务器地址、用户名和密码',
     rememberLogin: '记住我（90 天内自动登录）',
     edit: '编辑',
@@ -107,6 +111,7 @@ export const i18n = {
   },
   en: {
     openSite: 'Open StarNav',
+    logout: 'Logout',
     toggleLang: 'Switch Language',
     toggleTheme: 'Toggle light/dark mode',
     addCurrent: 'Add Current Page',
@@ -140,7 +145,7 @@ export const i18n = {
     fillRequired: 'Please fill in required fields',
     addSuccess: 'Bookmark added successfully',
     addFailed: 'Failed to add',
-    duplicateIn: 'Already exists in',
+    duplicateWithName: 'Already exists in "{name}", failed to add',
     catAddSuccess: 'Category created successfully',
     catAddFailed: 'Failed to create',
     newCatTip: 'New Category',
@@ -157,7 +162,10 @@ export const i18n = {
     connect: 'Connect',
     connecting: 'Connecting…',
     connected: 'Connected',
+    loggedOut: 'Logged out',
     connectFailed: 'Connect failed',
+    connectInsecure:
+      'Only HTTPS or local loopback addresses (http://127.0.0.1 / localhost) are allowed',
     connectMissingCredentials: 'Please enter server URL, username and password',
     rememberLogin: 'Keep me signed in (90 days)',
     edit: 'Edit',
@@ -179,5 +187,7 @@ export const createPopupState = () => ({
   config: { serverUrl: '', token: '' },
   categories: [],
   debounceTimer: null,
-  currentEditingId: null
+  currentEditingId: null,
+  // 当前展示中的待捕获项：仅在保存成功后清除，展示/取消时保留待下次重试
+  currentPendingCapture: null
 })

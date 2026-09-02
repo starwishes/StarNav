@@ -4,7 +4,7 @@ import crypto from 'crypto'
 
 import { UPLOADS_DIR } from '../../config/index.js'
 import { settingsService } from './settingsService.js'
-import { errors } from '../../middleware/errorHandler.js'
+import { errors } from '../../utils/errors.js'
 import { logger } from '../../utils/logger.js'
 import { parseImageData } from './systemAssetImageCodec.js'
 
@@ -23,7 +23,9 @@ const removeDanglingUploadSettings = (filename: string) => {
 
   SETTINGS_FILE_KEYS.forEach((key) => {
     if (settingsService.get(key, '') === fileUrl) {
-      settingsService.set(key, '')
+      if (!settingsService.set(key, '')) {
+        logger.warn(`清除悬空上传设置失败: ${key}`)
+      }
     }
   })
 }
@@ -37,7 +39,17 @@ export const systemAssetService = {
     fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer)
 
     const url = `/uploads/${filename}`
-    settingsService.set('backgroundUrl', url)
+    if (!settingsService.set('backgroundUrl', url)) {
+      // 设置保存失败时回滚已写入的文件，避免留下孤儿资源；
+      // 并抛 500 让前端收到失败，而不是 200 假成功。
+      try {
+        fs.unlinkSync(path.join(UPLOADS_DIR, filename))
+      } catch (cleanupError) {
+        logger.warn('背景图设置保存失败，且文件回滚删除失败', { url, error: cleanupError })
+      }
+      logger.error('背景图设置保存失败，已回滚删除文件', { url })
+      throw errors.internal('背景图设置保存失败')
+    }
     return { url }
   },
 

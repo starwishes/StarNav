@@ -68,14 +68,11 @@ export function useUserManagement() {
       updateData.newUsername !== oldUsername &&
       adminStore.user?.login === oldUsername
     ) {
-      adminStore.setAuth(
-        adminStore.token || '',
-        {
-          login: updateData.newUsername,
-          name: updateData.newUsername,
-          level: adminStore.user.level
-        }
-      )
+      adminStore.setAuth({
+        login: updateData.newUsername,
+        name: updateData.newUsername,
+        level: adminStore.user.level
+      })
     }
   }
 

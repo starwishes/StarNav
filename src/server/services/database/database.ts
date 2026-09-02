@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3'
 import { logger } from '../../utils/logger.js'
+import { queryMonitor } from '../../utils/queryMonitor.js'
 import { databasePathService } from './databasePathService.js'
 import { databaseSchemaService } from './databaseSchemaService.js'
 import { databaseMaintenanceService } from './databaseMaintenanceService.js'
@@ -8,6 +9,39 @@ import { databaseStatsService } from './databaseStatsService.js'
 // 创建数据库连接（懒加载单例）
 let db: Database.Database | null = null
 let currentDbPath: string | null = null
+
+type StatementMethodRecord = Record<'all' | 'get' | 'run', (...args: unknown[]) => unknown>
+
+/**
+ * 给 better-sqlite3 实例挂上慢查询监控：包装 prepare 返回的 Statement 的
+ * all/get/run 与 exec，让 queryMonitor 的 slowRecent/slowTop 观测真实生效。
+ *
+ * 性能取舍：每次查询增加一次 Date.now() + Map 记账（亚微秒级），对个人站
+ * 规模可忽略；换来的 /api/health 慢查询可观测性（超 100ms 的查询会被记录）
+ * 在写路径卡顿时有实际排查价值。Statement 方法用实例属性遮蔽原型方法，
+ * 仅影响本连接实例，不修改 better-sqlite3 原型。
+ */
+const attachQueryMonitor = (instance: Database.Database) => {
+  const originalPrepare = instance.prepare.bind(instance)
+  const originalExec = instance.exec.bind(instance)
+
+  instance.prepare = ((...args: unknown[]) => {
+    const statement = originalPrepare(String(args[0]))
+    const sql = String(args[0])
+    const record = statement as unknown as StatementMethodRecord
+    for (const method of ['all', 'get', 'run'] as const) {
+      const originalMethod = record[method].bind(statement)
+      record[method] = (...callArgs: unknown[]) =>
+        queryMonitor.monitor(() => originalMethod(...callArgs), sql)()
+    }
+    return statement
+  }) as Database.Database['prepare']
+
+  instance.exec = ((sql: string) =>
+    queryMonitor.monitor(() => originalExec(sql), 'EXEC')()) as Database.Database['exec']
+
+  return instance
+}
 
 /**
  * 获取数据库连接（懒加载后保证非 null）
@@ -31,6 +65,9 @@ export const getDb = (): Database.Database => {
     // 外键约束
     db.pragma('foreign_keys = ON')
 
+    // 先挂监控再初始化 schema，让建表/迁移查询也纳入慢查询统计
+    attachQueryMonitor(db)
+
     databaseSchemaService.initSchema(db)
     logger.info(
       `SQLite 数据库已连接: ${dbPath} (Worker: ${process.env.VITEST_WORKER_ID || 'single'})`
@@ -48,10 +85,12 @@ export const forceCheckpoint = () => databaseMaintenanceService.forceCheckpoint(
 /**
  * 自动备份数据库
  */
-export const backupDatabase = () =>
+export const backupDatabase = (options: { outputPath?: string } = {}) =>
   databaseMaintenanceService.backupDatabase({
+    db: getDb(),
     dbPath: currentDbPath || databasePathService.getDbPath(),
-    checkpoint: forceCheckpoint
+    checkpoint: forceCheckpoint,
+    ...(options.outputPath ? { outputPath: options.outputPath } : {})
   })
 
 /**

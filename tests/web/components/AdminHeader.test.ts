@@ -81,7 +81,7 @@ describe('AdminHeader', () => {
     await wrapper.find('.lang-btn').trigger('click')
 
     expect(mocks.setLocale).toHaveBeenCalledWith('en-US')
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('Switched to English')
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:common.languageSwitched')
   })
 
   it('toggles the locale from English to Chinese', async () => {
@@ -93,7 +93,7 @@ describe('AdminHeader', () => {
     await wrapper.find('.lang-btn').trigger('click')
 
     expect(mocks.setLocale).toHaveBeenCalledWith('zh-CN')
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('已切换至中文')
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:common.languageSwitched')
   })
 
   it('applies the saved theme mode and toggles it from the header', async () => {

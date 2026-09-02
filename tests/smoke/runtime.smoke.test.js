@@ -169,6 +169,54 @@ describe.sequential('Runtime smoke tests', () => {
     expect(authCookie).toContain('HttpOnly')
   })
 
+  it('rejects registration when disabled, then allows it once enabled', async () => {
+    // 默认 registrationEnabled=false：真实路径下注册应被 403 拒绝
+    const disabledRes = await jsonRequest(`${baseUrl}/register`, {
+      method: 'POST',
+      body: {
+        username: `regdisabled${Date.now()}`,
+        password: 'RegDisabledPass123!'
+      }
+    })
+    expect(disabledRes.status).toBe(403)
+    expect(disabledRes.body.code).toBe('FORBIDDEN')
+
+    // 管理员开启注册
+    const enableRes = await jsonRequest(`${baseUrl}/admin/settings`, {
+      method: 'POST',
+      cookie: authCookie,
+      origin: baseOrigin,
+      body: {
+        registrationEnabled: true
+      }
+    })
+    expect(enableRes.status).toBe(200)
+    expect(enableRes.body.success).toBe(true)
+
+    // 开启后注册建号成功，且新账号可登录
+    const newUsername = `reguser${Date.now()}`
+    const newPassword = 'RegUserPass123!'
+    const registerRes = await jsonRequest(`${baseUrl}/register`, {
+      method: 'POST',
+      body: {
+        username: newUsername,
+        password: newPassword
+      }
+    })
+    expect(registerRes.status).toBe(200)
+    expect(registerRes.body.success).toBe(true)
+
+    const loginRes = await jsonRequest(`${baseUrl}/login`, {
+      method: 'POST',
+      body: {
+        username: newUsername,
+        password: newPassword
+      }
+    })
+    expect(loginRes.status).toBe(200)
+    expect(loginRes.body.data.token).toBeTruthy()
+  })
+
   it('supports category and bookmark CRUD with search round-trip', async () => {
     const categoryRes = await jsonRequest(`${baseUrl}/category`, {
       method: 'POST',

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { bookmarkWriteService } from '../../../src/server/services/bookmark/bookmarkWriteService.js'
@@ -154,7 +155,9 @@ describe('bookmarkWriteService', () => {
     })
 
     expect(bookmarkWriteService.update(999, { name: 'Missing' })).toBeNull()
-    expect(bookmarkWriteService.update(1, {})).toBeNull()
+    // 空 payload 是"无操作"，返回当前行而非误报 404
+    const noop = bookmarkWriteService.update(1, {})
+    expect(noop).toMatchObject({ id: 1, name: 'Existing' })
   })
 
   it('deletes bookmarks and reports missing ids cleanly', () => {

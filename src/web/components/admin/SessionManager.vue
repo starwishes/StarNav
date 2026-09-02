@@ -103,7 +103,7 @@ const revokeOthers = async () => {
     })
     revoking.value = true
     const revokedCount = await adminApi.revokeOtherSessions()
-    ElMessage.success(t('common.success') + ` ${revokedCount}`)
+    ElMessage.success(t('admin.sessionsRevoked', { count: revokedCount }))
     fetchSessions()
   } catch {
     // 取消操作

@@ -29,7 +29,7 @@ describe('sync-extension-common CLI', () => {
     )
 
     expect(stdout).toMatch(
-      /\[extension:sync-common\] (updated|unchanged) clients\/extension\/common\/(api|logger)\.js/
+      /\[extension:sync-common\] (updated|unchanged) clients[/\\]extension[/\\]common[/\\](api|logger)\.js/
     )
   })
 })

@@ -12,6 +12,14 @@ export interface ContextMenuState {
   itemIndex: number
 }
 
+// 保守估计菜单尺寸，先把裸 clientX/Y 粗略钳制到视口内（主要防右侧/底部溢出）；
+// SiteContextMenu 渲染后再按实测尺寸二次精调。
+const VIEWPORT_MARGIN = 8
+const ESTIMATED_MENU_WIDTH = 168
+const ESTIMATED_MENU_HEIGHT = 264
+const clampToViewport = (value: number, viewportSize: number, estimatedSize: number) =>
+  Math.max(0, Math.min(value, viewportSize - estimatedSize - VIEWPORT_MARGIN))
+
 export function useSiteMenu() {
   const adminStore = useAdminStore()
 
@@ -30,8 +38,8 @@ export function useSiteMenu() {
     e.preventDefault()
     Object.assign(contextMenu, {
       visible: true,
-      x: e.clientX,
-      y: e.clientY,
+      x: clampToViewport(e.clientX, window.innerWidth, ESTIMATED_MENU_WIDTH),
+      y: clampToViewport(e.clientY, window.innerHeight, ESTIMATED_MENU_HEIGHT),
       item,
       category: null,
       catIndex: catIdx,
@@ -45,8 +53,8 @@ export function useSiteMenu() {
     e.preventDefault()
     Object.assign(contextMenu, {
       visible: true,
-      x: e.clientX,
-      y: e.clientY,
+      x: clampToViewport(e.clientX, window.innerWidth, ESTIMATED_MENU_WIDTH),
+      y: clampToViewport(e.clientY, window.innerHeight, ESTIMATED_MENU_HEIGHT),
       item: null,
       category,
       catIndex: catIdx

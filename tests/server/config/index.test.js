@@ -1,3 +1,4 @@
+// @vitest-environment node
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import fs from 'fs'
@@ -37,6 +38,17 @@ describe('config/index', () => {
 
     expect(config.JWT_SECRET).toBe('test-jwt-secret-for-vitest-only-0123456789abcdef')
     expect(fs.existsSync(path.join(testDataDir, '.jwt_secret'))).toBe(false)
+  })
+
+  it('defaults TRUST_PROXY to true and honors an explicit false', async () => {
+    delete process.env.TRUST_PROXY
+    const defaultConfig = await loadConfigModule()
+    expect(defaultConfig.TRUST_PROXY).toBe(true)
+
+    vi.resetModules()
+    process.env.TRUST_PROXY = 'false'
+    const explicitConfig = await loadConfigModule()
+    expect(explicitConfig.TRUST_PROXY).toBe(false)
   })
 
   it('rejects unsupported bootstrap password, cookie, CSP, and proxy override values during env validation', async () => {
@@ -81,7 +93,7 @@ describe('config/index', () => {
     process.env.ADMIN_BOOTSTRAP_PASSWORD_DELIVERY = 'both'
     process.env.AUTH_COOKIE_SECURE = 'false'
     process.env.CSP_UPGRADE_INSECURE_REQUESTS = 'true'
-    process.env.TRUST_PROXY = 'true'
+    process.env.TRUST_PROXY = 'false'
 
     const config = await loadConfigModule()
     config.validateEnv()
@@ -91,7 +103,7 @@ describe('config/index', () => {
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining('CSP_UPGRADE_INSECURE_REQUESTS=true')
     )
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('TRUST_PROXY=true'))
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('TRUST_PROXY=false'))
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining('ADMIN_BOOTSTRAP_PASSWORD_DELIVERY 包含 log')
     )

@@ -82,7 +82,7 @@ describe('useSiteFilter', () => {
     expect(filteredData.value[0].content).toEqual([
       expect.objectContaining({
         id: 10,
-        _isPinnedReplica: true
+        pinned: true
       })
     ])
     expect(filteredData.value[1].content?.map((item: any) => item.id)).toEqual([10])

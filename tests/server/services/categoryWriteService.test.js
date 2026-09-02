@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { categoryWriteService } from '../../../src/server/services/bookmark/categoryWriteService.js'
@@ -192,5 +193,79 @@ describe('categoryWriteService', () => {
     expect(categoryWriteService.update(1, {})).toBeNull()
     expect(categoryWriteService.update(999, { name: 'Missing' })).toBeNull()
     expect(categoryWriteService.delete(999)).toBeNull()
+  })
+
+  it('rejects setting a category as its own parent', () => {
+    const { db } = ctx
+
+    insertCategory(db, { id: 1, name: 'Self', parentId: null })
+
+    expect(() => categoryWriteService.update(1, { parentId: 1 })).toThrowError(
+      expect.objectContaining({ statusCode: 400 })
+    )
+  })
+
+  it('rejects reparenting a category under one of its own descendants (cycle)', () => {
+    const { db } = ctx
+
+    insertCategory(db, { id: 1, name: 'Root' })
+    insertCategory(db, { id: 2, name: 'Child', parentId: 1 })
+    insertCategory(db, { id: 3, name: 'Grandchild', parentId: 2 })
+
+    // 把 Root 挂到自己的孙分类 Grandchild 下 → 1→3→2→1 成环
+    expect(() => categoryWriteService.update(1, { parentId: 3 })).toThrowError(
+      expect.objectContaining({ statusCode: 400 })
+    )
+    // 父链未变，数据库保持原状
+    expect(db.prepare('SELECT parent_id FROM categories WHERE id = 1').get()).toEqual({
+      parent_id: null
+    })
+  })
+
+  it('allows clearing the parent relation and moving to an unrelated category', () => {
+    const { db } = ctx
+
+    insertCategory(db, { id: 1, name: 'Root' })
+    insertCategory(db, { id: 2, name: 'Child', parentId: 1 })
+
+    expect(() => categoryWriteService.update(2, { parentId: 0 })).not.toThrow()
+    expect(db.prepare('SELECT parent_id FROM categories WHERE id = 2').get()).toEqual({
+      parent_id: null
+    })
+  })
+
+  it('rejects bulk imports containing a self-referencing category', () => {
+    const { db } = ctx
+
+    expect(() =>
+      categoryWriteService.bulkInsert([{ id: 1, name: 'Self', parentId: 1 }], db)
+    ).toThrowError(expect.objectContaining({ statusCode: 400 }))
+  })
+
+  it('rejects bulk imports containing a parent cycle', () => {
+    const { db } = ctx
+
+    expect(() =>
+      categoryWriteService.bulkInsert(
+        [
+          { id: 1, name: 'A', parentId: 2 },
+          { id: 2, name: 'B', parentId: 1 }
+        ],
+        db
+      )
+    ).toThrowError(expect.objectContaining({ statusCode: 400 }))
+  })
+
+  it('accepts bulk imports whose parents reference categories not in the import set', () => {
+    const { db } = ctx
+
+    insertCategory(db, { id: 10, name: 'Existing Parent' })
+
+    expect(() =>
+      categoryWriteService.bulkInsert([{ id: 1, name: 'Child', parentId: 10 }], db)
+    ).not.toThrow()
+    expect(db.prepare('SELECT parent_id FROM categories WHERE id = 1').get()).toEqual({
+      parent_id: 10
+    })
   })
 })

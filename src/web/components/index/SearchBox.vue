@@ -1,14 +1,17 @@
 <template>
   <div class="unified-search-box">
     <div class="mode-switcher">
-      <div
+      <button
+        type="button"
         class="mode-btn"
         :class="{ active: searchMode === 'local' }"
-        title="本地书签搜索"
+        :title="t('search.localModeTitle')"
+        :aria-label="t('search.localModeTitle')"
+        :aria-pressed="searchMode === 'local'"
         @click="$emit('update:searchMode', 'local')"
       >
         <AppIcon name="icon-md-search" class="mode-icon" />
-      </div>
+      </button>
 
       <div class="mode-divider"></div>
 
@@ -19,22 +22,33 @@
       ref="inputRef"
       :value="modelValue"
       :placeholder="placeholder"
+      :aria-label="t('search.searchInput')"
       class="search-input"
       @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       @focus="$emit('focus')"
       @blur="$emit('blur', $event)"
+      @keydown="$emit('keydown', $event)"
       @keyup.enter="$emit('enter')"
     />
 
-    <div v-if="modelValue" class="clear-btn" @click="$emit('clear')">
+    <button
+      v-if="modelValue"
+      type="button"
+      class="clear-btn"
+      :aria-label="t('manage.clearSearch')"
+      @click="$emit('clear')"
+    >
       <AppIcon name="icon-md-close-circle" class="clear-icon" />
-    </div>
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import AppIcon from '@/components/AppIcon.vue'
+import { useI18n } from 'vue-i18n'
 import { ref } from 'vue'
+
+const { t } = useI18n()
 
 defineProps<{
   modelValue: string
@@ -47,6 +61,7 @@ defineEmits<{
   (e: 'update:searchMode', mode: 'local' | 'online'): void
   (e: 'focus'): void
   (e: 'blur', event: FocusEvent): void
+  (e: 'keydown', event: KeyboardEvent): void
   (e: 'enter'): void
   (e: 'clear'): void
 }>()
@@ -100,7 +115,11 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border: none;
   border-radius: 999px;
+  background: transparent;
+  padding: 0;
+  font: inherit;
   cursor: pointer;
   color: rgba(29, 29, 31, 0.56);
   transition:
@@ -113,6 +132,11 @@ defineExpose({
     background: rgba(29, 29, 31, 0.05);
     color: #1d1d1f;
     transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--ui-theme-rgb), 0.4);
+    outline-offset: 2px;
   }
 
   &.active {
@@ -167,7 +191,11 @@ defineExpose({
   align-items: center;
   justify-content: center;
   margin-left: 8px;
+  border: none;
   border-radius: 50%;
+  background: transparent;
+  padding: 0;
+  font: inherit;
   cursor: pointer;
   color: rgba(29, 29, 31, 0.36);
   transition:
@@ -177,6 +205,11 @@ defineExpose({
   &:hover {
     background: rgba(29, 29, 31, 0.06);
     color: #1d1d1f;
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--ui-theme-rgb), 0.4);
+    outline-offset: 2px;
   }
 }
 
@@ -283,4 +316,3 @@ defineExpose({
   }
 }
 </style>
-

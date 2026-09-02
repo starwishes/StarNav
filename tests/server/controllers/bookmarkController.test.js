@@ -1,7 +1,14 @@
+// @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { bookmarkController } from '../../../src/server/controllers/bookmarkController.js'
 import { bookmarkQueryService } from '../../../src/server/services/bookmark/bookmarkQueryService.js'
 import { bookmarkCommandService } from '../../../src/server/services/bookmark/bookmarkCommandService.js'
+import {
+  bookmarkCreateSchema,
+  bookmarkUpdateSchema,
+  validatePayload
+} from '../../../src/server/validation.js'
+import { ApiError } from '../../../src/server/utils/errors.js'
 
 // Mock dependencies
 vi.mock('../../../src/server/services/bookmark/bookmarkQueryService.js')
@@ -47,7 +54,7 @@ describe('BookmarkController Unit Tests', () => {
 
       await bookmarkController.searchBookmarks(req, res, next)
 
-      expect(bookmarkQueryService.searchBookmarks).toHaveBeenCalledWith('testuser', 1, 'git', '5')
+      expect(bookmarkQueryService.searchBookmarks).toHaveBeenCalledWith(1, 'git', '5')
       expect(res.json).toHaveBeenCalledWith(result)
     })
   })
@@ -72,11 +79,7 @@ describe('BookmarkController Unit Tests', () => {
 
       await bookmarkController.checkBookmark(req, res, next)
 
-      expect(bookmarkQueryService.checkBookmark).toHaveBeenCalledWith(
-        'testuser',
-        1,
-        'https://test.com'
-      )
+      expect(bookmarkQueryService.checkBookmark).toHaveBeenCalledWith(1, 'https://test.com')
       expect(res.json).toHaveBeenCalledWith(result)
     })
   })
@@ -94,14 +97,14 @@ describe('BookmarkController Unit Tests', () => {
 
       await bookmarkController.addBookmark(req, res, next)
 
-      expect(bookmarkCommandService.addBookmark).toHaveBeenCalledWith('testuser', req.body)
+      expect(bookmarkCommandService.addBookmark).toHaveBeenCalledWith(req.body)
       expect(res.json).toHaveBeenCalledWith(result)
     })
   })
 
   describe('saveData', () => {
     it('应该委托写侧服务保存全量数据', async () => {
-      req.body = { categories: [{ id: 1 }], items: [{ id: 2 }] }
+      req.body = { action: 'import', categories: [], items: [] }
       bookmarkCommandService.saveData.mockReturnValue({ success: true, message: '数据保存成功' })
 
       await bookmarkController.saveData(req, res, next)
@@ -119,7 +122,7 @@ describe('BookmarkController Unit Tests', () => {
 
       await bookmarkController.trackClick(req, res, next)
 
-      expect(bookmarkCommandService.trackClick).toHaveBeenCalledWith('123')
+      expect(bookmarkCommandService.trackClick).toHaveBeenCalledWith('123', 1)
       expect(res.json).toHaveBeenCalledWith(result)
     })
   })
@@ -132,7 +135,10 @@ describe('BookmarkController Unit Tests', () => {
 
       await bookmarkController.createCategory(req, res, next)
 
-      expect(bookmarkCommandService.createCategory).toHaveBeenCalledWith('testuser', req.body)
+      expect(bookmarkCommandService.createCategory).toHaveBeenCalledWith({
+        name: 'Dev',
+        parentId: null
+      })
       expect(res.json).toHaveBeenCalledWith(result)
     })
   })
@@ -146,7 +152,10 @@ describe('BookmarkController Unit Tests', () => {
 
       await bookmarkController.updateCategory(req, res, next)
 
-      expect(bookmarkCommandService.updateCategory).toHaveBeenCalledWith('testuser', '9', req.body)
+      expect(bookmarkCommandService.updateCategory).toHaveBeenCalledWith('9', {
+        name: 'Updated Dev',
+        parentId: null
+      })
       expect(res.json).toHaveBeenCalledWith(result)
     })
   })
@@ -159,7 +168,7 @@ describe('BookmarkController Unit Tests', () => {
 
       await bookmarkController.reorderCategories(req, res, next)
 
-      expect(bookmarkCommandService.reorderCategories).toHaveBeenCalledWith('testuser', req.body)
+      expect(bookmarkCommandService.reorderCategories).toHaveBeenCalledWith(req.body)
       expect(res.json).toHaveBeenCalledWith(result)
     })
   })
@@ -173,11 +182,7 @@ describe('BookmarkController Unit Tests', () => {
 
       await bookmarkController.updateBookmark(req, res, next)
 
-      expect(bookmarkCommandService.updateBookmark).toHaveBeenCalledWith(
-        'testuser',
-        '123',
-        req.body
-      )
+      expect(bookmarkCommandService.updateBookmark).toHaveBeenCalledWith('123', req.body)
       expect(res.json).toHaveBeenCalledWith(result)
     })
   })
@@ -191,7 +196,7 @@ describe('BookmarkController Unit Tests', () => {
 
       await bookmarkController.moveBookmark(req, res, next)
 
-      expect(bookmarkCommandService.moveBookmark).toHaveBeenCalledWith('testuser', '123', req.body)
+      expect(bookmarkCommandService.moveBookmark).toHaveBeenCalledWith('123', req.body)
       expect(res.json).toHaveBeenCalledWith(result)
     })
   })
@@ -205,12 +210,12 @@ describe('BookmarkController Unit Tests', () => {
       bookmarkCommandService.batchDeleteBookmarks.mockReturnValue(deleteResult)
 
       await bookmarkController.batchMoveBookmarks(req, res, next)
-      expect(bookmarkCommandService.batchMoveBookmarks).toHaveBeenCalledWith('testuser', req.body)
+      expect(bookmarkCommandService.batchMoveBookmarks).toHaveBeenCalledWith(req.body)
       expect(res.json).toHaveBeenCalledWith(moveResult)
 
       req.body = { ids: [1, 2] }
       await bookmarkController.batchDeleteBookmarks(req, res, next)
-      expect(bookmarkCommandService.batchDeleteBookmarks).toHaveBeenCalledWith('testuser', req.body)
+      expect(bookmarkCommandService.batchDeleteBookmarks).toHaveBeenCalledWith(req.body)
       expect(res.json).toHaveBeenCalledWith(deleteResult)
     })
   })
@@ -222,7 +227,7 @@ describe('BookmarkController Unit Tests', () => {
 
       await bookmarkController.deleteCategory(req, res, next)
 
-      expect(bookmarkCommandService.deleteCategory).toHaveBeenCalledWith('testuser', '9')
+      expect(bookmarkCommandService.deleteCategory).toHaveBeenCalledWith('9')
       expect(res.json).toHaveBeenCalledWith({ success: true, message: '删除成功' })
     })
   })
@@ -234,8 +239,61 @@ describe('BookmarkController Unit Tests', () => {
 
       await bookmarkController.deleteBookmark(req, res, next)
 
-      expect(bookmarkCommandService.deleteBookmark).toHaveBeenCalledWith('testuser', '123')
+      expect(bookmarkCommandService.deleteBookmark).toHaveBeenCalledWith('123')
       expect(res.json).toHaveBeenCalledWith({ success: true, message: '删除成功' })
+    })
+  })
+
+  describe('payload validation negative paths', () => {
+    it('create 非法 payload（缺必填字段）→ 400 且不委托写侧服务', async () => {
+      req.body = { name: 'x' } // 缺 url / categoryId
+
+      await bookmarkController.addBookmark(req, res, next)
+
+      expect(bookmarkCommandService.addBookmark).not.toHaveBeenCalled()
+      expect(res.status).toHaveBeenCalledWith(400)
+      const body = res.json.mock.calls[0][0]
+      expect(body).toMatchObject({ success: false, code: 'BAD_REQUEST' })
+      expect(body.error).toContain('书签参数不正确')
+      expect(body.error).toContain('url')
+    })
+
+    it('update 非法 payload（字段类型错误）→ 400 且不委托写侧服务', async () => {
+      req.params = { id: '123' }
+      req.body = { name: 123 }
+
+      await bookmarkController.updateBookmark(req, res, next)
+
+      expect(bookmarkCommandService.updateBookmark).not.toHaveBeenCalled()
+      expect(res.status).toHaveBeenCalledWith(400)
+      const body = res.json.mock.calls[0][0]
+      expect(body).toMatchObject({ success: false, code: 'BAD_REQUEST' })
+      expect(body.error).toContain('书签更新参数不正确')
+      expect(body.error).toContain('name')
+    })
+
+    it('validatePayload 对非法 create payload 抛 ApiError(400, BAD_REQUEST)', () => {
+      try {
+        validatePayload(bookmarkCreateSchema, { name: 'x' }, '书签参数不正确')
+        expect.unreachable('应当抛出 ApiError')
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError)
+        expect(error.statusCode).toBe(400)
+        expect(error.code).toBe('BAD_REQUEST')
+        expect(error.message).toContain('url')
+      }
+    })
+
+    it('validatePayload 对非法 update payload 抛 ApiError(400, BAD_REQUEST)', () => {
+      try {
+        validatePayload(bookmarkUpdateSchema, { name: 123 }, '书签更新参数不正确')
+        expect.unreachable('应当抛出 ApiError')
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError)
+        expect(error.statusCode).toBe(400)
+        expect(error.code).toBe('BAD_REQUEST')
+        expect(error.message).toContain('name')
+      }
     })
   })
 })

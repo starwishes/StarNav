@@ -57,7 +57,7 @@ export const useUserTableDialogs = (emit: UserTableEmit, t: (key: string) => str
 
   const confirmAdd = () => {
     if (!addForm.username || !addForm.password) {
-      ElMessage.warning('请填写完整的用户信息')
+      ElMessage.warning(t('admin.userFieldsRequired'))
       return
     }
 

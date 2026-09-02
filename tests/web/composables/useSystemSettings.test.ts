@@ -69,9 +69,7 @@ describe('useSystemSettings', () => {
     await handleSaveSettings(nextSettings)
 
     expect(mocks.updateAdminSettings).toHaveBeenCalledWith(nextSettings)
-    expect(mocks.messageSuccess).toHaveBeenCalledWith(
-      'translated:settings.saveSettings translated:common.success'
-    )
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:settings.saveSuccess')
     expect(mocks.updateConfig).toHaveBeenCalledWith(nextSettings)
   })
 

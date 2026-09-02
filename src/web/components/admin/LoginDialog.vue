@@ -10,16 +10,23 @@
           aria-labelledby="login-dialog-title"
           tabindex="-1"
         >
-          <button type="button" class="dialog-close" aria-label="关闭登录弹窗" @click="closeDialog">
+          <button
+            type="button"
+            class="dialog-close"
+            :aria-label="t('auth.closeDialog')"
+            @click="closeDialog"
+          >
             ×
           </button>
 
           <div class="login-content">
-            <div class="login-tabs">
+            <div class="login-tabs" role="tablist" :aria-label="t('auth.tabsLabel')">
               <button
                 type="button"
+                role="tab"
                 class="tab-button"
                 :class="{ active: mode === 'login' }"
+                :aria-selected="mode === 'login'"
                 @click="mode = 'login'"
               >
                 {{ t('nav.login') }}
@@ -27,8 +34,10 @@
               <button
                 v-if="registrationEnabled"
                 type="button"
+                role="tab"
                 class="tab-button"
                 :class="{ active: mode === 'register' }"
+                :aria-selected="mode === 'register'"
                 @click="mode = 'register'"
               >
                 {{ t('nav.register') }}
@@ -55,6 +64,8 @@
                     class="dialog-input with-prefix"
                     :placeholder="t('auth.username')"
                     autocomplete="username"
+                    :aria-invalid="formErrors.username || undefined"
+                    @input="clearFieldError('username')"
                   />
                 </div>
               </label>
@@ -71,6 +82,8 @@
                     type="password"
                     :placeholder="t('auth.password')"
                     :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
+                    :aria-invalid="formErrors.password || undefined"
+                    @input="clearFieldError('password')"
                   />
                 </div>
               </label>
@@ -99,10 +112,11 @@
 
 <script setup lang="ts">
 import AppIcon from '@/components/AppIcon.vue'
-import { computed, onMounted, onUnmounted, reactive, ref, watch, nextTick } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore } from '@/store/admin'
 import { useConfigStore } from '@/store/config'
+import { useDialogA11y } from '@/composables/useDialogA11y'
 import { ElMessage } from '@/utils/feedback'
 import { getErrorMessage } from '@/utils/errors'
 import { useI18n } from 'vue-i18n'
@@ -132,6 +146,18 @@ const loginForm = reactive({
   remember: false
 })
 
+// 校验失败标记：绑定 aria-invalid 供读屏播报。
+// aria-describedby 暂不关联——错误以瞬态 toast 呈现，DOM 中无常驻错误文本
+// 元素可指向；引入常驻错误文案会改变交互结构，本轮先做 aria-invalid。
+const formErrors = reactive<{ username: boolean; password: boolean }>({
+  username: false,
+  password: false
+})
+
+const clearFieldError = (field: 'username' | 'password') => {
+  formErrors[field] = false
+}
+
 const visible = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
@@ -149,15 +175,6 @@ watch(
   { immediate: true }
 )
 
-watch(visible, (isOpen) => {
-  if (isOpen) {
-    nextTick(() => {
-      dialogPanelRef.value?.focus()
-      usernameInputRef.value?.focus()
-    })
-  }
-})
-
 onMounted(() => {
   document.addEventListener('keydown', handleDialogKeydown)
 })
@@ -170,6 +187,14 @@ const closeDialog = () => {
   visible.value = false
 }
 
+// 打开聚焦、Tab 焦点陷阱、Esc 关闭、关闭后焦点归还触发元素。
+useDialogA11y({
+  isOpen: () => props.modelValue,
+  getDialog: () => dialogPanelRef.value,
+  getInitialFocus: () => usernameInputRef.value,
+  onClose: closeDialog
+})
+
 const handleDialogKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape' && visible.value) {
     closeDialog()
@@ -178,7 +203,9 @@ const handleDialogKeydown = (event: KeyboardEvent) => {
 
 const handleSubmit = async () => {
   if (!loginForm.username || !loginForm.password) {
-    ElMessage.warning(t('auth.loginFailed'))
+    formErrors.username = !loginForm.username
+    formErrors.password = !loginForm.password
+    ElMessage.warning(t('auth.loginFieldsRequired'))
     return
   }
 
@@ -262,6 +289,9 @@ const handleSubmit = async () => {
   position: relative;
   width: min(100%, 420px);
   box-sizing: border-box;
+  /* 移动端软键盘/横屏下限制高度，内容可滚动而不被视口裁剪 */
+  max-height: min(86vh, 860px);
+  overflow-y: auto;
   border-radius: 22px;
   border: 1px solid var(--login-shell-border);
   background: var(--login-shell-bg);
@@ -349,7 +379,7 @@ const handleSubmit = async () => {
 
 .dialog-kicker {
   margin: 0 0 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;

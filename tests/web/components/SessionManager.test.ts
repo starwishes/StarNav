@@ -135,7 +135,7 @@ describe('SessionManager', () => {
       { type: 'warning' }
     )
     expect(mocks.revokeOtherSessions).toHaveBeenCalledTimes(1)
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:common.success 3')
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:admin.sessionsRevoked')
   })
 
   it('shows a load error when the session list request fails', async () => {

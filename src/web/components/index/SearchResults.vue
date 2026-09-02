@@ -3,6 +3,7 @@
     <div
       v-if="searchMode === 'local' && localResults.length > 0 && !loading"
       class="search-results-container"
+      aria-live="polite"
     >
       <div class="search-results">
         <ul>
@@ -36,13 +37,19 @@
       </div>
     </div>
 
-    <div v-if="searchMode === 'online' && suggestions.length > 0" class="search-results-container">
-      <div class="suggestion-list">
+    <div
+      v-if="searchMode === 'online' && suggestions.length > 0"
+      class="search-results-container"
+      aria-live="polite"
+    >
+      <div class="suggestion-list" role="listbox" :aria-label="t('search.suggestionsLabel')">
         <div
           v-for="(sug, index) in suggestions"
           :key="index"
           class="suggestion-item"
           :class="{ active: activeSuggestionIndex === index }"
+          role="option"
+          :aria-selected="activeSuggestionIndex === index"
           @click="$emit('suggestionClick', sug)"
           @mouseenter="$emit('update:activeSuggestionIndex', index)"
         >
@@ -53,7 +60,7 @@
     </div>
 
     <div v-if="showEmpty" class="search-results-container empty">
-      <div class="sn-empty-state search-empty-state">未找到相关书签</div>
+      <div class="sn-empty-state search-empty-state">{{ t('search.noResults') }}</div>
     </div>
 
     <div v-if="loading" class="loading search-results-container">
@@ -72,6 +79,7 @@
 
 <script setup lang="ts">
 import AppIcon from '@/components/AppIcon.vue'
+import { useI18n } from 'vue-i18n'
 import { computed, reactive } from 'vue'
 import { Favicon } from '@/config'
 import {
@@ -80,6 +88,8 @@ import {
   isRenderableIconUrl,
   markIconUnavailable
 } from './siteIconHelpers'
+
+const { t } = useI18n()
 
 export interface SearchResultItem {
   id: number
@@ -403,4 +413,3 @@ const getInitial = (name: string) => {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.16));
 }
 </style>
-

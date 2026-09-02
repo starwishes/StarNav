@@ -12,7 +12,7 @@ const i18n = {
     webOnly: '只能添加网页，请切换到普通网页后重试',
     duplicateAlert: '该页面已收藏，无法重复添加',
     infoFetchFailed: '无法获取当前页面信息',
-    duplicateIn: '已存在于',
+    duplicateWithName: '已存在于“{name}”，添加失败',
     addFailed: '添加失败',
     addSuccess: '添加成功',
     updateSuccess: '更新成功',
@@ -176,7 +176,7 @@ describe('browser extension bookmark controller', () => {
 
     expect(elements.submitBookmark.disabled).toBe(false)
     expect(elements.duplicateWarning.style.display).toBe('flex')
-    expect(ui.showToast).toHaveBeenCalledWith('添加失败: 已存在于 "Root"', 'error')
+    expect(ui.showToast).toHaveBeenCalledWith('已存在于“Root”，添加失败', 'error')
     expect(ui.hideAddForm).not.toHaveBeenCalled()
     expect(loadRecentBookmarks).not.toHaveBeenCalled()
   })
@@ -392,6 +392,57 @@ describe('browser extension bookmark controller', () => {
     await controller.submitBookmark()
     expect(ui.showToast).toHaveBeenNthCalledWith(2, '更新失败', 'error')
     expect(elements.submitBookmark.disabled).toBe(false)
+  })
+
+  it('consumes the pending capture only after a successful save', async () => {
+    const onPendingCaptureConsumed = vi.fn()
+    controller = createBookmarkController({
+      apiRequest,
+      normalizeUrl: (value) => value,
+      elements,
+      state,
+      i18n,
+      ui,
+      loadRecentBookmarks,
+      performSearch,
+      onPendingCaptureConsumed
+    })
+    apiRequest.mockResolvedValue({ exists: false })
+    elements.bookmarkName.value = 'GitHub'
+    elements.bookmarkUrl.value = 'https://github.com'
+    elements.bookmarkCategory.innerHTML = '<option value="1">Root</option>'
+    elements.bookmarkCategory.value = '1'
+
+    await controller.submitBookmark()
+
+    expect(onPendingCaptureConsumed).toHaveBeenCalledTimes(1)
+    expect(loadRecentBookmarks).toHaveBeenCalled()
+  })
+
+  it('keeps the pending capture when the save fails', async () => {
+    const onPendingCaptureConsumed = vi.fn()
+    controller = createBookmarkController({
+      apiRequest,
+      normalizeUrl: (value) => value,
+      elements,
+      state,
+      i18n,
+      ui,
+      loadRecentBookmarks,
+      performSearch,
+      onPendingCaptureConsumed
+    })
+    apiRequest.mockRejectedValueOnce(Object.assign(new Error(), { message: '' }))
+    elements.bookmarkName.value = 'A'
+    elements.bookmarkUrl.value = 'https://a.example.com'
+    elements.bookmarkCategory.innerHTML = '<option value="1">Root</option>'
+    elements.bookmarkCategory.value = '1'
+
+    await controller.submitBookmark()
+
+    // 保存失败不消费待捕获项：内容保留，popup 下次打开仍可重试
+    expect(onPendingCaptureConsumed).not.toHaveBeenCalled()
+    expect(ui.showToast).toHaveBeenCalledWith('添加失败', 'error')
   })
 
   it('works when optional status widgets are missing from the popup DOM', async () => {

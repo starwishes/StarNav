@@ -1,4 +1,6 @@
 import type { Category, Item } from '@/types'
+import { parseDateString } from '@/utils/datetime'
+import { USER_LEVEL } from '@common/constants'
 
 export type ClickCountSort = 'default' | 'desc' | 'asc'
 type Translate = (key: string, params?: Record<string, unknown>) => string
@@ -77,14 +79,14 @@ export const getVisibilityBadgeClass = (level: number) => {
 }
 
 export const getVisibilityLabel = (level: number, t: Translate) => {
-  if (level === 1) return t('userLevel.user')
-  if (level === 2) return t('userLevel.vip')
-  if (level === 3) return t('userLevel.admin')
+  if (level === USER_LEVEL.USER) return t('userLevel.user')
+  if (level === USER_LEVEL.VIP) return t('userLevel.vip')
+  if (level === USER_LEVEL.ADMIN) return t('userLevel.admin')
   return t('userLevel.guest')
 }
 
 export const formatRelativeDate = (dateString: string, t: Translate, now = new Date()) => {
-  const date = new Date(dateString)
+  const date = parseDateString(dateString)
   const diff = now.getTime() - date.getTime()
 
   if (diff < 60000) return t('time.justNow')

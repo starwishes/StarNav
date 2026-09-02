@@ -3,8 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const state = vi.hoisted(() => ({
   routes: [] as any[],
   beforeHook: null as any,
-  afterHook: null as any,
-  recordVisit: vi.fn(),
   siteName: 'StarNav'
 }))
 
@@ -15,9 +13,6 @@ vi.mock('vue-router', () => ({
     return {
       beforeEach: (hook: unknown) => {
         state.beforeHook = hook
-      },
-      afterEach: (hook: unknown) => {
-        state.afterHook = hook
       }
     }
   })
@@ -37,10 +32,6 @@ vi.mock('@/store/config', () => ({
   })
 }))
 
-vi.mock('@/api/stats', () => ({
-  recordVisit: state.recordVisit
-}))
-
 const loadRouterModule = async () => {
   vi.resetModules()
   return import('../../../src/web/router/index.ts')
@@ -50,14 +41,12 @@ describe('router bootstrap', () => {
   beforeEach(() => {
     state.routes = []
     state.beforeHook = null
-    state.afterHook = null
     state.siteName = 'StarNav'
-    state.recordVisit.mockReset()
     document.title = ''
     localStorage.clear()
   })
 
-  it('registers core routes and updates page title plus visit tracking hooks', async () => {
+  it('registers core routes and updates page title', async () => {
     localStorage.setItem('admin_user', JSON.stringify({ username: 'admin', level: 3 }))
     await loadRouterModule()
 
@@ -81,9 +70,6 @@ describe('router bootstrap', () => {
 
     state.beforeHook({ meta: {} }, {}, next)
     expect(document.title).toBe('StarNav')
-
-    state.afterHook({ fullPath: '/admin/dashboard' })
-    expect(state.recordVisit).toHaveBeenCalledWith('/admin/dashboard')
   })
 
   it('redirects non-admin visitors away from protected admin routes', async () => {

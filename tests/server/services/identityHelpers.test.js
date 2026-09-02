@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../src/server/services/identity/accountService.js', () => ({
@@ -6,13 +7,7 @@ vi.mock('../../../src/server/services/identity/accountService.js', () => ({
   }
 }))
 
-vi.mock('../../../src/server/services/identity/sessionService.js', () => ({
-  sessionService: {
-    renameUsername: vi.fn()
-  }
-}))
-
-vi.mock('../../../src/server/middleware/validation.js', () => ({
+vi.mock('../../../src/server/validation.js', () => ({
   strongPasswordSchema: {
     validate: vi.fn()
   }
@@ -25,10 +20,9 @@ vi.mock('jsonwebtoken', () => ({
 }))
 
 const { accountService } = await import('../../../src/server/services/identity/accountService.js')
-const { sessionService } = await import('../../../src/server/services/identity/sessionService.js')
-const { strongPasswordSchema } = await import('../../../src/server/middleware/validation.js')
+const { strongPasswordSchema } = await import('../../../src/server/validation.js')
 const jwt = (await import('jsonwebtoken')).default
-const { buildAuthUser, ensureExistingUser, ensureStrongPassword, issueToken, syncRenamedSessions } =
+const { buildAuthUser, ensureExistingUser, ensureStrongPassword, issueToken } =
   await import('../../../src/server/services/identity/identityHelpers.js')
 
 describe('identityHelpers', () => {
@@ -100,14 +94,5 @@ describe('identityHelpers', () => {
     expect(() => {
       ensureExistingUser('missing')
     }).toThrow('用户不存在')
-  })
-
-  it('renames sessions only when the username actually changes', () => {
-    syncRenamedSessions('alice', 'alice')
-    syncRenamedSessions('alice', '')
-    expect(sessionService.renameUsername).not.toHaveBeenCalled()
-
-    syncRenamedSessions('alice', 'alice-new')
-    expect(sessionService.renameUsername).toHaveBeenCalledWith('alice', 'alice-new')
   })
 })

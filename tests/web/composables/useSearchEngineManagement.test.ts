@@ -12,6 +12,12 @@ const ElMessageMock = {
 
 vi.mock('@/store/admin', () => ({ useAdminStore: () => adminStoreMock }))
 vi.mock('@/utils/feedback', () => ({ ElMessage: ElMessageMock }))
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({
+    t: (key: string, params?: Record<string, unknown>) =>
+      params ? `${key}:${JSON.stringify(params)}` : `translated:${key}`
+  })
+}))
 
 const { useSearchEngineManagement } =
   await import('../../../src/web/components/index/useSearchEngineManagement.ts')
@@ -108,7 +114,7 @@ describe('useSearchEngineManagement', () => {
     apiRef.engineForm.url = 'https://my.example.com/search?q='
     apiRef.saveEngine()
     expect(apiRef.onlineEngines.value.length).toBe(before + 1)
-    expect(ElMessageMock.success).toHaveBeenCalledWith('添加成功')
+    expect(ElMessageMock.success).toHaveBeenCalledWith('translated:engine.addSuccess')
     expect(apiRef.showDialog.value).toBe(false)
   })
 
@@ -120,7 +126,7 @@ describe('useSearchEngineManagement', () => {
     apiRef.engineForm.name = 'Renamed'
     apiRef.engineForm.url = target.url
     apiRef.saveEngine()
-    expect(ElMessageMock.success).toHaveBeenCalledWith('修改成功')
+    expect(ElMessageMock.success).toHaveBeenCalledWith('translated:engine.saveSuccess')
     expect(apiRef.currentEngine.value.name).toBe('Renamed')
   })
 

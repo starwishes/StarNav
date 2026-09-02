@@ -1,10 +1,16 @@
 import { mount } from '@vue/test-utils'
 import { defineComponent, h, nextTick } from 'vue'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Category, Item } from '@/types'
 
 vi.mock('@/config', () => ({
   Favicon: 'https://favicon.test/?url='
+}))
+
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({
+    t: (key: string) => `translated:${key}`
+  })
 }))
 
 const SiteCardStub = defineComponent({
@@ -68,6 +74,7 @@ const createWrapper = (
   selectedCategoryId: number | null = null
 ) =>
   mount(SiteCategory, {
+    attachTo: document.body,
     props: {
       category,
       catIndex: 0,
@@ -92,6 +99,11 @@ const createWrapper = (
 describe('SiteCategory', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    document.body.innerHTML = ''
+  })
+
+  afterEach(() => {
+    document.body.innerHTML = ''
   })
 
   it('defaults to the first child tab and preserves the child category id in forwarded events', async () => {
@@ -128,17 +140,13 @@ describe('SiteCategory', () => {
 
     expect(wrapper.emitted('item-mouseenter')).toEqual([[{ itemIndex: 0, categoryId: 11 }]])
     const clickPayload = wrapper.emitted('item-click')?.[0]?.[0] as
-      | { item: Item & { realCategoryId: number } }
-      | undefined
+      { item: Item & { realCategoryId: number } } | undefined
     const contextPayload = wrapper.emitted('item-contextmenu')?.[0]?.[0] as
-      | { item: Item & { realCategoryId: number } }
-      | undefined
+      { item: Item & { realCategoryId: number } } | undefined
     const touchPayload = wrapper.emitted('item-touchstart')?.[0]?.[0] as
-      | { categoryId: number }
-      | undefined
+      { categoryId: number } | undefined
     const selectionPayload = wrapper.emitted('toggle-selection')?.[0]?.[0] as
-      | (Item & { realCategoryId: number })
-      | undefined
+      (Item & { realCategoryId: number }) | undefined
 
     expect(clickPayload?.item.realCategoryId).toBe(11)
     expect(contextPayload?.item.realCategoryId).toBe(11)
@@ -197,8 +205,7 @@ describe('SiteCategory', () => {
 
     await wrapper.findAll('.tab-item')[1].trigger('contextmenu')
     const headerContextPayload = wrapper.emitted('header-contextmenu')?.[0]?.[0] as
-      | { category: Category }
-      | undefined
+      { category: Category } | undefined
     expect(headerContextPayload?.category.id).toBe(11)
   })
 
@@ -232,5 +239,56 @@ describe('SiteCategory', () => {
     expect(wrapper.findAll('.site-wrapper')).toHaveLength(1)
     expect(wrapper.find('.site-wrapper').attributes('data-cat-id')).toBe('12')
     expect(wrapper.findAll('.tab-item')[2].classes()).toContain('active')
+  })
+
+  it('moves the roving-tabindex active tab with arrow keys and keeps focus on the tab', async () => {
+    const wrapper = createWrapper({
+      id: 10,
+      name: 'Parent',
+      content: [],
+      children: [
+        {
+          id: 11,
+          name: 'Docs',
+          content: [buildItem(101, 11, 'Docs Site')],
+          children: []
+        },
+        {
+          id: 12,
+          name: 'Tools',
+          content: [buildItem(102, 12, 'Tools Site')],
+          children: []
+        }
+      ]
+    })
+
+    await nextTick()
+    const tabs = wrapper.findAll('.tab-item')
+    expect(tabs).toHaveLength(3)
+    // 初始激活第一个子分类 tab（id 11），其 tabindex=0
+    expect(tabs[1].attributes('tabindex')).toBe('0')
+
+    ;(tabs[1].element as HTMLElement).focus()
+    await tabs[1].trigger('keydown', { key: 'ArrowRight' })
+    await nextTick()
+
+    expect(tabs[2].classes()).toContain('active')
+    expect(wrapper.find('.site-wrapper').attributes('data-cat-id')).toBe('12')
+    expect(document.activeElement).toBe(tabs[2].element as HTMLElement)
+
+    // 从最后一个 tab 向右回绕到“综合”tab（聚合全部）
+    await tabs[2].trigger('keydown', { key: 'ArrowRight' })
+    await nextTick()
+
+    expect(tabs[0].classes()).toContain('active')
+    expect(wrapper.findAll('.site-wrapper')).toHaveLength(2)
+    expect(document.activeElement).toBe(tabs[0].element as HTMLElement)
+
+    // 向左回绕回到最后一个 tab
+    await tabs[0].trigger('keydown', { key: 'ArrowLeft' })
+    await nextTick()
+
+    expect(tabs[2].classes()).toContain('active')
+    expect(document.activeElement).toBe(tabs[2].element as HTMLElement)
   })
 })

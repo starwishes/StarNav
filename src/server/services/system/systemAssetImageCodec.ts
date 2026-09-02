@@ -1,4 +1,4 @@
-import { errors } from '../../middleware/errorHandler.js'
+import { errors } from '../../utils/errors.js'
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 export const MAX_IMAGE_DIMENSION = 4096

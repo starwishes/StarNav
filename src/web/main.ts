@@ -7,10 +7,11 @@ import '@/assets/css/content.scss'
 import '@/assets/css/data-grid.scss'
 import router from './router'
 import { applyThemeMode, getStoredThemeMode } from '@/utils/theme'
+import { clearStaleAssetRecoveryFlag, recoverFromStaleAssets } from '@/utils/staleAssetRecovery'
 import {
-  clearStaleAssetRecoveryFlag,
-  recoverFromStaleAssets
-} from '@/utils/staleAssetRecovery'
+  notifyStaleAssetReloadNeeded,
+  notifyUnexpectedError
+} from '@/utils/unexpectedErrorFeedback'
 import { createScopedLogger } from '../shared/logger.js'
 
 import { createPinia } from 'pinia'
@@ -33,6 +34,7 @@ const handlePreloadError = (event: VitePreloadErrorEvent) => {
       logger.error(
         'Stale asset recovery already attempted this session; stop reloading to avoid a loop.'
       )
+      notifyStaleAssetReloadNeeded()
     }
   })
 }
@@ -82,7 +84,19 @@ window.addEventListener('vite:preloadError', handlePreloadError)
 registerServiceWorker()
 localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY)
 
-// 挂载Vue应用
-createApp(App).use(router).use(pinia).use(i18n).mount('#app')
+// 全局错误兜底：Vue 渲染/生命周期错误与未处理的 Promise 拒绝都会进入这里，
+// 记录日志并一次性提示用户（节流去重，避免 toast 风暴，见 unexpectedErrorFeedback）。
+// vite:preloadError 的自愈逻辑（handlePreloadError）保持独立，不受影响。
+const app = createApp(App)
+app.config.errorHandler = (error, _instance, info) => {
+  logger.error('Unhandled Vue error.', error, { info })
+  notifyUnexpectedError()
+}
+window.addEventListener('unhandledrejection', (event) => {
+  logger.error('Unhandled promise rejection.', event.reason)
+  notifyUnexpectedError()
+})
+
+app.use(router).use(pinia).use(i18n).mount('#app')
 // Successful boot: allow a future deploy to recover again this tab session.
 window.setTimeout(() => clearStaleAssetRecoveryFlag(), 3_000)

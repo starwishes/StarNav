@@ -100,10 +100,19 @@ describe('searchUtils', () => {
   })
 
   it('builds placeholder and suggestion provider from current mode', () => {
-    expect(buildSearchPlaceholder('local', DEFAULT_SEARCH_ENGINES[0])).toBe('搜索本地书签...')
-    expect(buildSearchPlaceholder('online', { name: 'Google', url: 'https://google.com?q=' })).toBe(
-      '在 Google 中搜索...'
+    const translate = (key: string, params?: Record<string, unknown>) => {
+      if (key === 'search.placeholderLocal') return '搜索本地书签...'
+      if (key === 'search.placeholderOnline') return `在 ${params?.engine} 中搜索...`
+      if (key === 'search.engineFallback') return '搜索引擎'
+      return key
+    }
+
+    expect(buildSearchPlaceholder('local', DEFAULT_SEARCH_ENGINES[0], translate)).toBe(
+      '搜索本地书签...'
     )
+    expect(
+      buildSearchPlaceholder('online', { name: 'Google', url: 'https://google.com?q=' }, translate)
+    ).toBe('在 Google 中搜索...')
     expect(getSuggestionProviderType({ name: 'Google', url: 'https://google.com?q=' })).toBe(
       'google'
     )
@@ -163,7 +172,7 @@ describe('searchUtils', () => {
         url: 'javascript:alert(1)'
       })
     ).toEqual({
-      error: '请输入合法的 http/https 搜索地址'
+      error: 'engine.draftInvalidUrl'
     })
 
     expect(
@@ -172,7 +181,7 @@ describe('searchUtils', () => {
         url: 'https://search.brave.com/search'
       })
     ).toEqual({
-      error: '搜索地址需以查询参数赋值结尾，例如 https://www.google.com/search?q='
+      error: 'engine.draftMissingSuffix'
     })
   })
 

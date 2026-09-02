@@ -8,6 +8,8 @@ import {
 } from '../../shared/api.js'
 import type { GenericApiResponse } from '../../shared/api.js'
 import { createScopedLogger } from '../../shared/logger.js'
+import { AUTH_CLEARED_EVENT } from '@/utils/events'
+import { authStorage } from '@/utils/authStorage'
 
 /** HTTP JSON envelope — shared contract (`common/api` + `common/types`) */
 export type ApiResponse<T = unknown> = GenericApiResponse<T>
@@ -39,11 +41,13 @@ export const getApiField = <T>(
 ): T => sharedGetApiField(payload, field, fallback)
 
 const BASE_URL = '/api'
-const AUTH_CLEARED_EVENT = 'starnav:auth-cleared'
 const logger = createScopedLogger('web:api')
 
+/** 请求超时（毫秒），与扩展端 REQUEST_TIMEOUT_MS 对齐。 */
+const DEFAULT_TIMEOUT_MS = 15_000
+
 const clearAuthStorage = () => {
-  localStorage.removeItem('admin_user')
+  authStorage.clear()
   window.dispatchEvent(new Event(AUTH_CLEARED_EVENT))
 }
 
@@ -55,6 +59,17 @@ const buildHeaders = (headers?: HeadersInit) => {
   }
 
   return resolved
+}
+
+/**
+ * 合并超时信号：调用方已传 signal 时不覆盖（与扩展端 buildTimeoutSignal 一致）。
+ * 超时后 fetch 抛出 TimeoutError（DOMException），由调用方按网络异常处理。
+ */
+const buildTimeoutSignal = (options: RequestInit): RequestInit => {
+  if (options.signal || typeof AbortSignal?.timeout !== 'function') {
+    return options
+  }
+  return { ...options, signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS) }
 }
 
 const parseErrorPayload = async (response: Response) => {
@@ -82,7 +97,7 @@ const parseFilename = (contentDisposition: string | null) => {
 
 async function client<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const config: RequestInit = {
-    ...options,
+    ...buildTimeoutSignal(options),
     credentials: 'same-origin',
     headers: buildHeaders(options.headers)
   }
@@ -108,7 +123,7 @@ async function client<T>(endpoint: string, options: RequestInit = {}): Promise<T
 
 async function clientBlob(endpoint: string, options: RequestInit = {}): Promise<BlobResponse> {
   const config: RequestInit = {
-    ...options,
+    ...buildTimeoutSignal(options),
     credentials: 'same-origin',
     headers: buildHeaders(options.headers)
   }

@@ -1,4 +1,5 @@
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch, type Ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { useAdminStore } from '@/store/admin'
 import { ElMessage } from '@/utils/feedback'
@@ -16,6 +17,7 @@ import {
 } from './searchUtils'
 
 export const useSearchEngineManagement = (engineNameInputRef: Ref<HTMLInputElement | null>) => {
+  const { t } = useI18n()
   const adminStore = useAdminStore()
 
   const searchEngines = ref<SearchEngineOption[]>([...DEFAULT_SEARCH_ENGINES])
@@ -38,7 +40,7 @@ export const useSearchEngineManagement = (engineNameInputRef: Ref<HTMLInputEleme
 
   const openAddDialog = () => {
     if (onlineEngines.value.length >= MAX_SEARCH_ENGINES) {
-      ElMessage.warning(`最多支持 ${MAX_SEARCH_ENGINES} 个搜索引擎`)
+      ElMessage.warning(t('engine.maxEngines', { count: MAX_SEARCH_ENGINES }))
       return
     }
 
@@ -59,14 +61,15 @@ export const useSearchEngineManagement = (engineNameInputRef: Ref<HTMLInputEleme
 
   const saveEngine = () => {
     const preparedDraft = prepareSearchEngineDraft(engineForm)
-    if ('error' in preparedDraft) {
-      ElMessage.warning(preparedDraft.error)
+    const errorKey = preparedDraft.error
+    if (errorKey) {
+      ElMessage.warning(t(errorKey))
       return
     }
     const nextEngineValue = preparedDraft.value
 
     if (!isEditing.value && onlineEngines.value.length >= MAX_SEARCH_ENGINES) {
-      ElMessage.warning(`最多支持 ${MAX_SEARCH_ENGINES} 个搜索引擎`)
+      ElMessage.warning(t('engine.maxEngines', { count: MAX_SEARCH_ENGINES }))
       return
     }
 
@@ -92,10 +95,10 @@ export const useSearchEngineManagement = (engineNameInputRef: Ref<HTMLInputEleme
         }
       }
 
-      ElMessage.success('修改成功')
+      ElMessage.success(t('engine.saveSuccess'))
     } else {
       searchEngines.value.push(normalizeSearchEngine(nextEngineValue))
-      ElMessage.success('添加成功')
+      ElMessage.success(t('engine.addSuccess'))
     }
 
     persistSearchEngines(searchEngines.value)
@@ -107,7 +110,7 @@ export const useSearchEngineManagement = (engineNameInputRef: Ref<HTMLInputEleme
     if (!targetEngine) return
 
     if (onlineEngines.value.length <= 1) {
-      ElMessage.warning('请至少保留一个搜索引擎')
+      ElMessage.warning(t('engine.keepOne'))
       return
     }
 

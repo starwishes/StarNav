@@ -535,55 +535,6 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/visit': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /**
-     * 记录一次访问
-     * @description 公开接口。根据请求头和可选的 `url`/referer 记录访问来源、UA 和 PV/UV，返回纯文本 `OK` 或 `Error`。
-     */
-    post: {
-      parameters: {
-        query?: never
-        header?: never
-        path?: never
-        cookie?: never
-      }
-      requestBody?: {
-        content: {
-          'application/json': {
-            /**
-             * @description 可选，作为访问来源写入统计
-             * @example https://nav.example.com/
-             */
-            url?: string
-          }
-        }
-      }
-      responses: {
-        /** @description 成功接收访问记录请求 */
-        200: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            'text/plain': 'OK' | 'Error'
-          }
-        }
-      }
-    }
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
   '/data': {
     parameters: {
       query?: never
@@ -803,6 +754,41 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/categories/reorder': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** 批量调整分类顺序 */
+    put: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @description 新的分类顺序（仅需包含需要排序的分类 id） */
+            orderedIds: number[]
+          }
+        }
+      }
+      responses: {
+        200: components['responses']['CategoriesResponse']
+      }
+    }
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/category': {
     parameters: {
       query?: never
@@ -905,6 +891,139 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/bookmark/batch-move': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 批量移动书签到指定分类 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            ids: number[]
+            categoryId: number
+          }
+        }
+      }
+      responses: {
+        /** @description 批量移动成功，返回移动后的书签列表 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['SuccessEnvelope'] & {
+              data?: {
+                count?: number
+                items?: components['schemas']['Bookmark'][]
+              }
+            }
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/bookmark/batch-delete': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** 批量删除书签 */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            ids: number[]
+          }
+        }
+      }
+      responses: {
+        /** @description 批量删除成功 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['SuccessEnvelope'] & {
+              data?: {
+                count?: number
+              }
+            }
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/bookmark/{id}/move': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** 移动书签到指定分类与位置 */
+    put: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          id: number
+        }
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @description 目标分类 id，0 表示未分类 */
+            categoryId: number
+            /** @description 目标分类内的插入位置 */
+            targetIndex: number
+          }
+        }
+      }
+      responses: {
+        200: components['responses']['BookmarkResponse']
+      }
+    }
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/bookmark/{id}': {
     parameters: {
       query?: never
@@ -980,14 +1099,26 @@ export interface paths {
       }
       requestBody?: never
       responses: {
-        200: components['responses']['BookmarkResponse']
-        /** @description 书签不存在 */
-        404: {
+        /** @description 点击统计成功，返回最小负载（不泄漏完整书签内容） */
+        200: {
           headers: {
             [name: string]: unknown
           }
-          content?: never
+          content: {
+            'application/json': {
+              /** @example true */
+              success?: boolean
+              data?: {
+                item?: {
+                  id?: number
+                  clickCount?: number
+                  lastVisited?: string | null
+                }
+              }
+            }
+          }
         }
+        404: components['responses']['NotFound']
       }
     }
     delete?: never
@@ -1026,7 +1157,7 @@ export interface paths {
         }
       }
       responses: {
-        /** @description Login successful */
+        /** @description Login successful. Response body is source-conditional: browser web requests (http/https Origin/Referer) OMIT `token` — auth is carried by the HttpOnly Cookie only; browser extensions (chrome-extension://) and CLI/no-Origin clients KEEP `token` in the body for Bearer usage. */
         200: {
           headers: {
             [name: string]: unknown
@@ -1035,6 +1166,7 @@ export interface paths {
             'application/json': {
               /** @example true */
               success?: boolean
+              /** @description 仅浏览器扩展与 CLI/无 Origin 客户端返回；浏览器 Web 请求响应体剥离 */
               token?: string
               user?: components['schemas']['User']
             }
@@ -1364,12 +1496,31 @@ export interface components {
       url?: string
       /** @example Code hosting platform */
       description?: string
-      /** @example 1 */
+      /**
+       * @description 0 = 未分类（DB 层为 NULL，输出统一归一为 0）
+       * @example 1
+       */
       categoryId?: number
-      /** @example Development */
-      categoryName?: string
+      /**
+       * @description 仅在搜索接口返回；无分类时为 null
+       * @example Development
+       */
+      categoryName?: string | null
+      /** @example  */
+      icon?: string
       /** @example 0 */
       level?: number
+      /** @example false */
+      pinned?: boolean
+      /** @example 0 */
+      clickCount?: number
+      /** Format: date-time */
+      lastVisited?: string | null
+      /**
+       * @description 仅部分写接口返回（update/move/reorder）
+       * @example 0
+       */
+      sortOrder?: number
       /** Format: date-time */
       createdAt?: string
     }
@@ -1388,7 +1539,7 @@ export interface components {
        * @enum {string}
        */
       status?: 'healthy' | 'unhealthy'
-      /** @example 1.0.6 */
+      /** @example 1.0.7 */
       version?: string
       /** Format: date-time */
       timestamp?: string

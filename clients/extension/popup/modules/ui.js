@@ -76,6 +76,15 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
       elements.openSite.title = texts.openSite
     }
 
+    if (elements.logoutBtn) {
+      // 存在性守卫：i18n 字典缺 key 时回退英文，避免中文界面出现 "undefined"
+      const logoutText = texts.logout || 'Logout'
+      elements.logoutBtn.title = logoutText
+      elements.logoutBtn.setAttribute('aria-label', logoutText)
+      // 已连接（有 token）时才显示登出入口
+      setDisplay(elements.logoutBtn, state.config.token ? 'inline-flex' : 'none')
+    }
+
     if (elements.themeToggle) {
       elements.themeToggle.title = texts.toggleTheme
     }

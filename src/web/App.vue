@@ -3,12 +3,12 @@ import { onMounted, onUnmounted } from 'vue'
 import { useDataStore } from '@/store/data'
 import { useAdminStore } from '@/store/admin'
 import { useConfigStore } from '@/store/config'
+import { AUTH_CLEARED_EVENT } from '@/utils/events'
 import { createScopedLogger } from '../shared/logger.js'
 
 const dataStore = useDataStore()
 const adminStore = useAdminStore()
 const configStore = useConfigStore()
-const AUTH_CLEARED_EVENT = 'starnav:auth-cleared'
 const logger = createScopedLogger('web:app')
 
 let lastSyncTime = 0
@@ -52,5 +52,21 @@ onUnmounted(() => {
 <style>
 ::-webkit-scrollbar {
   width: 0;
+}
+
+/* 长内容/宽表格滚动区恢复可见滚动条：全局隐藏只作用于装饰性页面滚动，
+   数据表格（横向滚动）必须有可见滚动条才能感知还有更多内容。 */
+.sn-table-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.sn-table-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.42);
+  border-radius: 999px;
+}
+
+.sn-table-scroll::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.1);
 }
 </style>

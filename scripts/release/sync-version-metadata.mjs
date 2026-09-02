@@ -15,7 +15,8 @@ const FIREFOX_MANIFEST_PATH = path.join(REPO_ROOT, 'clients/extension', 'manifes
 const FIREFOX_GECKO_SETTINGS = {
   gecko: {
     id: 'starnav@example.com',
-    strict_min_version: '57.0'
+    // 代码使用可选链/空值合并等 ES2020 特性，Firefox 需 ≥74。
+    strict_min_version: '74.0'
   }
 }
 const FIREFOX_UNSUPPORTED_PERMISSIONS = new Set(['scripting'])
@@ -62,7 +63,9 @@ const replaceManagedSection = (content, nextSection) => {
 
   return content.replace(
     pattern,
-    `${VERSION_SYNC_START_MARKER}\n\n${nextSection}\n${VERSION_SYNC_END_MARKER}`
+    // 末尾保留空行：prettier 会把 HTML 注释前的空行保持为规范格式，
+    // 脚本输出若不匹配会导致 versions:check 反复漂移
+    `${VERSION_SYNC_START_MARKER}\n\n${nextSection}\n\n${VERSION_SYNC_END_MARKER}`
   )
 }
 

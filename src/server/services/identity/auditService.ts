@@ -1,5 +1,6 @@
 import { getDb } from '../database/database.js'
 import { logger } from '../../utils/logger.js'
+import { AUDIT_LOG_MAX_ROWS } from '../system/backupSchedulerService.js'
 import type { AuditLogInput } from '../../types/domain.js'
 import type { AuditLogRow, CountRow } from '../../types/sqliteRows.js'
 
@@ -52,21 +53,23 @@ export const auditService = {
       db.prepare(
         `
                 INSERT INTO audit_logs (username, action, details, ip, created_at)
-                VALUES (?, ?, ?, ?, datetime('now'))
+                VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
             `
       ).run(username, action, detailsJson, ip)
 
-      // 自动清理旧日志 (保留最近 2000 条)
+      // 自动清理旧日志：内联裁剪只作兜底（cron 未运行时表也保持有界），
+      // 上限与定时裁剪策略共用 AUDIT_LOG_MAX_ROWS，消除原先硬编码 2000 与
+      // cron "90 天/10000 条"策略的矛盾（第 15 轮审查）。
       const count =
         db.prepare<CountRow>('SELECT COUNT(*) as count FROM audit_logs').get()?.count ?? 0
-      if (count > 2000) {
+      if (count > AUDIT_LOG_MAX_ROWS) {
         db.prepare(
           `
                     DELETE FROM audit_logs WHERE id IN (
                         SELECT id FROM audit_logs ORDER BY created_at ASC LIMIT ?
                     )
                 `
-        ).run(count - 2000)
+        ).run(count - AUDIT_LOG_MAX_ROWS)
       }
     } catch (err: unknown) {
       logger.error('记录审计日志失败', err)

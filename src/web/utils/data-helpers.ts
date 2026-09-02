@@ -61,8 +61,26 @@ export const buildCategoryTree = (categories: Category[], items: Item[]): Catego
   const roots: Category[] = []
 
   // 3. 构建层级关系
+  // 写入侧已拦截新环，但历史数据/导入异常仍可能残留 parentId 环（A→B→A）。
+  // 直接按 parentId 挂载会产出互相包含 children 的循环结构，导致
+  // filterTree/collectTreeItems 等递归遍历无限递归 → RangeError。
+  // 这里在挂载前沿 parentId 链向上回溯：若目标父级其实是该节点的后代，
+  // 则挂载会成环，改把该节点作为根分类处理（成环节点不再深入）。
+  const formsCycle = (catId: number, parentId: number): boolean => {
+    let current: Category | undefined = catMap.get(parentId)
+    const visited = new Set<number>()
+    while (current && current.parentId && !visited.has(current.id)) {
+      if (current.id === catId) {
+        return true
+      }
+      visited.add(current.id)
+      current = catMap.get(current.parentId)
+    }
+    return current?.id === catId
+  }
+
   cats.forEach((c) => {
-    if (c.parentId && catMap.has(c.parentId)) {
+    if (c.parentId && catMap.has(c.parentId) && !formsCycle(c.id, c.parentId)) {
       catMap.get(c.parentId)?.children?.push(c)
     } else {
       roots.push(c)

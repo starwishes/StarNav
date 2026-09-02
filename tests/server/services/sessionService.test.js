@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach } from 'vitest'
 import { sessionService } from '../../../src/server/services/identity/sessionService.js'
 import { getDb } from '../../../src/server/services/database/database.js'
@@ -83,8 +84,99 @@ describe('SessionService', () => {
       ).run(expiredSessionId, 'testuser', '127.0.0.1', 'ISO Browser', `${today}T00:00:00.000Z`)
 
       expect(sessionService.validate(expiredSessionId)).toBeFalsy()
-      expect(sessionService.getByUsername('testuser')).toEqual([])
+      // validate 对过期会话执行吊销（删除行），独立验证该副作用，不再依赖 cleanup 的返回值
+      const remaining = db
+        .prepare('SELECT COUNT(*) as count FROM sessions WHERE session_id = ?')
+        .get(expiredSessionId).count
+      expect(remaining).toBe(0)
+    })
+
+    it('should treat legacy space-format expires_at rows as valid until they expire', () => {
+      const db = getDb()
+      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      // round-4 前 datetime('now') 写入的 'YYYY-MM-DD HH:MM:SS'（空格格式）
+      const spaceFormat = tomorrow
+        .toISOString()
+        .replace('T', ' ')
+        .replace(/\.\d{3}Z$/, '')
+      const sessionId = 'legacy-space-format'
+
+      db.prepare(
+        `
+          INSERT INTO sessions (
+            session_id,
+            username,
+            ip,
+            user_agent,
+            created_at,
+            last_active_at,
+            expires_at
+          ) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), ?)
+        `
+      ).run(sessionId, 'testuser', '127.0.0.1', 'Legacy Browser', spaceFormat)
+
+      expect(sessionService.validate(sessionId)).toBeTruthy()
+      expect(sessionService.getByUsername('testuser').map((s) => s.sessionId)).toContain(sessionId)
+    })
+
+    it('should keep a session valid until its same-day expiry timestamp is reached', () => {
+      const db = getDb()
+      const endOfToday = new Date()
+      endOfToday.setUTCHours(23, 59, 59, 999)
+      const sessionId = 'expires-end-of-today'
+
+      db.prepare(
+        `
+          INSERT INTO sessions (
+            session_id,
+            username,
+            ip,
+            user_agent,
+            created_at,
+            last_active_at,
+            expires_at
+          ) VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?)
+        `
+      ).run(sessionId, 'testuser', '127.0.0.1', 'Browser', endOfToday.toISOString())
+
+      expect(sessionService.validate(sessionId)).toBeTruthy()
+      expect(sessionService.getByUsername('testuser').map((s) => s.sessionId)).toContain(sessionId)
       expect(sessionService.cleanup()).toBe(0)
+    })
+
+    it('should refresh last_active_at when it is older than 5 minutes on the same day', () => {
+      const sessionId = sessionService.create('testuser', '127.0.0.1', 'Browser')
+      const db = getDb()
+      const stale = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+      db.prepare('UPDATE sessions SET last_active_at = ? WHERE session_id = ?').run(
+        stale,
+        sessionId
+      )
+
+      sessionService.validate(sessionId)
+
+      const row = db
+        .prepare('SELECT last_active_at FROM sessions WHERE session_id = ?')
+        .get(sessionId)
+      expect(row.last_active_at).not.toBe(stale)
+      expect(row.last_active_at).toMatch(/^[0-9]{4}-[0-9]{2}-[0-9]{2}T/)
+    })
+
+    it('should not refresh last_active_at when it is newer than 5 minutes', () => {
+      const sessionId = sessionService.create('testuser', '127.0.0.1', 'Browser')
+      const db = getDb()
+      const fresh = new Date().toISOString()
+      db.prepare('UPDATE sessions SET last_active_at = ? WHERE session_id = ?').run(
+        fresh,
+        sessionId
+      )
+
+      sessionService.validate(sessionId)
+
+      const row = db
+        .prepare('SELECT last_active_at FROM sessions WHERE session_id = ?')
+        .get(sessionId)
+      expect(row.last_active_at).toBe(fresh)
     })
   })
 
@@ -129,19 +221,6 @@ describe('SessionService', () => {
 
       const sessions = sessionService.getByUsername('testuser')
       expect(sessions.length).toBe(1)
-    })
-  })
-
-  describe('renameUsername', () => {
-    it('should migrate session ownership to the new username', () => {
-      sessionService.create('olduser', '127.0.0.1', 'Browser 1')
-      sessionService.create('olduser', '192.168.1.1', 'Browser 2')
-
-      const migratedCount = sessionService.renameUsername('olduser', 'newuser')
-
-      expect(migratedCount).toBe(2)
-      expect(sessionService.getByUsername('olduser')).toEqual([])
-      expect(sessionService.getByUsername('newuser')).toHaveLength(2)
     })
   })
 

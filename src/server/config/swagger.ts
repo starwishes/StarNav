@@ -75,9 +75,27 @@ const options = {
             name: { type: 'string', example: 'GitHub' },
             url: { type: 'string', example: 'https://github.com' },
             description: { type: 'string', example: 'Code hosting platform' },
-            categoryId: { type: 'integer', example: 1 },
-            categoryName: { type: 'string', example: 'Development' },
+            categoryId: {
+              type: 'integer',
+              example: 1,
+              description: '0 = 未分类（DB 层为 NULL，输出统一归一为 0）'
+            },
+            categoryName: {
+              type: 'string',
+              nullable: true,
+              example: 'Development',
+              description: '仅在搜索接口返回；无分类时为 null'
+            },
+            icon: { type: 'string', example: '' },
             level: { type: 'integer', example: 0 },
+            pinned: { type: 'boolean', example: false },
+            clickCount: { type: 'integer', example: 0 },
+            lastVisited: { type: 'string', format: 'date-time', nullable: true },
+            sortOrder: {
+              type: 'integer',
+              example: 0,
+              description: '仅部分写接口返回（update/move/reorder）'
+            },
             createdAt: { type: 'string', format: 'date-time' }
           }
         },
@@ -403,6 +421,11 @@ const options = {
 
 let swaggerSpecPromise: Promise<unknown> | null = null
 
+// swagger-jsdoc@6.x 声明的 yaml 依赖为旧版 2.0.0-1（其 API 依赖 YAML.defaultOptions 与
+// parseDocument 结果的 anchors.getNames）。本项目 override yaml 到 2.9.0 后上述对象不再
+// 暴露，故需兼容垫片。第 16 轮审查复核：js-yaml CVE 通过 override js-yaml@4.3.1 解决，
+// 未升级 swagger-jsdoc 6.3.0（其仍声明 yaml 2.0.0-1 + @apidevtools/swagger-parser），
+// 本垫片仍为必需；升级 swagger-jsdoc 前应先用 swagger.runtime.test 验证可移除。
 const ensureSwaggerJsdocYamlCompat = () => {
   const yaml = require('yaml')
 

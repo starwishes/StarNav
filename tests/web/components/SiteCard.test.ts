@@ -1,6 +1,12 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({
+    t: (key: string) => `translated:${key}`
+  })
+}))
+
 const SiteCard = (await import('@/components/index/SiteCard.vue')).default
 
 const baseItem = {
@@ -43,8 +49,13 @@ describe('SiteCard', () => {
     expect(wrapper.find('.site-name').text()).toBe('GitHub')
     expect(wrapper.find('.site-desc').text()).toBe('Where the world builds software')
     expect(wrapper.find('img.site-icon').attributes('src')).toBe('https://github.com/favicon.ico')
+    // 装饰性 favicon 用空 alt，站点名紧邻可读
+    expect(wrapper.find('img.site-icon').attributes('alt')).toBe('')
     expect(wrapper.find('.site-card').classes()).toContain('is-pinned')
     expect(wrapper.find('.pin-badge').exists()).toBe(true)
+    // 置顶 emoji 对读屏隐藏，改由 sr-only 文本播报
+    expect(wrapper.find('.pin-badge').attributes('aria-hidden')).toBe('true')
+    expect(wrapper.find('.sr-only').text()).toBe('translated:site.pinnedBadge')
   })
 
   it('falls back from the explicit icon to the site origin, proxy icon, and default app icon before showing the placeholder', async () => {
@@ -135,8 +146,12 @@ describe('SiteCard', () => {
       selected: true
     })
 
-    expect(wrapper.find('a').attributes('href')).toBe('javascript:void(0)')
+    // 选择模式下保留真实 href，保证键盘可达/读屏可识别链接；
+    // 点击行为由 wrapper 分派到 toggle-select。
+    expect(wrapper.find('a').attributes('href')).toBe('https://github.com')
     expect(wrapper.find('a').classes()).toContain('is-disabled')
+    expect(wrapper.find('a').attributes('role')).toBe('checkbox')
+    expect(wrapper.find('a').attributes('aria-checked')).toBe('true')
     expect(wrapper.find('.site-card').classes()).toContain('selection-mode')
     expect(wrapper.find('.site-card').classes()).toContain('is-selected')
     expect(wrapper.find('.checkbox-inner').classes()).toContain('checked')
@@ -145,5 +160,15 @@ describe('SiteCard', () => {
 
     expect(wrapper.emitted('toggle-select')).toEqual([[]])
     expect(wrapper.emitted('click')).toBeUndefined()
+  })
+
+  it('exposes unselected checkbox semantics in selection mode', () => {
+    const wrapper = createWrapper({
+      selectionMode: true,
+      selected: false
+    })
+
+    expect(wrapper.find('a').attributes('role')).toBe('checkbox')
+    expect(wrapper.find('a').attributes('aria-checked')).toBe('false')
   })
 })

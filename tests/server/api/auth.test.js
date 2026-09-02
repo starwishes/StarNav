@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Authentication and Data Service Tests
  * Testing data persistence and category relationships
@@ -13,7 +14,6 @@ const __dirname = path.dirname(__filename)
 const projectRoot = path.resolve(__dirname, '../../..')
 
 // Import services using dynamic import to handle ESM
-const testUsername = 'test_user'
 
 describe('Authentication and Data Service', () => {
   let bookmarkMutationService
@@ -23,11 +23,27 @@ describe('Authentication and Data Service', () => {
   beforeEach(async () => {
     testDataDir = createTestDataDir('starnav-auth-api-test')
 
+    // 重置写前备份节流，避免测试间 500ms force 窗口导致 saveData 中止
+    const { resetBackupThrottle } = await import(
+      path.join(projectRoot, 'src/server/services/database/backupThrottle.js')
+    )
+    resetBackupThrottle()
+
     // Dynamically import services
     const cacheBust = Date.now()
     const [mutationModule, snapshotModule] = await Promise.all([
-      import(path.join(projectRoot, `src/server/services/bookmark/bookmarkMutationService.js?t=${cacheBust}`)),
-      import(path.join(projectRoot, `src/server/services/bookmark/bookmarkSnapshotService.js?t=${cacheBust}`))
+      import(
+        path.join(
+          projectRoot,
+          `src/server/services/bookmark/bookmarkMutationService.js?t=${cacheBust}`
+        )
+      ),
+      import(
+        path.join(
+          projectRoot,
+          `src/server/services/bookmark/bookmarkSnapshotService.js?t=${cacheBust}`
+        )
+      )
     ])
     bookmarkMutationService = mutationModule.bookmarkMutationService
     bookmarkSnapshotService = snapshotModule.bookmarkSnapshotService
@@ -43,8 +59,7 @@ describe('Authentication and Data Service', () => {
       items: [{ id: 1, name: 'Test Item', url: 'https://example.com', categoryId: 1, level: 0 }]
     }
 
-    const saved = bookmarkMutationService.saveData(testUsername, testData)
-    expect(saved).toBe(true)
+    bookmarkMutationService.saveData(testData)
 
     const loaded = bookmarkSnapshotService.getData(0) // Get all data for level 0 (guest)
     expect(loaded.categories).toBeDefined()
@@ -62,7 +77,7 @@ describe('Authentication and Data Service', () => {
       items: []
     }
 
-    bookmarkMutationService.saveData(testUsername, testData)
+    bookmarkMutationService.saveData(testData)
     const loaded = bookmarkSnapshotService.getData(0)
 
     expect(loaded.categories).toBeDefined()

@@ -5,6 +5,12 @@ vi.mock('@/config', () => ({
   Favicon: 'https://favicon.test/?url='
 }))
 
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({
+    t: (key: string) => `translated:${key}`
+  })
+}))
+
 const SearchResults = (await import('@/components/index/SearchResults.vue')).default
 
 const createWrapper = (overrides: Record<string, unknown> = {}) =>
@@ -170,6 +176,31 @@ describe('SearchResults', () => {
     expect(wrapper.emitted('suggestionClick')).toEqual([['alpha']])
   })
 
+  it('exposes suggestion listbox/option semantics and live regions for screen readers', () => {
+    const onlineWrapper = createWrapper({
+      searchMode: 'online',
+      localResults: [],
+      suggestions: ['alpha', 'beta'],
+      activeSuggestionIndex: 0
+    })
+
+    const listbox = onlineWrapper.find('.suggestion-list')
+    expect(listbox.attributes('role')).toBe('listbox')
+    expect(listbox.attributes('aria-label')).toBe('translated:search.suggestionsLabel')
+    const options = onlineWrapper.findAll('[role="option"]')
+    expect(options).toHaveLength(2)
+    expect(options[0].attributes('aria-selected')).toBe('true')
+    expect(options[1].attributes('aria-selected')).toBe('false')
+    expect(
+      onlineWrapper
+        .findAll('.search-results-container')
+        .every((node) => node.attributes('aria-live') === 'polite')
+    ).toBe(true)
+
+    const localWrapper = createWrapper()
+    expect(localWrapper.find('.search-results-container').attributes('aria-live')).toBe('polite')
+  })
+
   it('shows empty and loading states under the expected conditions', () => {
     const emptyWrapper = createWrapper({
       localResults: [],
@@ -177,7 +208,7 @@ describe('SearchResults', () => {
       searchText: 'missing'
     })
 
-    expect(emptyWrapper.text()).toContain('未找到相关书签')
+    expect(emptyWrapper.text()).toContain('translated:search.noResults')
 
     const loadingWrapper = createWrapper({
       localResults: [],

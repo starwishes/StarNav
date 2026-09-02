@@ -156,6 +156,27 @@ describe('useDataManagement', () => {
     )
   })
 
+  it('prevents concurrent bookmark saves while one is in flight', async () => {
+    const composable = useDataManagement()
+    composable.handleAddItem()
+    composable.itemForm.value.name = 'Docs'
+    composable.itemForm.value.url = 'https://docs.test'
+
+    let resolveAdd: (value: unknown) => void = () => {}
+    store.addItem.mockImplementation(() => new Promise((resolve) => (resolveAdd = resolve)))
+
+    const first = composable.saveItem()
+    const second = composable.saveItem()
+
+    expect(store.addItem).toHaveBeenCalledTimes(1)
+
+    resolveAdd(undefined)
+    await first
+    await second
+
+    expect(mocks.messageSuccess).toHaveBeenCalledTimes(1)
+  })
+
   it('opens the add-item dialog with category defaults and saves valid drafts', async () => {
     const composable = useDataManagement()
 

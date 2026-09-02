@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import crypto from 'crypto'
 
@@ -63,6 +64,7 @@ vi.mock('bcryptjs', () => ({
 
 const { adminBootstrapService, consumeBootstrapPasswordFile } =
   await import('../../../src/server/services/identity/adminBootstrapService.js')
+const { BCRYPT_COST } = await import('../../../src/server/services/identity/accountService.js')
 
 describe('AdminBootstrapService', () => {
   const originalEnv = process.env
@@ -77,7 +79,8 @@ describe('AdminBootstrapService', () => {
 
     adminBootstrapService.initAdminAccount()
 
-    expect(hashSync).toHaveBeenCalledWith('admin123', 10)
+    // 与 accountService 共享 BCRYPT_COST（第 17 轮收口：bootstrap cost 10 → 12）
+    expect(hashSync).toHaveBeenCalledWith('admin123', BCRYPT_COST)
     expect(runMock).toHaveBeenCalledWith('admin', 'hashed-password')
     expect(logger.info).toHaveBeenCalledWith('管理员账户[admin]初始化成功')
   })

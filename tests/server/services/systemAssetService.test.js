@@ -1,3 +1,4 @@
+// @vitest-environment node
 import path from 'path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -73,7 +74,7 @@ const mockSettings = {
 }
 
 const settingsService = {
-  set: vi.fn(),
+  set: vi.fn(() => true),
   get: vi.fn((key, fallback = '') => (key in mockSettings ? mockSettings[key] : fallback))
 }
 
@@ -108,6 +109,17 @@ describe('SystemAssetService', () => {
 
     expect(result.url).toMatch(/^\/uploads\/bg_/)
     expect(settingsService.set).toHaveBeenCalledWith('backgroundUrl', result.url)
+  })
+
+  it('should fail loudly and roll back the file when persisting backgroundUrl fails', () => {
+    settingsService.set.mockReturnValueOnce(false)
+    const data = buildDataUri('png', buildPngBytes())
+
+    expect(() => systemAssetService.uploadBackground(data)).toThrow('背景图设置保存失败')
+
+    // 已写入的文件被回滚删除，不留下孤儿资源
+    const writtenFiles = fs.readdirSync(uploadsDir).filter((name) => name.startsWith('bg_'))
+    expect(writtenFiles).toHaveLength(0)
   })
 
   it('should reject unsupported icon types', () => {

@@ -35,7 +35,7 @@ export function useSystemSettings() {
     try {
       const res = await adminStore.updateAdminSettings(newSettings)
       if (res.success) {
-        ElMessage.success(t('settings.saveSettings') + ' ' + t('common.success'))
+        ElMessage.success(t('settings.saveSuccess'))
         configStore.updateConfig(newSettings)
         return
       }

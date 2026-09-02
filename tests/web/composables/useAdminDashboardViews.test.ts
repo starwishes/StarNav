@@ -28,6 +28,8 @@ const createOptions = (overrides = {}) => ({
   categories: ref([]),
   items: ref([]),
   filteredItems: ref([]),
+  loadError: ref(''),
+  loadData: vi.fn(),
   users: ref<User[]>([]),
   systemSettings: ref<Partial<SystemSettings>>({}),
   fetchUserList: vi.fn(),

@@ -12,7 +12,10 @@ export interface ParsedBookmarkCategory {
   selected: boolean
 }
 
-export const parseBookmarkHtml = (html: string): ParsedBookmarkCategory[] => {
+export const parseBookmarkHtml = (
+  html: string,
+  unnamedCategoryLabel = '未命名分类'
+): ParsedBookmarkCategory[] => {
   const parser = new DOMParser()
   const doc = parser.parseFromString(html, 'text/html')
   const categories: ParsedBookmarkCategory[] = []
@@ -25,7 +28,7 @@ export const parseBookmarkHtml = (html: string): ParsedBookmarkCategory[] => {
       return
     }
 
-    const folderName = heading.textContent?.trim() || '未命名分类'
+    const folderName = heading.textContent?.trim() || unnamedCategoryLabel
     const items: ParsedBookmarkItem[] = []
     const list = dt.querySelector(':scope > DL')
 

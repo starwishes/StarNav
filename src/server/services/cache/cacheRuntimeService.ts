@@ -4,7 +4,9 @@ import { logger } from '../../utils/logger.js'
 const DEFAULT_CACHE_OPTIONS = {
   stdTTL: 300,
   checkperiod: 60,
-  useClones: false
+  useClones: false,
+  // 防止 search:level:keyword:limit 这类键随独特关键词无界增长（超出按最旧逐出）
+  maxKeys: 1000
 }
 
 const createEmptyStats = () => ({
@@ -49,8 +51,7 @@ export class CacheRuntimeService {
 
   set(key: string, value: unknown, ttl?: number) {
     this.stats.sets++
-    const success =
-      ttl === undefined ? this.cache.set(key, value) : this.cache.set(key, value, ttl)
+    const success = ttl === undefined ? this.cache.set(key, value) : this.cache.set(key, value, ttl)
 
     if (success) {
       logger.debug(`缓存设置: ${key}`)

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../src/server/services/bookmark/bookmarkMutationService.js', () => ({
@@ -43,6 +44,8 @@ const { categoryReadService } =
   await import('../../../src/server/services/bookmark/categoryReadService.js')
 const { validators } = await import('../../../src/server/utils/validators.js')
 const { logger } = await import('../../../src/server/utils/logger.js')
+const { categoryCreateSchema, categoryUpdateSchema, dataSchema, validatePayload } =
+  await import('../../../src/server/validation.js')
 
 describe('BookmarkCommandService', () => {
   beforeEach(() => {
@@ -85,7 +88,7 @@ describe('BookmarkCommandService', () => {
     categoryReadService.exists.mockReturnValue(false)
 
     expect(() => {
-      bookmarkCommandService.addBookmark('alice', {
+      bookmarkCommandService.addBookmark({
         name: 'GitHub',
         url: 'https://github.com',
         categoryId: 999
@@ -97,15 +100,20 @@ describe('BookmarkCommandService', () => {
   it('should normalize bulk save payloads for bulk import action', () => {
     bookmarkMutationService.saveData.mockReturnValue(true)
 
-    const result = bookmarkCommandService.saveData('alice', {
-      content: {
-        categories: [{ id: 1, name: 'Dev', level: 0 }],
-        items: [{ id: 2, name: 'GitHub', url: 'https://github.com', categoryId: 1, level: 0 }],
-        action: 'import'
-      }
-    })
+    const validatedPayload = validatePayload(
+      dataSchema,
+      {
+        content: {
+          categories: [{ id: 1, name: 'Dev', level: 0 }],
+          items: [{ id: 2, name: 'GitHub', url: 'https://github.com', categoryId: 1, level: 0 }],
+          action: 'import'
+        }
+      },
+      '数据格式不正确'
+    )
+    const result = bookmarkCommandService.saveData('alice', validatedPayload)
 
-    expect(bookmarkMutationService.saveData).toHaveBeenCalledWith('alice', {
+    expect(bookmarkMutationService.saveData).toHaveBeenCalledWith({
       categories: [{ id: 1, name: 'Dev', level: 0, parentId: null }],
       items: [
         {
@@ -129,7 +137,7 @@ describe('BookmarkCommandService', () => {
 
     const result = bookmarkCommandService.trackClick('3')
 
-    expect(bookmarkMutationService.trackClick).toHaveBeenCalledWith('3')
+    expect(bookmarkMutationService.trackClick).toHaveBeenCalledWith('3', 0)
     expect(result).toEqual({ item })
   })
 
@@ -137,7 +145,7 @@ describe('BookmarkCommandService', () => {
     validators.isValidUrl.mockReturnValue(false)
 
     expect(() => {
-      bookmarkCommandService.addBookmark('alice', {
+      bookmarkCommandService.addBookmark({
         name: 'Invalid',
         url: 'invalid',
         categoryId: 1
@@ -153,7 +161,7 @@ describe('BookmarkCommandService', () => {
     })
 
     expect(() => {
-      bookmarkCommandService.addBookmark('alice', {
+      bookmarkCommandService.addBookmark({
         name: 'GitHub',
         url: 'https://github.com',
         categoryId: 1
@@ -165,12 +173,17 @@ describe('BookmarkCommandService', () => {
     const category = { id: 9, name: 'Dev' }
     bookmarkMutationService.addCategory.mockReturnValue(category)
 
-    const result = bookmarkCommandService.createCategory('alice', {
-      name: ' Dev ',
-      parentId: '12'
-    })
+    const validatedPayload = validatePayload(
+      categoryCreateSchema,
+      {
+        name: ' Dev ',
+        parentId: '12'
+      },
+      '分类参数不正确'
+    )
+    const result = bookmarkCommandService.createCategory(validatedPayload)
 
-    expect(bookmarkMutationService.addCategory).toHaveBeenCalledWith('alice', {
+    expect(bookmarkMutationService.addCategory).toHaveBeenCalledWith({
       name: 'Dev',
       icon: '',
       level: 0,
@@ -183,12 +196,17 @@ describe('BookmarkCommandService', () => {
     const category = { id: 9, name: 'Updated Dev', parentId: null }
     bookmarkMutationService.updateCategory.mockReturnValue(category)
 
-    const result = bookmarkCommandService.updateCategory('alice', '9', {
-      name: ' Updated Dev ',
-      parentId: ''
-    })
+    const validatedPayload = validatePayload(
+      categoryUpdateSchema,
+      {
+        name: ' Updated Dev ',
+        parentId: ''
+      },
+      '分类更新参数不正确'
+    )
+    const result = bookmarkCommandService.updateCategory('9', validatedPayload)
 
-    expect(bookmarkMutationService.updateCategory).toHaveBeenCalledWith('alice', '9', {
+    expect(bookmarkMutationService.updateCategory).toHaveBeenCalledWith('9', {
       name: 'Updated Dev',
       parentId: null
     })
@@ -199,11 +217,11 @@ describe('BookmarkCommandService', () => {
     const categories = [{ id: 3 }, { id: 1 }, { id: 2 }]
     bookmarkMutationService.reorderCategories.mockReturnValue(categories)
 
-    const result = bookmarkCommandService.reorderCategories('alice', {
+    const result = bookmarkCommandService.reorderCategories({
       orderedIds: ['3', '1', '2']
     })
 
-    expect(bookmarkMutationService.reorderCategories).toHaveBeenCalledWith('alice', [3, 1, 2])
+    expect(bookmarkMutationService.reorderCategories).toHaveBeenCalledWith([3, 1, 2])
     expect(result).toEqual({ categories })
   })
 
@@ -211,12 +229,12 @@ describe('BookmarkCommandService', () => {
     const item = { id: 4, name: 'Updated', pinned: true }
     bookmarkMutationService.updateItem.mockReturnValue(item)
 
-    const result = bookmarkCommandService.updateBookmark('alice', '4', {
+    const result = bookmarkCommandService.updateBookmark('4', {
       name: 'Updated',
       pinned: true
     })
 
-    expect(bookmarkMutationService.updateItem).toHaveBeenCalledWith('alice', '4', {
+    expect(bookmarkMutationService.updateItem).toHaveBeenCalledWith('4', {
       name: 'Updated',
       pinned: true
     })
@@ -227,12 +245,12 @@ describe('BookmarkCommandService', () => {
     const item = { id: 4, categoryId: 2, sortOrder: 1 }
     bookmarkMutationService.moveItem.mockReturnValue(item)
 
-    const result = bookmarkCommandService.moveBookmark('alice', '4', {
+    const result = bookmarkCommandService.moveBookmark('4', {
       categoryId: '2',
       targetIndex: '1'
     })
 
-    expect(bookmarkMutationService.moveItem).toHaveBeenCalledWith('alice', '4', 2, 1)
+    expect(bookmarkMutationService.moveItem).toHaveBeenCalledWith('4', 2, 1)
     expect(result).toEqual({ item })
   })
 
@@ -244,16 +262,16 @@ describe('BookmarkCommandService', () => {
     bookmarkMutationService.batchMoveItems.mockReturnValue(movedItems)
     bookmarkMutationService.batchDeleteItems.mockReturnValue(2)
 
-    const moveResult = bookmarkCommandService.batchMoveBookmarks('alice', {
+    const moveResult = bookmarkCommandService.batchMoveBookmarks({
       ids: ['4', '5'],
       categoryId: '2'
     })
-    const deleteResult = bookmarkCommandService.batchDeleteBookmarks('alice', {
+    const deleteResult = bookmarkCommandService.batchDeleteBookmarks({
       ids: ['4', '5']
     })
 
-    expect(bookmarkMutationService.batchMoveItems).toHaveBeenCalledWith('alice', [4, 5], 2)
-    expect(bookmarkMutationService.batchDeleteItems).toHaveBeenCalledWith('alice', [4, 5])
+    expect(bookmarkMutationService.batchMoveItems).toHaveBeenCalledWith([4, 5], 2)
+    expect(bookmarkMutationService.batchDeleteItems).toHaveBeenCalledWith([4, 5])
     expect(moveResult).toEqual({ count: 2, items: movedItems })
     expect(deleteResult).toEqual({ count: 2 })
   })
@@ -261,18 +279,18 @@ describe('BookmarkCommandService', () => {
   it('should return a category delete success message', () => {
     bookmarkMutationService.deleteCategory.mockReturnValue({ id: 7, targetCategoryId: 0 })
 
-    const result = bookmarkCommandService.deleteCategory('alice', '7')
+    const result = bookmarkCommandService.deleteCategory('7')
 
-    expect(bookmarkMutationService.deleteCategory).toHaveBeenCalledWith('alice', '7')
+    expect(bookmarkMutationService.deleteCategory).toHaveBeenCalledWith('7')
     expect(result).toEqual({ statusCode: 200, body: { success: true, message: '删除成功' } })
   })
 
   it('should return a delete success message', () => {
     bookmarkMutationService.deleteItem.mockReturnValue(true)
 
-    const result = bookmarkCommandService.deleteBookmark('alice', '7')
+    const result = bookmarkCommandService.deleteBookmark('7')
 
-    expect(bookmarkMutationService.deleteItem).toHaveBeenCalledWith('alice', '7')
+    expect(bookmarkMutationService.deleteItem).toHaveBeenCalledWith('7')
     expect(result).toEqual({ statusCode: 200, body: { success: true, message: '删除成功' } })
   })
 })

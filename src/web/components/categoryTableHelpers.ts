@@ -1,4 +1,5 @@
 import type { Item } from '@/types'
+import { USER_LEVEL } from '@common/constants'
 
 export const countItemsInCategory = (items: Item[], categoryId: number) =>
   items.filter((item) => item.categoryId === categoryId).length
@@ -9,8 +10,8 @@ export const getCategoryLevelClass = (level: number) => {
 }
 
 export const getCategoryLevelLabelKey = (level: number) => {
-  if (level === 1) return 'userLevel.user'
-  if (level === 2) return 'userLevel.vip'
-  if (level === 3) return 'userLevel.admin'
+  if (level === USER_LEVEL.USER) return 'userLevel.user'
+  if (level === USER_LEVEL.VIP) return 'userLevel.vip'
+  if (level === USER_LEVEL.ADMIN) return 'userLevel.admin'
   return 'userLevel.guest'
 }

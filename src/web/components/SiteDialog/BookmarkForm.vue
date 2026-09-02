@@ -8,6 +8,7 @@
           class="dialog-input"
           :placeholder="t('site.placeholderName')"
           autocomplete="off"
+          :aria-invalid="invalidFields?.name || undefined"
         />
       </label>
 
@@ -111,6 +112,7 @@
           :placeholder="t('site.placeholderUrl')"
           autocomplete="off"
           spellcheck="false"
+          :aria-invalid="invalidFields?.url || undefined"
         />
       </div>
     </label>
@@ -169,7 +171,7 @@
 
     <label class="switch-item">
       <span class="switch-copy">
-        <i class="iconfont icon-md-flash"></i>
+        <i class="iconfont icon-md-pin"></i>
         <span>{{ t('site.pinned') }}</span>
       </span>
       <span class="toggle-control">
@@ -196,6 +198,11 @@ const { t } = useI18n()
 interface Props {
   modelValue: Partial<Item>
   categoryTree: CategoryTreeNode[]
+  /** 校验失败标记（name/url），由父级校验后注入以绑定 aria-invalid */
+  invalidFields?: {
+    name?: boolean
+    url?: boolean
+  }
 }
 
 const props = defineProps<Props>()

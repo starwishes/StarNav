@@ -1,6 +1,7 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 
-import { escapeHtml, isValidUsername, sanitizeText } from '../../src/shared/sanitize.js'
+import { escapeHtml, sanitizeText } from '../../src/shared/sanitize.js'
 
 describe('shared sanitize helpers', () => {
   it('escapes html control characters', () => {
@@ -11,11 +12,5 @@ describe('shared sanitize helpers', () => {
 
   it('trims text, strips control characters, and enforces max length', () => {
     expect(sanitizeText('  hello\u0000world  ', 5)).toBe('hello')
-  })
-
-  it('validates usernames with the shared 3-20 char rule', () => {
-    expect(isValidUsername('star_nav_01')).toBe(true)
-    expect(isValidUsername('ab')).toBe(false)
-    expect(isValidUsername('bad-name')).toBe(false)
   })
 })

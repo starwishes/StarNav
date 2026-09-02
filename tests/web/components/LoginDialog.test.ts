@@ -125,7 +125,7 @@ describe('LoginDialog', () => {
     const wrapper = createWrapper()
     await wrapper.find('form').trigger('submit')
 
-    expect(mocks.messageWarning).toHaveBeenCalledWith('translated:auth.loginFailed')
+    expect(mocks.messageWarning).toHaveBeenCalledWith('translated:auth.loginFieldsRequired')
     expect(mocks.login).not.toHaveBeenCalled()
 
     const inputs = wrapper.findAll('input')

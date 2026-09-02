@@ -1,5 +1,11 @@
-import { normalizeUrl } from '../utils/url.js'
-import { initApi, apiRequest, loginToServer, normalizeServerUrl } from '../utils/api.js'
+import { normalizeUrl } from '../common/url.js'
+import {
+  initApi,
+  apiRequest,
+  isAllowedLoginOrigin,
+  loginToServer,
+  normalizeServerUrl
+} from '../utils/api.js'
 import {
   applyDocumentLanguage,
   applyThemeMode,
@@ -15,6 +21,9 @@ import { createUiHelpers } from './modules/ui.js'
 
 const state = createPopupState()
 window.__STARNAV_POPUP_READY = false
+
+/** 待捕获项过期阈值：超过则丢弃，防止陈旧 badge/表单误导。 */
+const PENDING_CAPTURE_MAX_AGE_MS = 24 * 60 * 60 * 1000
 
 let bookmarkController = null
 
@@ -50,7 +59,19 @@ bookmarkController = createBookmarkController({
   i18n,
   ui,
   loadRecentBookmarks: searchController.loadRecentBookmarks,
-  performSearch: searchController.performSearch
+  performSearch: searchController.performSearch,
+  // 待捕获项只在保存成功后消费（ts 校验防误删更新捕获）；展示/取消时保留待下次重试。
+  onPendingCaptureConsumed: async () => {
+    const capture = state.currentPendingCapture
+    state.currentPendingCapture = null
+    if (capture) {
+      try {
+        await discardPendingCapture(capture)
+      } catch (error) {
+        console.warn('清除待捕获项失败，已保留待下次重试', error)
+      }
+    }
+  }
 })
 
 document.addEventListener('DOMContentLoaded', init)
@@ -68,11 +89,39 @@ async function clearPendingCaptureBadge() {
   }
 }
 
+// 连接卡片预填（init/handleAuthError/handleLogout 三处共用）：
+// 读取已保存的服务器地址/用户名/记住登录并回填表单，返回 { serverUrl, savedUsername }。
+async function prefillReconnectCard() {
+  const stored = await getMergedStorage(['serverUrl', 'savedUsername', 'rememberLogin'])
+  const serverUrl = normalizeServerUrl(stored.serverUrl || state.config.serverUrl)
+  const savedUsername = stored.savedUsername || ''
+  if (elements.reconnectServerUrl) {
+    elements.reconnectServerUrl.value = serverUrl
+  }
+  if (elements.reconnectUsername) {
+    elements.reconnectUsername.value = savedUsername
+  }
+  if (elements.reconnectRemember) {
+    elements.reconnectRemember.checked = stored.rememberLogin === true
+  }
+  return { serverUrl, savedUsername }
+}
+
 // 读取待捕获项但不删除：展示成功后再清理，失败则保留待下次重试，避免内容丢失
 async function peekPendingCapture() {
   const stored = await getMergedStorage(['pendingCapture'])
   const capture = stored.pendingCapture
-  return capture?.url ? capture : null
+  if (!capture?.url) {
+    return null
+  }
+
+  // 捕获时间戳超 24h 视为过期：清理并清除 badge，避免陈旧待办误导用户。
+  if (typeof capture.ts === 'number' && Date.now() - capture.ts > PENDING_CAPTURE_MAX_AGE_MS) {
+    await discardPendingCapture(capture)
+    return null
+  }
+
+  return capture
 }
 
 // 仅当存储中仍是同一个捕获（按 ts 校验）时才删除，
@@ -113,18 +162,7 @@ async function init() {
   if (!state.config.serverUrl || !state.config.token) {
     // 未连接或会话失效:内联连接卡片(服务器地址+用户名+密码)。
     // 已保存的网址/用户名自动预填,用户只需补密码即可重连。
-    const stored = await getMergedStorage(['serverUrl', 'savedUsername', 'rememberLogin'])
-    const serverUrl = normalizeServerUrl(stored.serverUrl || state.config.serverUrl)
-    const savedUsername = stored.savedUsername || ''
-    if (elements.reconnectServerUrl) {
-      elements.reconnectServerUrl.value = serverUrl
-    }
-    if (elements.reconnectUsername) {
-      elements.reconnectUsername.value = savedUsername
-    }
-    if (elements.reconnectRemember) {
-      elements.reconnectRemember.checked = stored.rememberLogin === true
-    }
+    const { serverUrl, savedUsername } = await prefillReconnectCard()
     const mode = serverUrl && savedUsername ? 'reconnect' : 'setup'
     ui.showNotConnected(mode === 'reconnect' ? 'tokenExpired' : '', mode)
     if (!serverUrl) {
@@ -144,10 +182,12 @@ async function init() {
   await searchController.loadRecentBookmarks()
   setupEventListeners()
 
+  // 待捕获页面表单展示时保留 pendingCapture：popup 失焦即关，若展示即弃，
+  // 用户没点保存内容已删（真实数据丢失）。改为保存成功后再清除。
   const pendingCapture = await peekPendingCapture()
   if (pendingCapture) {
+    state.currentPendingCapture = pendingCapture
     await bookmarkController.showAddFormFromCapture(pendingCapture)
-    await discardPendingCapture(pendingCapture)
   }
 
   window.__STARNAV_POPUP_READY = true
@@ -179,6 +219,7 @@ function setupEventListeners() {
   elements.openSite?.addEventListener('click', () =>
     chrome.tabs.create({ url: state.config.serverUrl })
   )
+  elements.logoutBtn?.addEventListener('click', handleLogout)
   elements.addCategoryBtn?.addEventListener('click', categoryController.showCategoryModal)
   elements.closeCategoryModal?.addEventListener('click', categoryController.hideCategoryModal)
   elements.submitCategory?.addEventListener('click', categoryController.createCategory)
@@ -194,34 +235,51 @@ function setupEventListeners() {
   elements.reconnectUsername?.addEventListener('keydown', reconnectEnterHandler)
 }
 
-async function handleAuthError(errorMessage) {
+async function handleAuthError(authError) {
   state.config.token = ''
 
   // Keep savedUsername for reconnect; only clear auth secrets.
   await removeStorage(['token', 'user'], 'local')
   await removeStorage(['token', 'user'], 'sync')
 
+  // 优先按服务端 error code 判定过期；兼容旧服务端/纯字符串兜底。
+  const code = authError?.payload?.code
+  const message = typeof authError === 'string' ? authError : authError?.message || ''
   const reasonKey =
-    errorMessage === '令牌已过期' || /expired/i.test(String(errorMessage || ''))
+    code === 'TOKEN_EXPIRED' ||
+    code === 'SESSION_INVALID' ||
+    message === '令牌已过期' ||
+    /expired/i.test(message)
       ? 'tokenExpired'
       : 'tokenInvalid'
 
   // 会话失效时在内联连接卡片里预填网址/用户名,用户只需补密码。
-  const stored = await getMergedStorage(['serverUrl', 'savedUsername', 'rememberLogin'])
-  const serverUrl = normalizeServerUrl(stored.serverUrl || state.config.serverUrl)
-  const savedUsername = stored.savedUsername || ''
-  if (elements.reconnectServerUrl) {
-    elements.reconnectServerUrl.value = serverUrl
-  }
-  if (elements.reconnectUsername) {
-    elements.reconnectUsername.value = savedUsername
-  }
-  if (elements.reconnectRemember) {
-    elements.reconnectRemember.checked = stored.rememberLogin === true
-  }
+  await prefillReconnectCard()
   ui.showNotConnected(reasonKey, 'reconnect')
   // 聚焦密码框,Enter 提交
   setTimeout(() => elements.reconnectPassword?.focus(), 0)
+}
+
+// 显式登出：清 token/user（不依赖 401），回到连接卡片。
+// savedUsername 保留在 local，下次打开仍预填用户名；如需彻底清除可取消下一行注释。
+async function handleLogout() {
+  const texts = i18n[state.currentLang] || i18n.zh
+  state.config.token = ''
+  state.config.serverUrl = ''
+
+  await removeStorage(['token', 'user'], 'local')
+  await removeStorage(['token', 'user'], 'sync')
+
+  const { savedUsername } = await prefillReconnectCard()
+  ui.showNotConnected('', 'reconnect')
+  ui.showToast(texts.loggedOut, 'success')
+  setTimeout(() => {
+    if (!savedUsername) {
+      elements.reconnectUsername?.focus()
+    } else {
+      elements.reconnectPassword?.focus()
+    }
+  }, 0)
 }
 
 async function handleReconnect() {
@@ -239,6 +297,11 @@ async function handleReconnect() {
     return
   }
 
+  if (!isAllowedLoginOrigin(serverUrl)) {
+    ui.showToast(texts.connectInsecure, 'error')
+    return
+  }
+
   if (elements.reconnectBtn) {
     elements.reconnectBtn.disabled = true
     elements.reconnectBtn.textContent = texts.connecting
@@ -247,7 +310,12 @@ async function handleReconnect() {
 
   try {
     const result = await loginToServer(serverUrl, username, password, remember)
-    await setStorage({ serverUrl, savedUsername: username, rememberLogin: remember }, 'sync')
+    // serverUrl 跨设备同步；用户名/记住登录属于隐私偏好，只放本机 local。
+    await setStorage({ serverUrl }, 'sync')
+    await setStorage({ savedUsername: username, rememberLogin: remember }, 'local')
+    // token 统一存 local：storage.session 仅 Chrome 102+ / Firefox 115+ 支持，
+    // 而本扩展支持 Firefox ≥74，会话级存储会破坏旧版兼容。取舍：token 不跨设备
+    // 同步（local 本机持久），remember=false 时过期由服务端 90 天有效期兜底。
     await setStorage({ token: result.token, user: result.user }, 'local')
 
     // 把新 token 写回 in-memory config 并回到主界面
@@ -263,8 +331,8 @@ async function handleReconnect() {
     try {
       const pendingCapture = await peekPendingCapture()
       if (pendingCapture) {
+        state.currentPendingCapture = pendingCapture
         await bookmarkController.showAddFormFromCapture(pendingCapture)
-        await discardPendingCapture(pendingCapture)
       }
     } catch (captureError) {
       console.warn('展示待捕获表单失败，已保留待重试', captureError)

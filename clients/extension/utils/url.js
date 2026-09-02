@@ -1,92 +1,43 @@
 /**
- * URL 规范化与安全清洗 (Shared Module Copy)
- * 适用于: Backend, Frontend, Browser Extension
+ * URL 规范化（服务器地址专用）
+ *
+ * 注意：书签 URL 的规范化逻辑以 `src/shared/url.ts` 为单一事实来源，
+ * 通过 `npm run extension:sync-common` 同步到 `common/url.js`。
+ * 本文件仅保留扩展特有的"服务器地址"处理。
  */
 
-/** 去掉尾部斜杠,返回干净的服务器根地址(不带协议校验,交给上层处理)。 */
+/** 去掉尾部斜杠，返回干净的服务器根地址（不做协议校验，交给上层处理）。 */
 export const normalizeServerUrl = (serverUrl) =>
   String(serverUrl || '')
     .trim()
     .replace(/\/+$/, '')
 
-export const normalizeUrl = (url) => {
-  if (!url || typeof url !== 'string') return ''
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]'])
 
-  // 0. 预处理
-  let cleanUrl = url.replace(/[\u200b-\u200d\uFEFF\u0000-\u001F\u007F-\u009F]/g, '').trim()
-
-  // 1. 协议补全
-  if (!/^https?:\/\//i.test(cleanUrl)) {
-    if (cleanUrl.includes('://')) return ''
-    cleanUrl = 'https://' + cleanUrl
+/**
+ * 登录目标校验：仅允许 HTTPS，或本地回环的 HTTP。
+ * 扩展会把用户名/密码 POST 到该 origin，绝不能允许发送到任意明文 http 站点。
+ */
+export const isAllowedLoginOrigin = (serverUrl) => {
+  const normalized = normalizeServerUrl(serverUrl)
+  if (!normalized) {
+    return false
   }
 
+  let parsed
   try {
-    const u = new URL(cleanUrl)
-
-    // 2. 协议白名单
-    if (!['http:', 'https:'].includes(u.protocol)) return ''
-
-    // 3. 域名规范化
-    u.hostname = u.hostname.toLowerCase()
-    if (u.hostname.endsWith('.')) u.hostname = u.hostname.slice(0, -1)
-    if (u.hostname.includes('..')) return ''
-
-    // 4. 路径清洗
-    let pathname = u.pathname
-    while (pathname.includes('//')) pathname = pathname.replace(/\/\//g, '/')
-    if (/^[\.\/]+$/.test(pathname)) pathname = '/'
-    if (pathname.length > 1 && pathname.endsWith('/')) pathname = pathname.slice(0, -1)
-    u.pathname = pathname
-
-    // 5. 移除跟踪参数
-    const trackingParams = [
-      'utm_source',
-      'utm_medium',
-      'utm_campaign',
-      'utm_term',
-      'utm_content',
-      'gclid',
-      'gclsrc',
-      'dclid',
-      'gra',
-      'fbclid',
-      'igsh',
-      'spm',
-      'scm',
-      'ali_trackid',
-      'spm_id_from',
-      'vd_source',
-      'share_source',
-      'share_medium',
-      'share_plat',
-      'share_tag',
-      'bbid',
-      'ts',
-      'from',
-      'isappinstalled',
-      'wechat_redirect',
-      'iid',
-      'aid',
-      'utm_id',
-      'context_token',
-      'ref',
-      'source',
-      'feature',
-      'trk',
-      'si',
-      'yclid',
-      '_openstat'
-    ]
-
-    trackingParams.forEach((param) => u.searchParams.delete(param))
-
-    let finalUrl = u.toString()
-    if (finalUrl.endsWith('#')) finalUrl = finalUrl.slice(0, -1)
-    if (finalUrl.endsWith('?')) finalUrl = finalUrl.slice(0, -1)
-
-    return finalUrl
+    parsed = new URL(normalized)
   } catch {
-    return ''
+    return false
   }
+
+  if (parsed.protocol === 'https:') {
+    return true
+  }
+  if (parsed.protocol !== 'http:') {
+    return false
+  }
+
+  const host = parsed.hostname
+  return LOOPBACK_HOSTS.has(host) || LOOPBACK_HOSTS.has(`[${host}]`)
 }

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../src/server/utils/logger.js', () => ({
@@ -9,7 +10,8 @@ vi.mock('../../../src/server/utils/logger.js', () => ({
   }
 }))
 
-const { CacheRuntimeService } = await import('../../../src/server/services/cache/cacheRuntimeService.js')
+const { CacheRuntimeService } =
+  await import('../../../src/server/services/cache/cacheRuntimeService.js')
 
 describe('CacheRuntimeService', () => {
   let cache

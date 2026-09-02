@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { normalizeUrl } from '../../clients/extension/utils/url.js'
+import { normalizeUrl } from '../../clients/extension/common/url.js'
 
 describe('browser extension url helper', () => {
   it('normalizes host casing, path slashes, and strips tracking parameters', () => {

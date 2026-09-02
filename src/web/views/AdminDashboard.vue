@@ -20,6 +20,7 @@
       <AdminHeader
         :is-mobile="isMobile"
         :current-view-label="currentViewLabel"
+        :sidebar-open="sidebarVisible"
         @open-sidebar="sidebarVisible = true"
         @go-home="goToIndex"
       />
@@ -46,6 +47,7 @@
       v-model:form="itemForm"
       :categories="categories"
       :is-edit="isEdit"
+      :saving="savingItem"
       @save="saveItem"
     />
     <BookmarkImport v-model="showBookmarkImport" :import-action="handleBookmarkImport" />
@@ -66,6 +68,7 @@ import { useUserManagement } from '@/composables/admin/useUserManagement'
 import { useImportExport } from '@/composables/admin/useImportExport'
 import { useSystemSettings } from '@/composables/admin/useSystemSettings'
 import { useMobile } from '@/composables/useMobile'
+import { USER_LEVEL } from '@common/constants'
 
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import AdminSidebar from '@/components/admin/AdminSidebar.vue'
@@ -87,6 +90,8 @@ const {
   isEdit,
   categoryForm,
   itemForm,
+  savingItem,
+  loadError,
   searchKeyword,
   activeTab,
   filterCategory,
@@ -131,7 +136,7 @@ const handleCleanDuplicatesWrapper = async () => {
 }
 
 const { isMobile } = useMobile()
-const isAdmin = computed(() => adminStore.user?.level === 3)
+const isAdmin = computed(() => adminStore.user?.level === USER_LEVEL.ADMIN)
 
 const {
   currentView,
@@ -150,6 +155,8 @@ const {
   categories,
   items,
   filteredItems,
+  loadError,
+  loadData,
   users,
   systemSettings,
   fetchUserList,
@@ -191,7 +198,7 @@ const handleLogout = async () => {
 const goToIndex = () => router.push('/')
 
 onMounted(() => {
-  if (!adminStore.isAuthenticated || adminStore.user?.level !== 3) {
+  if (!adminStore.isAuthenticated || adminStore.user?.level !== USER_LEVEL.ADMIN) {
     router.push('/')
     return
   }

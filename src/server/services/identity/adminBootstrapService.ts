@@ -6,6 +6,7 @@ import { getDb } from '../database/database.js'
 import { ADMIN_BOOTSTRAP_PASSWORD_PATH, DATA_DIR, DEFAULT_ADMIN_NAME } from '../../config/index.js'
 import { logger } from '../../utils/logger.js'
 import type { UserTableRow } from '../../types/sqliteRows.js'
+import { BCRYPT_COST } from './accountService.js'
 
 const RANDOM_PASSWORD_CHARS = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const DEFAULT_BOOTSTRAP_PASSWORD_TTL_HOURS = 24
@@ -238,13 +239,14 @@ export const adminBootstrapService = {
       }
 
       const deliveryMode = getBootstrapPasswordDeliveryMode()
-      const hashed = bcrypt.hashSync(finalPassword || 'admin123', 10)
+      // 与 accountService 共享 BCRYPT_COST（cost 12），保持全站 bcrypt 强度一致
+      const hashed = bcrypt.hashSync(finalPassword || 'admin123', BCRYPT_COST)
 
       if (isNew) {
         db.prepare(
           `
                     INSERT INTO users(username, password, level, auth_version, created_at)
-VALUES(?, ?, 3, 0, datetime('now'))
+VALUES(?, ?, 3, 0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
                 `
         ).run(adminUsername, hashed)
         logger.info(`管理员账户[${adminUsername}]初始化成功`)
@@ -279,7 +281,7 @@ VALUES(?, ?, 3, 0, datetime('now'))
     }
 
     if (rawAdminPassword && !bcrypt.compareSync(rawAdminPassword, adminUser.password)) {
-      const hashed = bcrypt.hashSync(rawAdminPassword, 10)
+      const hashed = bcrypt.hashSync(rawAdminPassword, BCRYPT_COST)
       db.prepare(
         'UPDATE users SET password = ?, auth_version = COALESCE(auth_version, 0) + 1 WHERE username = ?'
       ).run(hashed, adminUsername)

@@ -43,8 +43,7 @@ export const bookmarkReadService = {
             pinned,
             level,
             click_count as clickCount,
-            last_visited as lastVisited,
-            sort_order
+            last_visited as lastVisited
           FROM items
           WHERE level <= ?${clause}
           ORDER BY sort_order, id

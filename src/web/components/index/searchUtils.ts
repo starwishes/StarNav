@@ -93,20 +93,20 @@ export const prepareSearchEngineDraft = (draft: Pick<SearchEngineOption, 'name' 
   const normalizedName = sanitizeSearchEngineInput(draft.name)
   if (!normalizedName) {
     return {
-      error: '请填写完整信息'
+      error: 'engine.draftEmpty'
     } as const
   }
 
   const normalizedUrl = normalizeSearchEngineUrlInput(draft.url)
   if (!normalizedUrl) {
     return {
-      error: '请输入合法的 http/https 搜索地址'
+      error: 'engine.draftInvalidUrl'
     } as const
   }
 
   if (!SEARCH_ENGINE_URL_SUFFIX_PATTERN.test(normalizedUrl)) {
     return {
-      error: '搜索地址需以查询参数赋值结尾，例如 https://www.google.com/search?q='
+      error: 'engine.draftMissingSuffix'
     } as const
   }
 
@@ -197,11 +197,14 @@ export const persistCurrentEngine = (
 
 export const buildSearchPlaceholder = (
   searchMode: 'local' | 'online',
-  currentEngine: SearchEngineOption | null
+  currentEngine: SearchEngineOption | null,
+  t: (key: string, params?: Record<string, unknown>) => string
 ) => {
   return searchMode === 'local'
-    ? '搜索本地书签...'
-    : `在 ${currentEngine?.name || '搜索引擎'} 中搜索...`
+    ? t('search.placeholderLocal')
+    : t('search.placeholderOnline', {
+        engine: currentEngine?.name || t('search.engineFallback')
+      })
 }
 
 export const getSuggestionProviderType = (

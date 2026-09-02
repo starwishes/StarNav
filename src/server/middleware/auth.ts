@@ -1,4 +1,4 @@
-import type { NextFunction, Request, Response } from 'express'
+import type { NextFunction, Request, RequestHandler, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import type { JwtPayload } from 'jsonwebtoken'
 import { JWT_SECRET } from '../config/index.js'
@@ -120,6 +120,18 @@ const ensureTrustedCookieWriteOrigin = (req: AuthRequest, res: Response) => {
 
   sendForbidden(res, '请求来源无效', 'INVALID_REQUEST_ORIGIN')
   return false
+}
+
+/**
+ * 独立中间件：对走 optionalAuth 的写请求补做 cookie 来源校验。
+ * optionalAuth 同时服务 GET 读接口（/data 等），不能整体收紧，
+ * 因此在需要的路由上单独挂载本中间件（当前用于 POST /sites/:id/click）。
+ * 游客（无 token）与 bearer 来源请求不受影响——本中间件对它们直接放行。
+ */
+export const ensureTrustedCookieWriteOriginMiddleware: RequestHandler = (req, res, next) => {
+  if (ensureTrustedCookieWriteOrigin(req as AuthRequest, res)) {
+    next()
+  }
 }
 
 const resolveAuthToken = (req: AuthRequest) => {
