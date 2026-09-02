@@ -107,7 +107,7 @@ EXPOSE 8080
 
 # 与 docker-compose.yml 的探针保持一致：镜像自身也暴露健康状态。
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s \
-  CMD node -e "fetch('http://127.0.0.1:8080/api/health').then((res)=>process.exit(res.ok?0:1)).catch(()=>process.exit(1))"
+  CMD ["node", "-e", "fetch('http://127.0.0.1:8080/api/health').then((res)=>process.exit(res.ok?0:1)).catch(()=>process.exit(1))"]
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "/usr/local/bin/docker-entrypoint.sh"]
 CMD ["./node_modules/.bin/tsx", "server.ts"]
