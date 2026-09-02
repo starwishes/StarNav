@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises'
+import net from 'node:net'
 import compression from 'compression'
 import cors from 'cors'
 import express from 'express'
@@ -7,7 +8,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 import { getSwaggerSpec } from './src/server/config/swagger.js'
-import { TRUST_PROXY, UPLOADS_DIR } from './src/server/config/index.js'
+import { REAL_CLIENT_IP_HEADER, TRUST_PROXY, UPLOADS_DIR } from './src/server/config/index.js'
 import { closeDb, forceCheckpoint } from './src/server/services/database/database.js'
 import { errorHandler } from './src/server/middleware/errorHandler.js'
 import authRoutes from './src/server/routes/auth.js'
@@ -90,6 +91,27 @@ const createConfiguredApp = async () => {
   const app = express()
 
   app.set('trust proxy', TRUST_PROXY ? 1 : false)
+
+  // REAL_CLIENT_IP_HEADER 形态（如 Cloudflare）：在最高层用可信头覆盖 req.ip。
+  // 置于任何中间件/路由之前，限流分桶、会话与审计 IP 全部落到真实客户端 IP。
+  // 头值解析：取逗号分隔首个条目并校验为合法 IP（CF-Connecting-IP 为单 IP；
+  // 兼容“链式”头时只信任首个值），非法则回退 Express 既有解析，不抛错。
+  if (REAL_CLIENT_IP_HEADER) {
+    app.use((req, _res, next) => {
+      const raw = req.headers[REAL_CLIENT_IP_HEADER]
+      const headerValue = Array.isArray(raw) ? raw[0] : raw
+      if (typeof headerValue === 'string') {
+        const candidate = headerValue.split(',')[0].trim()
+        if (net.isIP(candidate) > 0) {
+          // Express 的 req.ip 是原型 getter（从 trust proxy/XFF 惰性解析），类型声明为只读。
+          // 赋实例 own 属性可遮蔽原型 getter（Express 原型无 setter，own 赋值安全生效），
+          // 后续所有消费方（限流/会话/审计）读到的都是覆盖后的真实客户端 IP。
+          ;(req as { ip: string }).ip = candidate
+        }
+      }
+      next()
+    })
+  }
 
   await initService.init()
 

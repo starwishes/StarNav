@@ -51,6 +51,37 @@ describe('config/index', () => {
     expect(explicitConfig.TRUST_PROXY).toBe(false)
   })
 
+  it('reads and normalizes REAL_CLIENT_IP_HEADER, validating it during env validation', async () => {
+    delete process.env.REAL_CLIENT_IP_HEADER
+    const defaultConfig = await loadConfigModule()
+    expect(defaultConfig.REAL_CLIENT_IP_HEADER).toBe('')
+
+    vi.resetModules()
+    process.env.REAL_CLIENT_IP_HEADER = '  CF-Connecting-IP '
+    const normalizedConfig = await loadConfigModule()
+    expect(normalizedConfig.REAL_CLIENT_IP_HEADER).toBe('cf-connecting-ip')
+
+    // 非法字符（空格/大写→已被 trim+lowercase，但含非法字符仍拒绝）→ validateEnv exit
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code) => {
+      throw new Error(`exit:${code}`)
+    })
+    vi.resetModules()
+    process.env.REAL_CLIENT_IP_HEADER = 'bad header!'
+    const badConfig = await loadConfigModule()
+    expect(() => badConfig.validateEnv()).toThrow('exit:1')
+    exitSpy.mockRestore()
+
+    // 合法值 → warn（提示仅经对应反代启用）
+    vi.clearAllMocks()
+    vi.resetModules()
+    process.env.REAL_CLIENT_IP_HEADER = 'cf-connecting-ip'
+    const okConfig = await loadConfigModule()
+    okConfig.validateEnv()
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('REAL_CLIENT_IP_HEADER=cf-connecting-ip')
+    )
+  })
+
   it('rejects unsupported bootstrap password, cookie, CSP, and proxy override values during env validation', async () => {
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code) => {
       throw new Error(`exit:${code}`)

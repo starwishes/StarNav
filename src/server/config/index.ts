@@ -31,6 +31,19 @@ export const DEFAULT_ADMIN_NAME = process.env.ADMIN_USERNAME || 'admin'
  */
 export const TRUST_PROXY = process.env.TRUST_PROXY !== 'false'
 
+/**
+ * 可信反代提供的真实客户端 IP 请求头名（小写，如 "cf-connecting-ip"）。
+ *
+ * 适用形态：CDN/反代用专用头透传真实客户端 IP 而不用/不用好 X-Forwarded-For
+ * （典型如 Cloudflare：源站 socket 是 CF 边缘 IP，真实 IP 在 CF-Connecting-IP）。
+ * 启用后 server.ts 会在最顶层用该头的首个合法 IP 覆盖 req.ip，
+ * 限流分桶 / 会话 / 审计 IP 全链路获得真实客户端 IP（单点覆盖，无需逐点改）。
+ *
+ * 安全前提：该头必须由受信任反代覆盖（Cloudflare 会丢弃并重写客户端伪造值）；
+ * 若应用端口直连公网，客户端可伪造该头污染 IP，故 validateEnv 会提示确认部署形态。
+ */
+export const REAL_CLIENT_IP_HEADER = (process.env.REAL_CLIENT_IP_HEADER || '').trim().toLowerCase()
+
 const TEST_JWT_SECRET = 'test-jwt-secret-for-vitest-only-0123456789abcdef'
 const isTestRuntime = () =>
   process.env.NODE_ENV === 'test' ||
@@ -258,6 +271,25 @@ export const validateEnv = () => {
     warnings.push(
       'TRUST_PROXY 未显式设置（默认信任一层反代）：若本服务端口直连公网（无反向代理），客户端可伪造 X-Forwarded-For 头绕过基于 IP 的限流并污染审计 IP，建议显式设置 TRUST_PROXY=false'
     )
+  }
+
+  // 9. REAL_CLIENT_IP_HEADER 校验
+  // 用于 CDN/反代用专用头透传真实客户端 IP 的形态（如 Cloudflare 的 CF-Connecting-IP）。
+  const realClientIpHeader = (process.env.REAL_CLIENT_IP_HEADER || '').trim().toLowerCase()
+  if (realClientIpHeader) {
+    // 请求头名只允许 [a-z0-9-]（HTTP token 子集已够用；我们只关心读取侧白名单语义）
+    if (!/^[a-z0-9-]{1,64}$/.test(realClientIpHeader)) {
+      errors.push('REAL_CLIENT_IP_HEADER 仅支持小写字母/数字/连字符（如 cf-connecting-ip）')
+    } else {
+      warnings.push(
+        `REAL_CLIENT_IP_HEADER=${realClientIpHeader}：将信任该请求头作为真实客户端 IP。仅当服务仅经对应反代/CDN 访问时启用（其会覆盖客户端伪造值）；若端口直连公网，客户端可伪造该头绕过按 IP 的限流并污染审计 IP`
+      )
+      if (realClientIpHeader === 'x-forwarded-for') {
+        warnings.push(
+          'REAL_CLIENT_IP_HEADER=x-forwarded-for：与 TRUST_PROXY 语义重叠，通常无需设置；请确认意图'
+        )
+      }
+    }
   }
 
   // 输出结果

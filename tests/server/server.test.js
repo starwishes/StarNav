@@ -18,6 +18,7 @@ const loadServerModule = async ({
   cspUpgradeInsecureRequests,
   trustProxy,
   apiDocsPublic,
+  realClientIpHeader,
   swaggerUiAvailable = true,
   staticOpenApiSpecAvailable = false
 } = {}) => {
@@ -28,6 +29,7 @@ const loadServerModule = async ({
   const originalCspUpgradeInsecureRequests = process.env.CSP_UPGRADE_INSECURE_REQUESTS
   const originalTrustProxy = process.env.TRUST_PROXY
   const originalApiDocsPublic = process.env.API_DOCS_PUBLIC
+  const originalRealClientIpHeader = process.env.REAL_CLIENT_IP_HEADER
 
   process.env.NODE_ENV = nodeEnv
   if (corsOrigins === undefined) {
@@ -49,6 +51,11 @@ const loadServerModule = async ({
     delete process.env.API_DOCS_PUBLIC
   } else {
     process.env.API_DOCS_PUBLIC = apiDocsPublic
+  }
+  if (realClientIpHeader === undefined) {
+    delete process.env.REAL_CLIENT_IP_HEADER
+  } else {
+    process.env.REAL_CLIENT_IP_HEADER = realClientIpHeader
   }
 
   const app = createAppMock()
@@ -116,6 +123,7 @@ const loadServerModule = async ({
   }))
   vi.doMock('../../src/server/config/index.js', () => ({
     TRUST_PROXY: trustProxy !== 'false',
+    REAL_CLIENT_IP_HEADER: (realClientIpHeader || '').trim().toLowerCase(),
     UPLOADS_DIR: '/tmp/uploads'
   }))
   vi.doMock('../../src/server/middleware/errorHandler.js', () => ({
@@ -186,6 +194,7 @@ const loadServerModule = async ({
       process.env.CSP_UPGRADE_INSECURE_REQUESTS = originalCspUpgradeInsecureRequests
       process.env.TRUST_PROXY = originalTrustProxy
       process.env.API_DOCS_PUBLIC = originalApiDocsPublic
+      process.env.REAL_CLIENT_IP_HEADER = originalRealClientIpHeader
     }
   }
 }
@@ -358,6 +367,54 @@ describe('server app assembly', () => {
     })
 
     expect(runtime.app.set).toHaveBeenCalledWith('trust proxy', false)
+  })
+
+  it('registers a real-client-IP override middleware only when REAL_CLIENT_IP_HEADER is set', async () => {
+    runtime = await loadServerModule({ nodeEnv: 'test' })
+    const plainUses = runtime.app.use.mock.calls.filter(
+      (call) => typeof call[0] === 'function' || typeof call[1] === 'function'
+    )
+
+    runtime = await loadServerModule({ nodeEnv: 'test', realClientIpHeader: 'cf-connecting-ip' })
+    const headerUses = runtime.app.use.mock.calls.filter(
+      (call) => typeof call[0] === 'function' || typeof call[1] === 'function'
+    )
+
+    // 带 header 配置时必须额外注册一个函数中间件（IP 覆盖层）
+    expect(headerUses.length).toBeGreaterThan(plainUses.length)
+  })
+
+  it('overrides req.ip from the configured REAL_CLIENT_IP_HEADER (first valid IP)', async () => {
+    runtime = await loadServerModule({ nodeEnv: 'test', realClientIpHeader: 'cf-connecting-ip' })
+
+    const useCall = runtime.app.use.mock.calls.find(
+      (call) => typeof call[0] === 'function' || typeof call[1] === 'function'
+    )
+    const middleware = typeof useCall[0] === 'function' ? useCall[0] : useCall[1]
+    expect(middleware).toBeTypeOf('function')
+
+    // 有效头：覆盖 req.ip 为首个 IP
+    const reqWithHeader = {
+      headers: { 'cf-connecting-ip': '203.0.113.7, 198.51.100.2' },
+      ip: '104.22.18.44'
+    }
+    const next = vi.fn()
+    middleware(reqWithHeader, {}, next)
+    expect(reqWithHeader.ip).toBe('203.0.113.7')
+    expect(next).toHaveBeenCalledTimes(1)
+
+    // 非法头值：回退 Express 既有解析（不改 req.ip）
+    const reqBadHeader = {
+      headers: { 'cf-connecting-ip': 'not-an-ip' },
+      ip: '172.70.207.146'
+    }
+    middleware(reqBadHeader, {}, next)
+    expect(reqBadHeader.ip).toBe('172.70.207.146')
+
+    // 头缺失：不动 req.ip
+    const reqNoHeader = { headers: {}, ip: '104.23.251.5' }
+    middleware(reqNoHeader, {}, next)
+    expect(reqNoHeader.ip).toBe('104.23.251.5')
   })
 
   it('skips swagger ui registration in production', async () => {
