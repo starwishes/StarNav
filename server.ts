@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url'
 
 import { getSwaggerSpec } from './src/server/config/swagger.js'
 import { REAL_CLIENT_IP_HEADER, TRUST_PROXY, UPLOADS_DIR } from './src/server/config/index.js'
+import { isCloudflareAddress } from './src/server/utils/cloudflareIp.js'
 import { closeDb, forceCheckpoint } from './src/server/services/database/database.js'
 import { errorHandler } from './src/server/middleware/errorHandler.js'
 import authRoutes from './src/server/routes/auth.js'
@@ -92,16 +93,29 @@ const createConfiguredApp = async () => {
 
   app.set('trust proxy', TRUST_PROXY ? 1 : false)
 
-  // REAL_CLIENT_IP_HEADER 形态（如 Cloudflare）：在最高层用可信头覆盖 req.ip。
-  // 置于任何中间件/路由之前，限流分桶、会话与审计 IP 全部落到真实客户端 IP。
-  // 头值解析：取逗号分隔首个条目并校验为合法 IP（CF-Connecting-IP 为单 IP；
-  // 兼容“链式”头时只信任首个值），非法则回退 Express 既有解析，不抛错。
-  if (REAL_CLIENT_IP_HEADER) {
-    app.use((req, _res, next) => {
-      const raw = req.headers[REAL_CLIENT_IP_HEADER]
-      const headerValue = Array.isArray(raw) ? raw[0] : raw
-      if (typeof headerValue === 'string') {
-        const candidate = headerValue.split(',')[0].trim()
+  // 真实客户端 IP 覆盖层（置于任何中间件/路由之前，限流分桶、会话与审计 IP
+  // 全部落到真实客户端 IP）。两条路径：
+  //  1. 显式 REAL_CLIENT_IP_HEADER：读取指定头（适用于带专用客户端 IP 头的 CDN）。
+  //  2. 默认自动检测 Cloudflare：socket 对端落在 Cloudflare 官方网段内时，采信
+  //     CF-Connecting-IP（CF 只对真正经过其网络的流量设置/覆盖该头；绕过 CF 直连
+  //     源站的请求对端不在 CF 网段，伪造头不会被采信——见 utils/cloudflareIp.ts）。
+  // 头值取逗号分隔首个条目并校验为合法 IP，非法/缺失则回退 Express 既有解析。
+  app.use((req, _res, next) => {
+    let headerValue: unknown = null
+    if (REAL_CLIENT_IP_HEADER) {
+      headerValue = req.headers[REAL_CLIENT_IP_HEADER]
+    } else if (
+      req.headers['cf-connecting-ip'] &&
+      req.socket?.remoteAddress &&
+      isCloudflareAddress(req.socket.remoteAddress)
+    ) {
+      headerValue = req.headers['cf-connecting-ip']
+    }
+
+    if (headerValue !== null && headerValue !== undefined) {
+      const raw = Array.isArray(headerValue) ? headerValue[0] : headerValue
+      if (typeof raw === 'string') {
+        const candidate = raw.split(',')[0].trim()
         if (net.isIP(candidate) > 0) {
           // Express 的 req.ip 是原型 getter（从 trust proxy/XFF 惰性解析），类型声明为只读。
           // 赋实例 own 属性可遮蔽原型 getter（Express 原型无 setter，own 赋值安全生效），
@@ -109,9 +123,9 @@ const createConfiguredApp = async () => {
           ;(req as { ip: string }).ip = candidate
         }
       }
-      next()
-    })
-  }
+    }
+    next()
+  })
 
   await initService.init()
 

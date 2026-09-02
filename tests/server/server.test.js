@@ -211,6 +211,14 @@ describe('server app assembly', () => {
     runtime = null
   })
 
+  // IP 覆盖中间件是 app 上唯一的函数式 middleware（helmet/cors/json 等均为对象）
+  const findIpOverrideMiddleware = (app) => {
+    const call = app.use.mock.calls.find(
+      (c) => typeof c[0] === 'function' || typeof c[1] === 'function'
+    )
+    return typeof call?.[0] === 'function' ? call[0] : call?.[1]
+  }
+
   it('assembles middleware, routes, swagger, and caches createApp()', async () => {
     runtime = await loadServerModule({
       nodeEnv: 'test',
@@ -369,7 +377,7 @@ describe('server app assembly', () => {
     expect(runtime.app.set).toHaveBeenCalledWith('trust proxy', false)
   })
 
-  it('registers a real-client-IP override middleware only when REAL_CLIENT_IP_HEADER is set', async () => {
+  it('always registers the real-client-IP override middleware', async () => {
     runtime = await loadServerModule({ nodeEnv: 'test' })
     const plainUses = runtime.app.use.mock.calls.filter(
       (call) => typeof call[0] === 'function' || typeof call[1] === 'function'
@@ -380,22 +388,21 @@ describe('server app assembly', () => {
       (call) => typeof call[0] === 'function' || typeof call[1] === 'function'
     )
 
-    // 带 header 配置时必须额外注册一个函数中间件（IP 覆盖层）
-    expect(headerUses.length).toBeGreaterThan(plainUses.length)
+    // 显式 header 配置不改变注册数量（中间件恒在，内部双路逻辑处理两种形态）
+    expect(headerUses.length).toBe(plainUses.length)
+    expect(plainUses.length).toBeGreaterThan(0)
   })
 
   it('overrides req.ip from the configured REAL_CLIENT_IP_HEADER (first valid IP)', async () => {
     runtime = await loadServerModule({ nodeEnv: 'test', realClientIpHeader: 'cf-connecting-ip' })
 
-    const useCall = runtime.app.use.mock.calls.find(
-      (call) => typeof call[0] === 'function' || typeof call[1] === 'function'
-    )
-    const middleware = typeof useCall[0] === 'function' ? useCall[0] : useCall[1]
+    const middleware = findIpOverrideMiddleware(runtime.app)
     expect(middleware).toBeTypeOf('function')
 
     // 有效头：覆盖 req.ip 为首个 IP
     const reqWithHeader = {
       headers: { 'cf-connecting-ip': '203.0.113.7, 198.51.100.2' },
+      socket: { remoteAddress: '104.16.1.2' },
       ip: '104.22.18.44'
     }
     const next = vi.fn()
@@ -406,15 +413,56 @@ describe('server app assembly', () => {
     // 非法头值：回退 Express 既有解析（不改 req.ip）
     const reqBadHeader = {
       headers: { 'cf-connecting-ip': 'not-an-ip' },
+      socket: { remoteAddress: '104.16.1.2' },
       ip: '172.70.207.146'
     }
     middleware(reqBadHeader, {}, next)
     expect(reqBadHeader.ip).toBe('172.70.207.146')
+  })
 
-    // 头缺失：不动 req.ip
-    const reqNoHeader = { headers: {}, ip: '104.23.251.5' }
-    middleware(reqNoHeader, {}, next)
-    expect(reqNoHeader.ip).toBe('104.23.251.5')
+  it('auto-trusts CF-Connecting-IP only when the socket peer is a Cloudflare edge', async () => {
+    runtime = await loadServerModule({ nodeEnv: 'test' })
+
+    const middleware = findIpOverrideMiddleware(runtime.app)
+    expect(middleware).toBeTypeOf('function')
+
+    // socket 对端在 CF 网段 + 合法 CF-Connecting-IP → 覆盖真实 IP
+    const viaCf = {
+      headers: { 'cf-connecting-ip': '203.0.113.7' },
+      socket: { remoteAddress: '::ffff:104.23.251.5' },
+      ip: '104.23.251.5'
+    }
+    middleware(viaCf, {}, vi.fn())
+    expect(viaCf.ip).toBe('203.0.113.7')
+
+    // 直连源站（socket 非 CF 网段）+ 伪造 CF-Connecting-IP → 不采信，保持原 IP
+    const directHit = {
+      headers: { 'cf-connecting-ip': '203.0.113.66' },
+      socket: { remoteAddress: '198.51.100.10' },
+      ip: '198.51.100.10'
+    }
+    middleware(directHit, {}, vi.fn())
+    expect(directHit.ip).toBe('198.51.100.10')
+
+    // CF 网段 socket 但无 CF-Connecting-IP → 不覆盖
+    const viaCfNoHeader = {
+      headers: {},
+      socket: { remoteAddress: '172.70.207.146' },
+      ip: '172.70.207.146'
+    }
+    middleware(viaCfNoHeader, {}, vi.fn())
+    expect(viaCfNoHeader.ip).toBe('172.70.207.146')
+
+    // 显式 REAL_CLIENT_IP_HEADER 与自动检测互斥：显式配置时只读指定头（不触发 CF 自动）
+    runtime = await loadServerModule({ nodeEnv: 'test', realClientIpHeader: 'x-my-real-ip' })
+    const explicitMiddleware = findIpOverrideMiddleware(runtime.app)
+    const nonCfButHeader = {
+      headers: { 'x-my-real-ip': '203.0.113.9', 'cf-connecting-ip': '203.0.113.8' },
+      socket: { remoteAddress: '8.8.8.8' },
+      ip: '8.8.8.8'
+    }
+    explicitMiddleware(nonCfButHeader, {}, vi.fn())
+    expect(nonCfButHeader.ip).toBe('203.0.113.9')
   })
 
   it('skips swagger ui registration in production', async () => {
