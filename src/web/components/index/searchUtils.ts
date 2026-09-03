@@ -137,7 +137,7 @@ export const isSameSearchEngine = (first: SearchEngineOption, second: SearchEngi
     ? first.id === second.id
     : first.name === second.name && first.url === second.url
 
-export const normalizeSearchEngines = (engines: SearchEngineOption[]) =>
+const normalizeSearchEngines = (engines: SearchEngineOption[]) =>
   engines.slice(0, MAX_SEARCH_ENGINES).map(normalizeSearchEngine)
 
 export const loadSearchEngineState = (

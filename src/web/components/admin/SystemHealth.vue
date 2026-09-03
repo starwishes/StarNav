@@ -73,10 +73,6 @@
           <span>{{ t('health.dbWritable') }}</span>
           <b>{{ formatBooleanState(healthData.checks.database.writable, t) }}</b>
         </div>
-        <div class="metric-item metric-item-stack">
-          <span>{{ t('health.dbPath') }}</span>
-          <b>{{ healthData.checks.database.dbPath || '--' }}</b>
-        </div>
         <div
           v-if="healthData.checks.database.error"
           class="metric-item metric-item-stack metric-item-error"

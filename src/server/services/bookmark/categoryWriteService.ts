@@ -53,6 +53,18 @@ const assertValidCategoryParent = (db: SqliteDb, categoryId: number, parentId: n
 }
 
 /**
+ * 增量写校验：parentId 非 null 时父分类必须已存在（add/update 是单条增量写，
+ * 悬空父 id 会让新分类在树构建时无法挂载而静默缺失）。
+ * bulkInsert 导入不需要该校验：导入是整组替换，父引用可指向同组内待插入的分类。
+ */
+const assertParentCategoryExists = (db: SqliteDb, parentId: number) => {
+  const row = db.prepare<CategoryIdRow>('SELECT id FROM categories WHERE id = ?').get(parentId)
+  if (!row) {
+    throw errors.badRequest('父分类不存在')
+  }
+}
+
+/**
  * 导入（bulkInsert）的整组分类环校验：在内存中对 parentId 引用图做 DFS，
  * 检测自引用与 A→B→A 式环。导入是全量替换（saveData 先 DELETE 再 INSERT），
  * 环数据入库后同样会导致前端树构建丢子树，因此在写入前拒绝。
@@ -105,6 +117,9 @@ export const categoryWriteService = {
     const parentId = normalizeDbParentId(categoryData.parentId)
 
     try {
+      if (parentId !== null) {
+        assertParentCategoryExists(db, parentId)
+      }
       // categories.id 为 INTEGER PRIMARY KEY（无 AUTOINCREMENT），SQLite 自动分配 rowid，
       // 无需手动 SELECT MAX(id)+1（后者在并发写下还有重复 id 风险），与 bookmarkWriteService 一致。
       const sortOrder =
@@ -131,6 +146,8 @@ export const categoryWriteService = {
       logger.info(`分类创建成功: ${newCategory.name}`)
       return newCategory
     } catch (error) {
+      // 领域校验错误（400）直接透传（父分类不存在等），不按“创建失败”吞掉
+      if (error instanceof ApiError) throw error
       logger.error('分类创建失败', error)
       return null
     }
@@ -161,7 +178,10 @@ export const categoryWriteService = {
       }
       if (updateData.parentId !== undefined) {
         const parentId = normalizeDbParentId(updateData.parentId)
-        // 环校验依赖当前库内祖先链，无法用 Joi 纯 schema 表达，放在服务层做领域校验
+        // 父分类存在性 + 环校验均依赖库内数据，无法用 Joi 纯 schema 表达，放在服务层做领域校验
+        if (parentId !== null) {
+          assertParentCategoryExists(db, parentId)
+        }
         assertValidCategoryParent(db, id, parentId)
         fields.push('parent_id = ?')
         values.push(parentId)

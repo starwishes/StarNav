@@ -5,7 +5,9 @@ import type { AuthUser, AuthResult, User } from '@/types'
 import type { SystemSettings } from '@/api'
 import { adminApi } from '@/api/admin'
 import { authApi } from '@/api'
+import { ApiClientError } from '@/api/client'
 import { authStorage } from '@/utils/authStorage'
+import { getErrorMessage } from '@/utils/errors'
 
 export const useAdminStore = defineStore('admin', () => {
   const user = ref<AuthUser | null>(authStorage.read())
@@ -44,15 +46,21 @@ export const useAdminStore = defineStore('admin', () => {
     try {
       const data = await authApi.login({ username, password, remember })
       if (!data.user) {
-        throw new Error(
-          typeof data.error === 'string' ? data.error : i18n.global.t('auth.loginFailed')
+        // 2xx-但-envelope-无 user 的防御路径：服务端业务文案若用裸 Error 抛出，会被下方
+        // getErrorMessage 判定为网络层异常而回退成通用文案。改以 ApiClientError(0) 携带，
+        // 使其按"业务文案"放行上屏（status 0 表示非 HTTP 失败，见 errors.ts 分类规则）。
+        throw new ApiClientError(
+          typeof data.error === 'string' ? data.error : i18n.global.t('auth.loginFailed'),
+          0
         )
       }
 
       setAuth(data.user as AuthUser)
       return { success: true }
     } catch (error) {
-      const message = error instanceof Error ? error.message : i18n.global.t('auth.loginFailed')
+      // 网络层 TypeError/DOMException 等原生 Error 的 message（'Failed to fetch' 等）不上屏，
+      // 落 auth.loginFailed 本地化 fallback；ApiClientError/纯对象失败信封/显式字符串保留原文
+      const message = getErrorMessage(error, i18n.global.t('auth.loginFailed'))
       return { success: false, error: message }
     }
   }
@@ -63,7 +71,8 @@ export const useAdminStore = defineStore('admin', () => {
       await authApi.register({ username, password })
       return { success: true }
     } catch (error) {
-      const message = error instanceof Error ? error.message : i18n.global.t('auth.registerFailed')
+      // 与 login 同口径：网络层异常落 auth.registerFailed fallback，业务文案保留
+      const message = getErrorMessage(error, i18n.global.t('auth.registerFailed'))
       return { success: false, error: message }
     }
   }

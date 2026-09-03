@@ -28,7 +28,7 @@ CSP_UPGRADE_INSECURE_REQUESTS=true
 
 - **`TRUST_PROXY` 默认开启（信任一层反向代理）**：限流（登录、写操作、公开点击接口）与会话/审计日志均按 `req.ip` 计数，默认从 `X-Forwarded-For` 读取真实客户端 IP。请确认反代正确透传 `X-Forwarded-For`。**仅当应用端口直连公网（无受信任反代）时**，建议显式设置 `TRUST_PROXY=false`，避免客户端伪造 `X-Forwarded-For` 头绕过按 IP 的限流。
 - **多跳代理（如 Cloudflare → Nginx → 应用）**：当前 `trust proxy` 固定为 `1`（`server.ts` 中 `app.set('trust proxy', ...)`），只信任一跳——`req.ip` 会取 `X-Forwarded-For` 里**倒数第二跳**的地址（即离应用最近的那个反代出口，而不是真正的客户端 IP）。如需精确真实 IP，Express 支持把 `trust proxy` 配置为可信代理 IP 列表/子网（当前实现未做区分）；在保持现状的前提下，请至少确认离应用最近的一跳反代由你方可信控制并正确透传 `X-Forwarded-For`，否则基于 IP 的限流/审计仍可能被间接污染。
-- **Cloudflare（或带专用客户端 IP 头的 CDN）**：Cloudflare 到源站的 socket 是 CF 边缘 IP，真实客户端 IP 在 `CF-Connecting-IP` 头（CF 会丢弃并重写客户端伪造值）。应用**默认自动识别**：当连接对端落在 Cloudflare 官方网段内时采信 `CF-Connecting-IP`，限流分桶 / 会话 / 审计 IP 显示真实客户端 IP，无需任何配置。直连源站 IP 的请求对端不在 CF 网段，伪造头不被采信（内置网段表来自 cloudflare.com/ips，官方增补时请同步 `src/server/utils/cloudflareIp.ts`）。其他 CDN 用专用头时设 `REAL_CLIENT_IP_HEADER=<头名>`（显式配置优先于自动 CF 检测）。
+- **Cloudflare（或带专用客户端 IP 头的 CDN）**：Cloudflare 到源站的 socket 是 CF 边缘 IP，真实客户端 IP 在 `CF-Connecting-IP` 头（CF 会丢弃并重写客户端伪造值）。应用**默认自动识别**：当连接对端落在 Cloudflare 官方网段内时采信 `CF-Connecting-IP`，限流分桶 / 会话 / 审计 IP 显示真实客户端 IP，无需任何配置。直连源站 IP 的请求对端不在 CF 网段，伪造头不被采信（内置网段表来自 cloudflare.com/ips，官方增补时请同步 `src/server/utils/cloudflareIp.ts`）。**前提：应用必须直接面向 CF 边缘**——若中间还有 Nginx/cloudflared 等自控一跳，socket 对端不是 CF 网段，自动检测不会触发，请改用上一条的 `X-Forwarded-For` 语义或显式 `REAL_CLIENT_IP_HEADER`。**CF 部署勿设 `REAL_CLIENT_IP_HEADER=cf-connecting-ip`**：显式设置会关闭 socket 网段门禁、无条件采信该头（其他 CDN 无公开网段表，只能这样信任）。
 
 ## 2. 启动方式
 
@@ -177,7 +177,7 @@ npm run test:browser:extension
 npm run test:browser:all
 ```
 
-`test:browser:extension` 会覆盖首装未配置、options 连接测试/登录保存/401 失效，以及 popup 搜索/编辑/删除/重复添加检测/创建分类/添加当前页面。
+`test:browser:extension` 会覆盖首装未配置、popup 连接卡片登录/失败处理/401 失效，以及 popup 搜索/编辑/删除/重复添加检测/创建分类/添加当前页面。
 
 如果只想先跑一条不依赖真实端口监听的轻量 smoke：
 

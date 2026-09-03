@@ -6,7 +6,7 @@ const normalizeIconCandidate = (value: unknown) => {
   return value.trim()
 }
 
-export const DEFAULT_APP_ICON = '/logo.svg?v=2'
+const DEFAULT_APP_ICON = '/logo.svg?v=2'
 
 const UNAVAILABLE_ICON_CACHE_PREFIX = 'starnav:icon-unavailable:v2:'
 const UNAVAILABLE_ICON_TTL_MS = 7 * 24 * 60 * 60 * 1000

@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const state = vi.hoisted(() => ({
   routes: [] as any[],
   beforeHook: null as any,
-  siteName: 'StarNav'
+  titleRefreshHandler: null as any,
+  siteName: 'StarNav',
+  currentRoute: { meta: { titleKey: 'nav.admin' } } as any
 }))
 
 vi.mock('vue-router', () => ({
@@ -13,7 +15,8 @@ vi.mock('vue-router', () => ({
     return {
       beforeEach: (hook: unknown) => {
         state.beforeHook = hook
-      }
+      },
+      currentRoute: { value: state.currentRoute }
     }
   })
 }))
@@ -23,6 +26,9 @@ vi.mock('@/plugins/i18n', () => ({
     global: {
       t: (key: string) => `translated:${key}`
     }
+  },
+  registerTitleRefreshHandler: (handler: unknown) => {
+    state.titleRefreshHandler = handler
   }
 }))
 
@@ -41,6 +47,7 @@ describe('router bootstrap', () => {
   beforeEach(() => {
     state.routes = []
     state.beforeHook = null
+    state.titleRefreshHandler = null
     state.siteName = 'StarNav'
     document.title = ''
     localStorage.clear()
@@ -70,6 +77,19 @@ describe('router bootstrap', () => {
 
     state.beforeHook({ meta: {} }, {}, next)
     expect(document.title).toBe('StarNav')
+  })
+
+  it('recomputes the page title for the current route when locale changes', async () => {
+    // 导航后标题已更新；语言切换走 i18n 注册的刷新回调按当前路由重算（模拟 setLocale 触发）
+    await loadRouterModule()
+    const next = vi.fn()
+    state.beforeHook({ meta: { titleKey: 'nav.admin' } }, {}, next)
+    expect(document.title).toBe('translated:nav.admin - StarNav')
+
+    document.title = ''
+    expect(state.titleRefreshHandler).toBeTypeOf('function')
+    state.titleRefreshHandler()
+    expect(document.title).toBe('translated:nav.admin - StarNav')
   })
 
   it('redirects non-admin visitors away from protected admin routes', async () => {

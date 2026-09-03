@@ -243,7 +243,9 @@ const handleSubmit = async () => {
         ElMessage.success(t('auth.registerSuccess'))
         mode.value = 'login'
       } else {
-        ElMessage.error(result.error || t('admin.operationFailed'))
+        // store.register 恒返回非空 error，此兜底实际不可达；与 login 分支同口径统一为
+        // auth.registerFailed（第 23 轮审查：原用 admin.operationFailed，口径不一致）
+        ElMessage.error(result.error || t('auth.registerFailed'))
       }
     }
   } catch (error: unknown) {

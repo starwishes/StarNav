@@ -5,19 +5,14 @@
 
 export type {
   Item,
-  Bookmark,
   Category,
   SiteConfig,
   ImportedBookmarkItem,
   User,
   AuthUser,
   AuthResult,
-  Session,
   SystemSettings,
   ApiResponse,
   GenericApiResponse,
-  Pagination,
-  PaginatedResponse,
-  AuditLog,
   OpenAPI
 } from '../../shared/types/index.ts'

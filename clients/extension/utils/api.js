@@ -2,7 +2,7 @@ import { ApiError, extractApiErrorMessage, readJsonBody, unwrapApiPayload } from
 import { getMergedStorage } from './storage.js'
 import { isAllowedLoginOrigin, normalizeServerUrl } from './url.js'
 
-// 保持向后兼容:popup/options 仍从 api.js 导入
+// 保持向后兼容:popup 仍从 api.js 导入
 export { isAllowedLoginOrigin, normalizeServerUrl }
 
 let config = { serverUrl: '', token: '' }
@@ -41,6 +41,31 @@ export async function initApi(authErrorCallback) {
 }
 
 /**
+ * UI 上屏错误文案的统一判定（第 23 轮审查：与 Web 端 utils/errors.getErrorMessage
+ * 对齐，收口扩展 catch 里 `error.message || fallback` 直展原文的幸存者——网络层
+ * 'Failed to fetch' / 超时等引擎原文会突兀出现在 toast 上）。
+ *
+ * 工具模块无 i18n 上下文，fallback 由调用方按当前语言传入本地化兜底文案。
+ * 分类规则：
+ * - ApiError（api.js 对非 2xx 服务端响应抛出的业务错误，message = 服务端 envelope
+ *   业务文案）→ 原样上屏；
+ * - 显式字符串 → 原样透传；
+ * - 其余值（网络层 TypeError/DOMException、未知形态）→ 一律返回调用方 fallback，
+ *   不把 message 上屏。
+ */
+export const getErrorMessage = (error, fallback) => {
+  if (typeof error === 'string') {
+    return error || fallback
+  }
+
+  if (error instanceof ApiError) {
+    return error.message || fallback
+  }
+
+  return fallback
+}
+
+/**
  * 发送 API 请求
  */
 export async function apiRequest(endpoint, options = {}) {
@@ -53,32 +78,28 @@ export async function apiRequest(endpoint, options = {}) {
     Authorization: `Bearer ${config.token}`
   }
 
-  try {
-    const response = await fetch(
-      buildApiUrl(config.serverUrl, endpoint),
-      buildTimeoutSignal({
-        ...options,
-        headers: { ...headers, ...options.headers }
-      })
-    )
-    const data = await readJsonBody(response)
-    const message = extractApiErrorMessage(data, response.status)
+  // 注意：fetch 网络层失败（TypeError: Failed to fetch / 超时 DOMException 等）不再在
+  // 这里包成 ApiError 保留原文——那会让显示侧把引擎原文当业务文案上屏（第 23 轮审查）。
+  // 非 2xx 的服务端信封错误以 ApiError 抛出（业务文案保留）；网络错误原样上抛，由
+  // 显示侧经 getErrorMessage(error, localizedFallback) 收口为本地化兜底文案。
+  const response = await fetch(
+    buildApiUrl(config.serverUrl, endpoint),
+    buildTimeoutSignal({
+      ...options,
+      headers: { ...headers, ...options.headers }
+    })
+  )
+  const data = await readJsonBody(response)
+  const message = extractApiErrorMessage(data, response.status)
 
-    if (response.status === 401) {
-      const authError = new ApiError(message, { status: response.status, payload: data })
-      if (onAuthError) onAuthError(authError)
-      throw authError
-    }
-
-    if (!response.ok) throw new ApiError(message, { status: response.status, payload: data })
-    return unwrapApiPayload(data)
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw error
-    }
-    // 网络/超时错误：转成可读错误（不再原样吞掉再抛同一对象）
-    throw new ApiError(error?.message || '网络请求失败', {})
+  if (response.status === 401) {
+    const authError = new ApiError(message, { status: response.status, payload: data })
+    if (onAuthError) onAuthError(authError)
+    throw authError
   }
+
+  if (!response.ok) throw new ApiError(message, { status: response.status, payload: data })
+  return unwrapApiPayload(data)
 }
 
 export async function publicApiRequest(serverUrl, endpoint, options = {}) {

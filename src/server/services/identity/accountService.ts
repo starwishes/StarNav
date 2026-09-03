@@ -23,7 +23,11 @@ class AccountService {
         `
             SELECT username, level, created_at as createdAt, last_login as lastLogin
             FROM users
-            ORDER BY created_at DESC
+            -- created_at 混存 T 形（strftime，新库）与空格形（datetime('now')，旧库/迁移导入）：
+            -- 同一日期前缀下裸字符串倒序恒把 T 形排前（'T' > ' '），会漏排同日早 T 晚空格等真实
+            -- 时序，统一按 strftime('%s') 数值倒序（与 auditService.getLogs 同口径）。
+            -- users 无自增 id 列（username 为主键），同秒决胜用 username 保持全序稳定
+            ORDER BY strftime('%s', created_at) DESC, username ASC
         `
       )
       .all()

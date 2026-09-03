@@ -69,6 +69,40 @@ describe('auditService', () => {
     ])
   })
 
+  it('orders mixed space-form and T-form rows by real time, not string order', () => {
+    const db = getDb()
+    const insert = db.prepare(
+      'INSERT INTO audit_logs (username, action, details, ip, created_at) VALUES (?, ?, ?, ?, ?)'
+    )
+
+    // 同日混存两种格式时，字符串倒序恒把 T 形（'T' > ' '）排前面：space-noon 真实更晚
+    // 却被排在 t-morning 之后。数值比较必须按真实时间倒序返回 space-noon 在前。
+    insert.run('t-morning', 'older', '{}', '1.1.1.1', '2026-04-13T09:00:00.000Z')
+    insert.run('space-noon', 'newer', '{}', '1.1.1.2', '2026-04-13 12:00:00')
+    insert.run('next-day', 'latest', '{}', '1.1.1.3', '2026-04-14T00:00:00.000Z')
+
+    const page = auditService.getLogs(1, 10)
+
+    expect(page.logs.map((row) => row.username)).toEqual(['next-day', 'space-noon', 't-morning'])
+  })
+
+  it('orders same-second rows by descending id for stable pagination', () => {
+    const db = getDb()
+    const insert = db.prepare(
+      'INSERT INTO audit_logs (username, action, details, ip, created_at) VALUES (?, ?, ?, ?, ?)'
+    )
+
+    // 三行同秒（跨格式同日混存也属同秒）：strftime('%s') 相等时须按 id 倒序（后写入者在前），
+    // 否则同秒行次序随 SQLite 扫描顺序漂移，翻页会出现重复/遗漏
+    insert.run('first', 'older', '{}', '1.1.1.1', '2026-04-13 10:00:00')
+    insert.run('second', 'older', '{}', '1.1.1.1', '2026-04-13T10:00:00.000Z')
+    insert.run('third', 'newer', '{}', '1.1.1.1', '2026-04-13 10:00:00')
+
+    const page = auditService.getLogs(1, 10)
+
+    expect(page.logs.map((row) => row.username)).toEqual(['third', 'second', 'first'])
+  })
+
   it('trims old entries past the shared retention limit and clears logs', () => {
     const db = getDb()
     const insert = db.prepare(
@@ -91,5 +125,31 @@ describe('auditService', () => {
 
     expect(auditService.clear()).toBe(true)
     expect(db.prepare('SELECT COUNT(*) AS count FROM audit_logs').get().count).toBe(0)
+  })
+
+  it('clears before a cutoff across both T-form and space-form timestamps', () => {
+    const db = getDb()
+    const insert = db.prepare(
+      'INSERT INTO audit_logs (username, action, details, ip, created_at) VALUES (?, ?, ?, ?, ?)'
+    )
+
+    // T 形（新库）与空格形（旧库）在同一截止日期的早于 cutoff 时段都必须被删，
+    // 避免裸字符串比较在同一日期前缀下 'T' > ' ' 造成 T 形行漏删
+    insert.run('t-before', 'older', '{}', '1.1.1.1', '2026-04-12T05:00:00.000Z')
+    insert.run('s-before', 'older', '{}', '1.1.1.1', '2026-04-12 05:00:00')
+    insert.run('prev-day-t', 'older', '{}', '1.1.1.1', '2026-04-11T23:59:59.000Z')
+    // cutoff 之后的行必须保留
+    insert.run('t-after', 'keep', '{}', '1.1.1.1', '2026-04-12T07:00:00.000Z')
+    insert.run('s-after', 'keep', '{}', '1.1.1.1', '2026-04-12 07:00:00')
+    insert.run('next-day', 'keep', '{}', '1.1.1.1', '2026-04-13T00:00:00.000Z')
+
+    expect(auditService.clear('2026-04-12 06:00:00')).toBe(true)
+
+    expect(
+      db
+        .prepare('SELECT username FROM audit_logs ORDER BY username ASC')
+        .all()
+        .map((row) => row.username)
+    ).toEqual(['next-day', 's-after', 't-after'])
   })
 })

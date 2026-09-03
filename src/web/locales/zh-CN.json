@@ -23,7 +23,9 @@
     "ip": "IP 地址",
     "status": "状态",
     "device": "设备信息",
-    "unknown": "未知"
+    "unknown": "未知",
+    "prevPage": "上一页",
+    "nextPage": "下一页"
   },
   "nav": {
     "home": "首页",
@@ -66,7 +68,8 @@
     "clearBeforeDays": "超过{days}天",
     "clearConfirm": "确定要清空所有审计日志吗？",
     "clearBeforeConfirm": "删除 {date} 之前的日志？",
-    "clearSuccess": "日志已清空"
+    "clearSuccess": "日志已清空",
+    "clearRangeLabel": "清空日志的时间范围"
   },
   "settings": {
     "accountSettings": "账号与注册",
@@ -122,7 +125,8 @@
     "confirmAdd": "确定添加",
     "saveEdit": "保存修改",
     "closeAddDialog": "关闭添加用户弹窗",
-    "closeEditDialog": "关闭编辑用户弹窗"
+    "closeEditDialog": "关闭编辑用户弹窗",
+    "changeLevel": "修改 {name} 的等级"
   },
   "sessions": {
     "title": "会话管理",
@@ -162,7 +166,8 @@
     "exportSuccess": "导出成功",
     "importFail": "导入失败",
     "tabsLabel": "数据管理标签页",
-    "clearSearch": "清空搜索"
+    "clearSearch": "清空搜索",
+    "filterCategory": "分类筛选"
   },
   "table": {
     "id": "ID",
@@ -197,7 +202,8 @@
     "selectAll": "全选",
     "selectRow": "选择 {name}",
     "linkOk": "链接正常",
-    "linkError": "链接检测失败"
+    "linkError": "链接检测失败",
+    "rowsPerPage": "每页条数"
   },
   "time": {
     "justNow": "刚刚",
@@ -408,7 +414,6 @@
     "dbIntegrityOk": "通过",
     "dbJournalMode": "日志模式",
     "dbWritable": "文件可写",
-    "dbPath": "数据库路径",
     "uptimeDayUnit": "天",
     "uptimeHourUnit": "小时",
     "uptimeMinuteUnit": "分钟",

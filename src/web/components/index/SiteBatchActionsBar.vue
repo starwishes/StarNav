@@ -8,6 +8,7 @@
         <AppSelect
           :model-value="batchMoveTarget"
           class="batch-select"
+          :label="t('table.batchMovePlaceholder')"
           @update:model-value="onTargetChange"
         >
           <option value="" disabled>{{ t('table.batchMovePlaceholder') }}</option>

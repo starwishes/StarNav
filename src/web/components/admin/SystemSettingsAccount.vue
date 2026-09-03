@@ -22,7 +22,11 @@
       <label class="setting-block" data-setting-field="defaultUserLevel">
         <span class="setting-label">{{ t('settings.defaultLevel') }}</span>
         <span class="form-tip">{{ t('settings.defaultLevelTip') }}</span>
-        <AppSelect v-model.number="defaultUserLevel" class="settings-select">
+        <AppSelect
+          v-model.number="defaultUserLevel"
+          class="settings-select"
+          :label="t('settings.defaultLevel')"
+        >
           <option
             v-for="option in defaultLevelOptions"
             :key="String(option.value)"

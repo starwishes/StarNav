@@ -1,5 +1,9 @@
 const HTTP_PROTOCOLS = new Set(['http:', 'https:'])
 
+// 服务端认可的时区白名单（'' = 跟随访客本地时区）。UI 选项与本地化标签由
+// src/web/components/admin/systemSettingsHelpers.ts buildTimezoneOptions 维护——
+// 两者必须逐项同步：此处是校验侧的单一事实源，前端新增选项须同步加到本清单，
+// 否则保存会被 isAllowedTimezone 拒绝；本清单新增亦须同步补对应 locale label。
 export const SUPPORTED_TIMEZONES = [
   '',
   'Asia/Shanghai',

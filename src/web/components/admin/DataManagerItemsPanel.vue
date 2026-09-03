@@ -20,7 +20,11 @@
             ×
           </button>
         </label>
-        <AppSelect v-model.number="filterCategory" class="filter-select sn-inline-select">
+        <AppSelect
+          v-model.number="filterCategory"
+          class="filter-select sn-inline-select"
+          :label="t('manage.filterCategory')"
+        >
           <option :value="0">{{ t('manage.allCategories') }}</option>
           <option v-for="cat in categories" :key="cat.id" :value="cat.id">
             {{ cat.name }}

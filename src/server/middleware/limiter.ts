@@ -1,6 +1,24 @@
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
 import crypto from 'node:crypto'
 
+// 限流配置说明（express-rate-limit v8，行为以 node_modules 内 dist 源码为准）：
+//
+// - 所有桶统一 `skip: () => process.env.NODE_ENV === 'test'`：测试环境请求不计数，
+//   也不触发上游 default keyGenerator 的运行时 validations（因此真实 HTTP 测试无法
+//   观测限流键；键语义由 tests/server/middleware 对 keyGenerator 的单测与真实
+//   ipKeyGenerator 直通测试覆盖）。
+//
+// - 真实运行的已知“噪音”（有意不做 validate 关闭）：本应用只认 X-Forwarded-For /
+//   REAL_CLIENT_IP_HEADER / CF-Connecting-IP，不支持 RFC 7239 `Forwarded` 头
+//   （Express 5 本身也不解析它）。上游对未自定义 keyGenerator 的限流器，会在
+//   该限流器首个非 skip 请求上运行一次配置自检：若请求带 `Forwarded` 头且
+//   `req.ip === req.socket.remoteAddress`（TRUST_PROXY=false 直连或反代未附加
+//   X-Forwarded-For 的拓扑），会经上游默认 logger（console.error → stderr）打印一次
+//   ERR_ERL_FORWARDED_HEADER 完整堆栈；仅此一次、不抛给 Express、不影响请求处理。
+//   同理，TRUST_PROXY=false 下带 X-Forwarded-For 会打印一次 xForwardedForHeader 提示。
+//   这些告警是一次性的部署形态提示而非错误——若显式关闭 validate，反而会掩盖真实
+//   反代误配置（trust proxy 关闭时 XFF 被忽略等同类自检），故保留上游默认。
+//
 // 登录限流按 IP+用户名 复合 key：
 // 默认 TRUST_PROXY=true（信任一层反代），真实客户端 IP 取自 X-Forwarded-For；
 // 复合 key 确保即使多个用户共享同一出口 IP（反代/NAT），爆破某一账号也不会

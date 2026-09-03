@@ -7,7 +7,12 @@
           <button type="button" class="table-button danger" @click="clearLogs" :disabled="loading">
             {{ t('audit.actionClear') }}
           </button>
-          <select v-model="clearBeforeDays" class="clear-select" :disabled="loading">
+          <select
+            v-model="clearBeforeDays"
+            class="clear-select"
+            :disabled="loading"
+            :aria-label="t('audit.clearRangeLabel')"
+          >
             <option value="0">{{ t('audit.clearAll') }}</option>
             <option value="7">{{ t('audit.clearBeforeDays', { days: 7 }) }}</option>
             <option value="30">{{ t('audit.clearBeforeDays', { days: 30 }) }}</option>
@@ -73,6 +78,7 @@
           class="sn-pagination-button"
           :disabled="page <= 1"
           type="button"
+          :aria-label="t('common.prevPage')"
           @click="handlePageChange(page - 1)"
         >
           ‹
@@ -82,6 +88,7 @@
           class="sn-pagination-button"
           :disabled="page >= totalPages"
           type="button"
+          :aria-label="t('common.nextPage')"
           @click="handlePageChange(page + 1)"
         >
           ›
@@ -149,6 +156,8 @@ const clearLogs = async () => {
     const data = await adminApi.clearAuditLogs(before)
     if (data.success) {
       ElMessage.success(t('audit.clearSuccess'))
+      // 清空后行数骤减，停留在原 page 可能超过新的 totalPages 导致空页 → 回到第 1 页
+      page.value = 1
       fetchLogs()
     } else {
       ElMessage.error(data.error || t('common.fail'))

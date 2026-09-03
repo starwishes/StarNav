@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { defineComponent, h, ref, type Ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Category } from '@/types'
+import { ApiClientError } from '@/api/client'
 
 let dataStoreMock: any
 let adminStoreMock: any
@@ -189,7 +190,9 @@ describe('useSiteDrag', () => {
   })
 
   it('reports move failures and ignores drag attempts when the user is not authenticated', async () => {
-    dataStoreMock.moveItem.mockRejectedValueOnce(new Error('move failed'))
+    // 服务端业务性拒绝以 ApiClientError 抛出（client.ts 对非 2xx 的封装），message 上屏；
+    // 纯网络层原生 Error（Failed to fetch 等）自第 21 轮起不再回显原文（走 i18n fallback）
+    dataStoreMock.moveItem.mockRejectedValueOnce(new ApiClientError('move failed', 400))
 
     const { api } = mountHarness()
     api.startMove(

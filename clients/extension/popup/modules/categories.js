@@ -1,5 +1,6 @@
 import { createScopedLogger } from '../../common/logger.js'
 import { fillSelectOptions } from '../../utils/dom.js'
+import { getErrorMessage } from '../../utils/api.js'
 
 export function createCategoryController({ apiRequest, elements, state, i18n, ui }) {
   const logger = createScopedLogger('extension:categories')
@@ -81,7 +82,8 @@ export function createCategoryController({ apiRequest, elements, state, i18n, ui
         elements.bookmarkCategory.value = String(newCategory.id)
       }
     } catch (error) {
-      ui.showToast(error.message || getTexts().catAddFailed, 'error')
+      // ApiError（服务端信封）保留业务文案；网络层原生错误回退本地化文案，不展原文
+      ui.showToast(getErrorMessage(error, getTexts().catAddFailed), 'error')
     } finally {
       if (elements.submitCategory) {
         elements.submitCategory.disabled = false

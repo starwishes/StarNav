@@ -23,8 +23,7 @@ const DEFAULT_FONT_STACK =
 const CLASSIC_ACCENT = '#409eff'
 const CLASSIC_ACCENT_RGB = '64, 158, 255'
 
-export const normalizeThemeMode = (value: unknown): ThemeMode =>
-  value === 'dark' ? 'dark' : 'light'
+const normalizeThemeMode = (value: unknown): ThemeMode => (value === 'dark' ? 'dark' : 'light')
 
 const prefersDarkScheme = (): boolean => {
   if (typeof window === 'undefined') {

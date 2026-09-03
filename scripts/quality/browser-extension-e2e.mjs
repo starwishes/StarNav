@@ -43,17 +43,15 @@ const assert = (condition, message) => {
 const getPayloadData = (payload) => payload?.data || payload
 
 const extensionTexts = {
-  notConnectedTip: ['请先配置服务器地址', 'Please configure server address first'],
-  connectionFailedStatus: ['连接失败', 'Connection failed'],
-  connectedStatus: ['已连接', 'Connected'],
+  // popup 连接卡片提示（updateUI 按当前语言填充 connectTip/connectTitle）
+  connectTip: ['输入服务器地址和凭据以连接。', 'Enter your server URL and credentials to connect.'],
+  connected: ['已连接', 'Connected'],
   updateSuccess: ['更新成功', 'Updated successfully'],
   deleteSuccess: ['删除成功', 'Deleted successfully'],
   categoryCreated: ['分类创建成功', 'Category created successfully'],
   bookmarkAdded: ['书签添加成功', 'Bookmark added successfully'],
   duplicateAlert: ['该页面已收藏', 'URL already exists, cannot add duplicate'],
   loadFailed: ['加载失败', 'Failed to load'],
-  sessionExpiredStatus: ['登录已失效', 'Session expired'],
-  sessionExpiredToast: ['令牌已过期', 'Session expired'],
   popupSessionExpiredToast: ['登录已过期', 'Session expired']
 }
 
@@ -70,21 +68,22 @@ const waitForToast = async (page, expectedText) => {
   }, expectedTexts)
 }
 
-const waitForStatusText = async (page, expectedText) => {
-  const expectedTexts = toExpectedTexts(expectedText)
-
-  await page.waitForFunction((texts) => {
-    const statusText = document.getElementById('statusText')?.textContent || ''
-    return texts.some((text) => statusText.includes(text))
-  }, expectedTexts)
-}
-
 const waitForPopupReady = async (page) => {
   await page.waitForFunction(() => window.__STARNAV_POPUP_READY === true)
 }
 
-const waitForOptionsReady = async (page) => {
-  await page.waitForFunction(() => window.__STARNAV_OPTIONS_READY === true)
+const waitForNotConnected = async (page) => {
+  await page.waitForFunction(() => {
+    const card = document.getElementById('notConnected')
+    return card?.style.display !== 'none'
+  })
+}
+
+const waitForMainContent = async (page) => {
+  await page.waitForFunction(() => {
+    const main = document.getElementById('mainContent')
+    return main?.style.display !== 'none'
+  })
 }
 
 const waitForRecentBookmarks = async (page) => {
@@ -143,10 +142,7 @@ const createExpiredToken = () =>
     expiresIn: -60
   })
 
-const createExtensionUrls = (extensionId) => ({
-  popupUrl: `chrome-extension://${extensionId}/popup/popup.html`,
-  optionsUrl: `chrome-extension://${extensionId}/options/options.html`
-})
+const createPopupUrl = (extensionId) => `chrome-extension://${extensionId}/popup/popup.html`
 
 const openExtensionPage = async ({ context, url, label, dialogMode = 'dismiss' }) => {
   const page = await context.newPage()
@@ -254,7 +250,7 @@ const loadExtensionContext = async (extensionDir) => {
   // configured server origin as an optional host permission. Headless
   // Chromium cannot answer chrome.permissions.request() prompts (the call
   // hangs forever), so granting it through the profile is the only reliable
-  // way for the options-page flows to proceed without a browser UI.
+  // way for the popup connect-card login flows to fetch the server.
   const firstContext = await chromium.launchPersistentContext(userDataDir, launchOptions)
   const firstServiceWorker = await waitForServiceWorker(firstContext)
   const extensionId = new URL(firstServiceWorker.url()).host
@@ -318,7 +314,13 @@ const openBackgroundExtensionTab = async ({ context, serviceWorker, url }) => {
   return page
 }
 
-const exerciseRawFirstInstallAndOptions = async ({ context, optionsUrl, popupUrl }) => {
+const fillConnectCard = async (page) => {
+  await page.locator('#reconnectServerUrl').fill(`${baseUrl}/`)
+  await page.locator('#reconnectUsername').fill('admin')
+  await page.locator('#reconnectPassword').fill(adminPassword)
+}
+
+const exerciseRawFirstInstallAndConnect = async ({ context, popupUrl }) => {
   log('verify first-install not-connected flow on raw extension')
 
   const popupPage = await openExtensionPage({
@@ -327,60 +329,64 @@ const exerciseRawFirstInstallAndOptions = async ({ context, optionsUrl, popupUrl
     label: 'raw-popup-first-install'
   })
   await waitForPopupReady(popupPage)
-  await popupPage.waitForFunction(() => {
-    const notConnected = document.getElementById('notConnected')
-    return notConnected?.style.display !== 'none'
-  })
-  await waitForBodyText(popupPage, extensionTexts.notConnectedTip)
+  // 未配置时应停在内联连接卡片（notConnected 可见），而非主界面
+  await waitForNotConnected(popupPage)
+  await waitForBodyText(popupPage, extensionTexts.connectTip)
 
   const rawSyncStorage = await readStorage(popupPage, 'sync', ['serverUrl'])
   assert(!rawSyncStorage.serverUrl, 'raw extension unexpectedly booted with saved serverUrl')
   await popupPage.close()
 
-  log('exercise options failure handling before the extension is configured')
+  log('exercise connect failure handling before the extension is configured')
 
-  const optionsPage = await openExtensionPage({
+  const connectFailurePage = await openExtensionPage({
     context,
-    url: optionsUrl,
-    label: 'raw-options'
+    url: popupUrl,
+    label: 'raw-connect-failure'
   })
-  await waitForOptionsReady(optionsPage)
+  await waitForPopupReady(connectFailurePage)
+  await waitForNotConnected(connectFailurePage)
 
-  await optionsPage.locator('#serverUrl').fill(`${baseUrl}/`)
-  await optionsPage.locator('#username').fill('admin')
-  await optionsPage.locator('#password').fill(adminPassword)
+  await fillConnectCard(connectFailurePage)
 
-  const removeHealthRoute = await routeJsonFailure(optionsPage, '**/api/health', '健康检查暂不可用')
-  await optionsPage.locator('#testBtn').click()
-  await waitForToast(optionsPage, '健康检查暂不可用')
-  await removeHealthRoute()
-
-  const removeLoginRoute = await routeJsonFailure(optionsPage, '**/api/login', '登录服务异常')
-  await optionsPage.locator('#saveBtn').click()
-  await waitForToast(optionsPage, '登录服务异常')
-  await waitForStatusText(optionsPage, extensionTexts.connectionFailedStatus)
+  // 服务端拒绝（信封业务文案）应原样上屏；且失败不得持久化 token
+  const removeLoginRoute = await routeJsonFailure(
+    connectFailurePage,
+    '**/api/login',
+    '登录服务异常'
+  )
+  await connectFailurePage.locator('#reconnectBtn').click()
+  await waitForToast(connectFailurePage, '登录服务异常')
   await removeLoginRoute()
 
-  const localAfterFailure = await readStorage(optionsPage, 'local', ['token'])
+  const localAfterFailure = await readStorage(connectFailurePage, 'local', ['token', 'user'])
   assert(!localAfterFailure.token, 'failed login unexpectedly persisted a token')
+  assert(!localAfterFailure.user, 'failed login unexpectedly persisted a user')
 
-  log('connect the raw source extension through the real options page')
+  log('connect the raw source extension through the popup connect card')
 
-  await optionsPage.locator('#saveBtn').click()
-  await waitForStatusText(optionsPage, extensionTexts.connectedStatus)
+  // 连接成功后：进入主界面（最近书签区开始渲染），配置/凭据按 area 落库
+  await connectFailurePage.locator('#reconnectBtn').click()
+  await waitForToast(connectFailurePage, extensionTexts.connected)
+  await waitForMainContent(connectFailurePage)
+  await waitForRecentBookmarks(connectFailurePage)
 
-  const syncStorage = await readStorage(optionsPage, 'sync', ['serverUrl', 'savedUsername'])
-  const localStorage = await readStorage(optionsPage, 'local', ['token', 'user'])
+  const syncStorage = await readStorage(connectFailurePage, 'sync', ['serverUrl'])
+  const localStorage = await readStorage(connectFailurePage, 'local', [
+    'token',
+    'user',
+    'savedUsername'
+  ])
 
   assert(syncStorage.serverUrl === baseUrl, 'raw extension did not persist normalized server URL')
-  assert(syncStorage.savedUsername === 'admin', 'raw extension did not persist saved username')
+  assert(localStorage.savedUsername === 'admin', 'raw extension did not persist saved username')
   assert(
     typeof localStorage.token === 'string' && localStorage.token.length > 20,
     'raw extension did not persist auth token'
   )
   assert(localStorage.user?.login === 'admin', 'raw extension did not persist current user')
 
-  return optionsPage
+  await connectFailurePage.close()
 }
 
 const exercisePopupCrudFlows = async ({ api, token, context, popupUrl }) => {
@@ -591,30 +597,8 @@ const exercisePopupFailureHandling = async ({ context, popupUrl }) => {
   await popupFailurePage.close()
 }
 
-const exerciseOptionsAuthInvalidation = async (optionsPage) => {
-  log('exercise options auth invalidation when the saved token is expired')
-
-  await writeStorage(optionsPage, 'sync', {
-    serverUrl: baseUrl,
-    savedUsername: 'admin'
-  })
-  await writeStorage(optionsPage, 'local', {
-    token: createExpiredToken(),
-    user: { login: 'admin' }
-  })
-
-  await optionsPage.reload()
-  await waitForOptionsReady(optionsPage)
-  await waitForStatusText(optionsPage, extensionTexts.sessionExpiredStatus)
-  await waitForToast(optionsPage, extensionTexts.sessionExpiredToast)
-
-  const localStorage = await readStorage(optionsPage, 'local', ['token', 'user'])
-  assert(!localStorage.token, 'options invalidation did not clear the expired token')
-  assert(!localStorage.user, 'options invalidation did not clear the stored user')
-}
-
-const exercisePopupAuthInvalidation = async ({ context, popupUrl, storagePage }) => {
-  log('exercise popup auth invalidation when the saved token is expired')
+const exerciseSessionExpiryAndReconnect = async ({ context, popupUrl, storagePage }) => {
+  log('exercise session invalidation when the saved token is expired')
 
   await writeStorage(storagePage, 'sync', {
     serverUrl: baseUrl,
@@ -632,14 +616,29 @@ const exercisePopupAuthInvalidation = async ({ context, popupUrl, storagePage })
   })
   await waitForPopupReady(popupPage)
   await waitForToast(popupPage, extensionTexts.popupSessionExpiredToast)
-  await popupPage.waitForFunction(() => {
-    const notConnected = document.getElementById('notConnected')
-    return notConnected?.style.display !== 'none'
-  })
+  // 会话失效：回到内联连接卡片（reconnect 模式，网址/用户名预填）
+  await waitForNotConnected(popupPage)
+  await popupPage.waitForFunction(
+    ([serverUrl, username]) =>
+      document.getElementById('reconnectServerUrl')?.value === serverUrl &&
+      document.getElementById('reconnectUsername')?.value === username,
+    [baseUrl, 'admin']
+  )
 
-  const localStorage = await readStorage(popupPage, 'local', ['token', 'user'])
-  assert(!localStorage.token, 'popup invalidation did not clear the expired token')
-  assert(!localStorage.user, 'popup invalidation did not clear the stored user')
+  const localStorageAfterInvalidation = await readStorage(popupPage, 'local', ['token', 'user'])
+  assert(
+    !localStorageAfterInvalidation.token,
+    'session invalidation did not clear the expired token'
+  )
+  assert(!localStorageAfterInvalidation.user, 'session invalidation did not clear the stored user')
+
+  log('reconnect through the popup connect card after session expiry')
+
+  await popupPage.locator('#reconnectPassword').fill(adminPassword)
+  await popupPage.locator('#reconnectBtn').click()
+  await waitForToast(popupPage, extensionTexts.connected)
+  await waitForMainContent(popupPage)
+  await waitForRecentBookmarks(popupPage)
 
   await popupPage.close()
 }
@@ -653,12 +652,19 @@ async function run() {
     await seedRealisticDataset(api, token)
 
     rawRuntime = await loadExtensionContext(extensionSourceDir)
-    const { popupUrl, optionsUrl } = createExtensionUrls(rawRuntime.extensionId)
+    const popupUrl = createPopupUrl(rawRuntime.extensionId)
 
-    const optionsPage = await exerciseRawFirstInstallAndOptions({
+    // 常驻的扩展页作为跨页 storage 注入点（seed/断言 chrome.storage）
+    const storagePage = await openExtensionPage({
       context: rawRuntime.context,
-      popupUrl,
-      optionsUrl
+      url: popupUrl,
+      label: 'storage-proxy'
+    })
+    await waitForPopupReady(storagePage)
+
+    await exerciseRawFirstInstallAndConnect({
+      context: rawRuntime.context,
+      popupUrl
     })
 
     await exercisePopupCrudFlows({
@@ -681,15 +687,13 @@ async function run() {
       popupUrl
     })
 
-    await exerciseOptionsAuthInvalidation(optionsPage)
-
-    await exercisePopupAuthInvalidation({
+    await exerciseSessionExpiryAndReconnect({
       context: rawRuntime.context,
       popupUrl,
-      storagePage: optionsPage
+      storagePage
     })
 
-    await optionsPage.close()
+    await storagePage.close()
     await rawRuntime.context.close()
     rawRuntime = null
 

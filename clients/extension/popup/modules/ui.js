@@ -104,8 +104,19 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
       elements.addCategoryBtn.title = texts.newCatTip
     }
 
+    if (elements.clearSearch) {
+      // 无障碍命名随语言切换；缺 key 回退英文，避免出现 "undefined"
+      const clearSearchText = texts.clearSearch || 'Clear search'
+      elements.clearSearch.title = clearSearchText
+      elements.clearSearch.setAttribute('aria-label', clearSearchText)
+    }
+
     if (elements.searchInput) {
-      elements.searchInput.placeholder = texts.searchPlaceholder
+      const searchText = texts.searchPlaceholder || 'Search bookmarks...'
+      elements.searchInput.placeholder = searchText
+      // 搜索框无可见 label：以本地化 placeholder 文案作为无障碍名（aria-label 在
+      // 输入内容后仍保留，placeholder 仅在空值时参与命名）
+      elements.searchInput.setAttribute('aria-label', searchText)
     }
 
     if (elements.bookmarkDesc) {

@@ -49,8 +49,7 @@ describe('SystemHealth', () => {
           tables: 12,
           quickCheck: 'ok',
           journalMode: 'wal',
-          writable: true,
-          dbPath: '/data/starnav.db'
+          writable: true
         },
         cache: {
           hits: 100,
@@ -86,7 +85,6 @@ describe('SystemHealth', () => {
     expect(wrapper.text()).toContain('2 KB')
     expect(wrapper.text()).toContain('100 / 4')
     expect(wrapper.text()).toContain('translated:health.runtimeCookieAuto')
-    expect(wrapper.text()).toContain('/data/starnav.db')
     expect(wrapper.find('.refresh-button').attributes('aria-label')).toBe(
       'translated:health.refresh'
     )
@@ -112,7 +110,6 @@ describe('SystemHealth', () => {
           quickCheck: 'failed',
           journalMode: 'delete',
           writable: false,
-          dbPath: '/data/starnav.db',
           error: 'database unavailable'
         },
         cache: {
@@ -186,8 +183,7 @@ describe('SystemHealth', () => {
           tables: 1,
           quickCheck: 'ok',
           journalMode: 'wal',
-          writable: true,
-          dbPath: '/data/db'
+          writable: true
         },
         cache: { hits: 0, misses: 0, keys: 0 },
         runtime: {

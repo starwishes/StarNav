@@ -20,8 +20,12 @@ import { logger } from '../../utils/logger.js'
 /**
  * 用户不存在时也执行一次 bcrypt 比较，抹平"存在/不存在"的响应时间差，
  * 避免通过登录接口对用户名做时序枚举。
+ *
+ * cost 必须与 accountService.BCRYPT_COST（当前 12）保持一致：若两者 cost 不同，
+ * "用户不存在"路径的耗时与"存在但密码错误"路径错开，时序抹平会失效。
+ * 维护时：改动 BCRYPT_COST 后需用 bcrypt.hashSync 重新生成同等 cost 的哈希替换此处。
  */
-const DUMMY_PASSWORD_HASH = '$2b$10$xUQeeAb9wEZeDtLm8bqe/.zpXPhcXBMIY1YI1QFI6WudVVvE6JcQG'
+export const DUMMY_PASSWORD_HASH = '$2b$12$xxlG2kknrDYoFN4cJIMZnuwQKSwBDG1dUhYD8GUV/xRMTitci1oNm'
 
 export const authLifecycleService = {
   login(credentials: AuthCredentials, context: RequestContextLike = {}) {
@@ -40,13 +44,13 @@ export const authLifecycleService = {
       // 执行一次无意义比较，保持与"用户存在但密码错误"相同的时间开销
       bcrypt.compareSync(password, DUMMY_PASSWORD_HASH)
       auditService.log('login', { username, ip, userAgent, success: false })
-      logger.warn(`登录失败尝试: ${username}`)
+      logger.warn(`登录失败尝试: ${username}`, { ip })
       throw errors.unauthorized('用户名或密码错误')
     }
 
     if (!bcrypt.compareSync(password, user.password)) {
       auditService.log('login', { username, ip, userAgent, success: false })
-      logger.warn(`登录失败尝试: ${username}`)
+      logger.warn(`登录失败尝试: ${username}`, { ip })
       throw errors.unauthorized('用户名或密码错误')
     }
 
@@ -54,7 +58,7 @@ export const authLifecycleService = {
     const expiresInDays = remember ? REMEMBER_SESSION_DAYS : DEFAULT_SESSION_DAYS
     const sessionId = sessionService.create(user.username, ip, userAgent, { expiresInDays })
     accountService.updateLastLogin(user.username)
-    const token = issueToken(user, sessionId, { expiresIn: sessionDaysToExpiresIn(expiresInDays) })
+    const token = issueToken(user, { expiresIn: sessionDaysToExpiresIn(expiresInDays) }, sessionId)
 
     auditService.log('login', { username: user.username, ip, userAgent, success: true })
     logger.info(`用户登录成功: ${user.username} (remember=${remember}, ${expiresInDays}d)`)

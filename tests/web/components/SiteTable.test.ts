@@ -34,7 +34,14 @@ vi.mock('@/utils/feedback', () => ({
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: (key: string, params?: Record<string, unknown>) =>
-      params ? `${key}:${JSON.stringify(params)}` : `translated:${key}`
+      params ? `${key}:${JSON.stringify(params)}` : `translated:${key}`,
+    locale: { value: 'zh-CN' }
+  })
+}))
+
+vi.mock('@/store/config', () => ({
+  useConfigStore: () => ({
+    siteConfig: { timezone: 'Asia/Shanghai' }
   })
 }))
 

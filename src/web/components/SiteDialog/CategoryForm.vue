@@ -13,7 +13,7 @@
 
     <label v-if="mode === 'subcategory'" class="dialog-field">
       <span class="dialog-label">{{ t('category.parent') }}</span>
-      <AppSelect v-model="selectedParentId" class="dialog-select">
+      <AppSelect v-model="selectedParentId" class="dialog-select" :label="t('category.parent')">
         <option value="">{{ t('category.root') }}</option>
         <option v-for="option in categoryOptions" :key="option.value" :value="option.value">
           {{ option.label }}
@@ -55,7 +55,11 @@
 
     <label class="dialog-field">
       <span class="dialog-label">{{ t('site.permission') }}</span>
-      <AppSelect v-model.number="formData.level" class="dialog-select">
+      <AppSelect
+        v-model.number="formData.level"
+        class="dialog-select"
+        :label="t('site.permission')"
+      >
         <option :value="USER_LEVEL.GUEST">{{ t('userLevel.guest') }}</option>
         <option :value="USER_LEVEL.USER">{{ t('userLevel.user') }}</option>
         <option :value="USER_LEVEL.VIP">{{ t('userLevel.vip') }}</option>

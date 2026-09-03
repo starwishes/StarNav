@@ -24,50 +24,51 @@
                 <th class="is-center col-actions" style="width: 320px">{{ t('common.action') }}</th>
               </tr>
             </thead>
-          <tbody>
-            <tr v-for="row in users" :key="row.username">
-              <td class="col-name">{{ row.username }}</td>
-              <td class="col-meta col-level">
-                <span class="sn-badge" :class="getLevelClass(row.level)">
-                  {{ getLevelName(row.level) }}
-                </span>
-              </td>
-              <td class="col-meta col-time">{{ formatDate(row.createdAt) }}</td>
-              <td class="is-center col-actions">
-                <div class="sn-table-actions">
-                  <AppSelect
-                    class="sn-inline-select level-select"
-                    :model-value="row.level"
-                    :disabled="isLevelChangeDisabled(row.username)"
-                    @change="(value) => handleLevelChange(row, value)"
-                  >
-                    <option :value="1">{{ t('userLevel.user') }} (1)</option>
-                    <option :value="2">{{ t('userLevel.vip') }} (2)</option>
-                    <option :value="3">{{ t('userLevel.admin') }} (3)</option>
-                  </AppSelect>
+            <tbody>
+              <tr v-for="row in users" :key="row.username">
+                <td class="col-name">{{ row.username }}</td>
+                <td class="col-meta col-level">
+                  <span class="sn-badge" :class="getLevelClass(row.level)">
+                    {{ getLevelName(row.level) }}
+                  </span>
+                </td>
+                <td class="col-meta col-time">{{ formatDate(row.createdAt) }}</td>
+                <td class="is-center col-actions">
+                  <div class="sn-table-actions">
+                    <AppSelect
+                      class="sn-inline-select level-select"
+                      :label="t('users.changeLevel', { name: row.username })"
+                      :model-value="row.level"
+                      :disabled="isLevelChangeDisabled(row.username)"
+                      @change="(value) => handleLevelChange(row, value)"
+                    >
+                      <option :value="1">{{ t('userLevel.user') }} (1)</option>
+                      <option :value="2">{{ t('userLevel.vip') }} (2)</option>
+                      <option :value="3">{{ t('userLevel.admin') }} (3)</option>
+                    </AppSelect>
 
-                  <button
-                    type="button"
-                    class="table-link-button primary"
-                    :disabled="isEditDisabled(row.username, adminStore.user?.login)"
-                    @click="handleEdit(row)"
-                  >
-                    {{ t('common.edit') }}
-                  </button>
+                    <button
+                      type="button"
+                      class="table-link-button primary"
+                      :disabled="isEditDisabled(row.username, adminStore.user?.login)"
+                      @click="handleEdit(row)"
+                    >
+                      {{ t('common.edit') }}
+                    </button>
 
-                  <button
-                    type="button"
-                    class="table-link-button danger"
-                    :disabled="isDeleteDisabled(row.username, adminStore.user?.login)"
-                    @click="handleDelete(row)"
-                  >
-                    {{ t('common.delete') }}
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                    <button
+                      type="button"
+                      class="table-link-button danger"
+                      :disabled="isDeleteDisabled(row.username, adminStore.user?.login)"
+                      @click="handleDelete(row)"
+                    >
+                      {{ t('common.delete') }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -119,11 +120,7 @@ const emit = defineEmits<{
   (e: 'update-level', username: string, level: number): void
   (e: 'delete', username: string): void
   (e: 'add', payload: { username: string; password: string; level: number }): void
-  (
-    e: 'update',
-    username: string,
-    payload: { newUsername: string; password?: string }
-  ): void
+  (e: 'update', username: string, payload: { newUsername: string; password?: string }): void
 }>()
 
 const adminStore = useAdminStore()

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiClientError } from '@/api/client'
 
 const mocks = vi.hoisted(() => ({
   fetchUsers: vi.fn(),
@@ -84,12 +85,24 @@ describe('useUserManagement', () => {
   })
 
   it('surfaces thrown API errors when adding a user', async () => {
-    mocks.addUser.mockRejectedValue(new Error('ERR_PASSWORD_WEAK'))
+    // 服务端业务性拒绝以 ApiClientError 抛出（client.ts 封装非 2xx），message 上屏
+    mocks.addUser.mockRejectedValue(new ApiClientError('密码不满足要求', 400))
 
     const { handleAddUser } = useUserManagement()
     await handleAddUser({ username: 'bob', password: 'weak', level: 1 })
 
-    expect(mocks.messageError).toHaveBeenCalledWith('ERR_PASSWORD_WEAK')
+    expect(mocks.messageError).toHaveBeenCalledWith('密码不满足要求')
+    expect(mocks.fetchUsers).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the localized toast for network-layer errors', async () => {
+    // 网络层原生 Error（Failed to fetch 等）不回显原文，走调用方 i18n fallback
+    mocks.addUser.mockRejectedValue(new TypeError('Failed to fetch'))
+
+    const { handleAddUser } = useUserManagement()
+    await handleAddUser({ username: 'bob', password: 'secret', level: 1 })
+
+    expect(mocks.messageError).toHaveBeenCalledWith('translated:admin.operationFailed')
     expect(mocks.fetchUsers).not.toHaveBeenCalled()
   })
 

@@ -51,6 +51,19 @@ const clearAuthStorage = () => {
   window.dispatchEvent(new Event(AUTH_CLEARED_EVENT))
 }
 
+const AUTH_LOGIN_ENDPOINT = '/login'
+
+/**
+ * 401 响应是否应清空本地登录态：
+ * - POST /login 的 401 表示"密码错误"（服务端业务语义）。此时本地可能仍存在有效会话
+ *   （已登录用户换号输错密码），清空会把用户误登出，而 HttpOnly 会话 cookie 仍有效 →
+ *   豁免不清。
+ * - 其余 401（会话过期/凭证失效）仅在本地确有登录态时才清空，避免对游客请求做无意义
+ *   的清空与 AUTH_CLEARED_EVENT 广播。
+ */
+const shouldClearAuthOn401 = (endpoint: string) =>
+  endpoint !== AUTH_LOGIN_ENDPOINT && authStorage.read() !== null
+
 const buildHeaders = (headers?: HeadersInit) => {
   const resolved = new Headers(headers)
 
@@ -106,7 +119,7 @@ async function client<T>(endpoint: string, options: RequestInit = {}): Promise<T
     const response = await fetch(`${BASE_URL}${endpoint}`, config)
 
     if (!response.ok) {
-      if (response.status === 401) {
+      if (response.status === 401 && shouldClearAuthOn401(endpoint)) {
         clearAuthStorage()
       }
 
@@ -132,7 +145,7 @@ async function clientBlob(endpoint: string, options: RequestInit = {}): Promise<
     const response = await fetch(`${BASE_URL}${endpoint}`, config)
 
     if (!response.ok) {
-      if (response.status === 401) {
+      if (response.status === 401 && shouldClearAuthOn401(endpoint)) {
         clearAuthStorage()
       }
 

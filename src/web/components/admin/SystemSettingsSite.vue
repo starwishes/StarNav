@@ -20,7 +20,7 @@
       <label class="setting-block" data-setting-field="timezone">
         <span class="setting-label">{{ t('settings.timezone') }}</span>
         <span class="form-tip">{{ t('settings.timezoneTip') }}</span>
-        <AppSelect v-model="timezone" class="settings-select">
+        <AppSelect v-model="timezone" class="settings-select" :label="t('settings.timezone')">
           <option
             v-for="option in timezoneOptions"
             :key="option.value || 'local'"

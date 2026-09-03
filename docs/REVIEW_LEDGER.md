@@ -2,36 +2,46 @@
 
 > 目的：记录多轮全库审查的发现、修复与遗留项，供下一轮无缝衔接。
 > 流程与维度定义见 [REVIEW_CHECKLIST.md](./REVIEW_CHECKLIST.md)。
-> 基线版本 **1.0.7**（`package.json` 为准）。历轮修复经本地 release:dry-run 11/11 门禁验证后推送 release。
+> 基线版本 **1.0.7**（`package.json` 为准）。17 轮全库审查 → v1.0.7 release（`150e19a`）已发布，后续运维提交（HEALTHCHECK CI 修复、`REAL_CLIENT_IP_HEADER`、Cloudflare 真实 IP 自动检测）直接推 main。origin/main = `71eea62`。
 
 ## 当前状态
 
-| 提交      | 内容                                              |
-| --------- | ------------------------------------------------- |
-| `7f365c1` | 第 1 轮审查修复（全库安全/正确性 + 构建层）       |
-| `498c4fa` | 新增 `docs/REVIEW_CHECKLIST.md`                   |
-| `20df7da` | 第 2 轮修复（安全/i18n/健壮性，18 项）            |
-| `f757918` | 第 3 轮修复（整洁度/科学度，22 项）               |
-| `3db9784` | 第 4 轮修复（幸存者扫描，20 项）                  |
-| `fcf54e5` | 测试性能：纯 Node 测试改走 node 环境（墙钟 -40%） |
-| `a712108` | 第 5 轮修复（架构级/运维硬化，17 项）             |
-| `9ac2467` | 第 6 轮修复（变更回归/测试质量，15 项）           |
-| `5778a77` | 删除 PV/UV 采集（统计面板已下线）                 |
-| `f2a4c6a` | 组件拆分专项（3 大组件 → 9 子组件）               |
-| `fa0f4fc` | 第 7 轮修复（死 key/类型/文档清理，12 项）        |
-| `3385eb1` | 第 8 轮修复（UX/可访问性/扩展/构建，30 项）       |
-| `864e9eb` | TRUST_PROXY 默认开启（信任一层反代）              |
-| `c33d505` | 第 9 轮修复（TRUST_PROXY 告警/a11y 测试，15 项）  |
-| `5b99dbb` | 第 10 轮修复（数据层/性能/API 契约，18 项）       |
-| `dff7b94` | 第 11 轮修复（前端运行时/安全纵深/测试，17 项）   |
-| `cfdff50` | 第 12 轮修复（扩展生命周期/图标/主题，20 项）     |
-| `582efed` | 第 13 轮修复（i18n parity/配置文档/集成，15 项）  |
-| `017d11a` | 第 14 轮修复（可访问性/移动端/性能，25 项）       |
-| `892a06e` | 第 15 轮修复（错误纵深/迁移完整性，14 项）        |
-| `3fd3c21` | 第 16 轮修复（供应链/API docs 暴露，19 项）       |
-| `f2cb153` | 第 17 轮收口修复（发布就绪，7 项）                |
+| 提交      | 内容                                                                                                      |
+| --------- | --------------------------------------------------------------------------------------------------------- |
+| `7f365c1` | 第 1 轮审查修复（全库安全/正确性 + 构建层）                                                               |
+| `498c4fa` | 新增 `docs/REVIEW_CHECKLIST.md`                                                                           |
+| `20df7da` | 第 2 轮修复（安全/i18n/健壮性，18 项）                                                                    |
+| `f757918` | 第 3 轮修复（整洁度/科学度，22 项）                                                                       |
+| `3db9784` | 第 4 轮修复（幸存者扫描，20 项）                                                                          |
+| `fcf54e5` | 测试性能：纯 Node 测试改走 node 环境（墙钟 -40%）                                                         |
+| `a712108` | 第 5 轮修复（架构级/运维硬化，17 项）                                                                     |
+| `9ac2467` | 第 6 轮修复（变更回归/测试质量，15 项）                                                                   |
+| `5778a77` | 删除 PV/UV 采集（统计面板已下线）                                                                         |
+| `f2a4c6a` | 组件拆分专项（3 大组件 → 9 子组件）                                                                       |
+| `fa0f4fc` | 第 7 轮修复（死 key/类型/文档清理，12 项）                                                                |
+| `3385eb1` | 第 8 轮修复（UX/可访问性/扩展/构建，30 项）                                                               |
+| `864e9eb` | TRUST_PROXY 默认开启（信任一层反代）                                                                      |
+| `c33d505` | 第 9 轮修复（TRUST_PROXY 告警/a11y 测试，15 项）                                                          |
+| `5b99dbb` | 第 10 轮修复（数据层/性能/API 契约，18 项）                                                               |
+| `dff7b94` | 第 11 轮修复（前端运行时/安全纵深/测试，17 项）                                                           |
+| `cfdff50` | 第 12 轮修复（扩展生命周期/图标/主题，20 项）                                                             |
+| `582efed` | 第 13 轮修复（i18n parity/配置文档/集成，15 项）                                                          |
+| `017d11a` | 第 14 轮修复（可访问性/移动端/性能，25 项）                                                               |
+| `892a06e` | 第 15 轮修复（错误纵深/迁移完整性，14 项）                                                                |
+| `3fd3c21` | 第 16 轮修复（供应链/API docs 暴露，19 项）                                                               |
+| `f2cb153` | 第 17 轮收口修复（发布就绪，7 项）                                                                        |
+| `150e19a` | **v1.0.7 release**（squash 40 提交为单 release 提交，371 文件）                                           |
+| `1c3dd34` | release 后运维：HEALTHCHECK CMD 改 JSON 数组（CI hadolint DL3025 修复）                                   |
+| `371fcea` | release 后运维：`REAL_CLIENT_IP_HEADER`（CDN 专用客户端 IP 头支持）                                       |
+| `71eea62` | release 后运维：Cloudflare 真实 IP 自动检测（socket 对端 ∈ CF 官方网段才采信 `CF-Connecting-IP`，零配置） |
+| `7725ebe` | 第 18 轮修复（CF IP 链路专项：req.ip 赋值 500 High + 解析收紧 + 文档精确性）                              |
+| `7f4e527` | 第 19 轮修复（A+B：真机 IP 覆盖 smoke 用例、死代码/死 key/死导出清理、limiter 测试保真度）                |
+| `dd45d41` | 第 20 轮修复（A+B：SSRF mapped v6 封锁、dummy hash cost12、契约死类型/死 UI 行、写路径错误文案等 12 项）  |
+| `9751566` | 第 21 轮修复（A+B：SSRF compat/NAT64/6to4 封锁、SW denylist、错误文案统一等 15 项 + 历轮排除复核落地）    |
+| `df4c7a3` | 第 22 轮修复（A+B：login catch 收口、local-use NAT64 封锁、AppSelect a11y 名、排序决胜键等 7 项）         |
+| 未提交    | 第 23 轮修复（A+B：qs 6.16.0、NAT64 local-use /48 整块封锁、扩展 E2E 重写、网络错误文案收口等 10 项）     |
 
-验证门槛：`npm run typecheck`、`npm run lint:check`、`npm run test:fast`、`npm run versions:check`、`npm run extension:sync-common:check`、`npm run openapi:types:check`、`npm run build`。`test:fast` 现为 **191 文件 / 1026 测试**（会排除 `tests/integration/**` 与 `tests/smoke/runtime.smoke.test.js`，另手动跑 = integration + smoke 15）。
+验证门槛：`npm run typecheck`、`npm run lint:check`、`npm run test:fast`、`npm run versions:check`、`npm run extension:sync-common:check`、`npm run openapi:types:check`、`npm run build`。`test:fast` 现为 **197 文件 / 1089 测试**（会排除 `tests/integration/**` 与 `tests/smoke/runtime.smoke.test.js`，另手动跑 = integration + smoke 16）。
 
 ## 第 1 轮（`7f365c1`，前序会话完成）
 
@@ -269,6 +279,107 @@
 - **P2** TUNA 镜像文档对齐实际（改 docs 不改脚本）；release-dry-run 移除残留 gh release view 检查（改注释）；release.yml `inputs.version` 加 semver 正则校验；bootstrap cost 覆盖测试。
 - 程序性阻断（非代码）：main 领先 origin 38 提交，16 轮修复从未经真实 CI/Release/Docker Publish——推送触发首次全链路由用户执行。
 
+## v1.0.7 发布与后续运维（`150e19a` → `71eea62`，2026-09-02）
+
+- **发布**：40 本地提交 squash 为单 release 提交 `150e19a`（371 文件，+10715/-5813），版本 1.0.6→1.0.7（四方对齐）。本地 CI 等价 13 项门禁全绿（含 coverage 超阈值、docker:smoke/browser regression 在 WSL 闭环实测）。CI 首次失败（hadolint 新版 DL3025）→ `1c3dd34` 修复 HEALTHCHECK 为 JSON 数组 → **CI/Release/Docker Publish v1.0.7 全绿**。
+- **用户运维问题**（Cloudflare 部署）：会话表显示 CF 边缘 IP（104.22.x 等）而非真实客户端 IP。`371fcea` 加显式 `REAL_CLIENT_IP_HEADER`；`71eea62` 改为**默认自动检测**——新增 `src/server/utils/cloudflareIp.ts`（IPv4/IPv6 CIDR 匹配 CF 官方网段，含 `::ffff:` IPv4-mapped 归一化），socket 对端 ∈ CF 网段才采信 `CF-Connecting-IP`（CF 覆盖伪造值；绕过 CF 直连的对端不在网段，伪造无效）。`REAL_CLIENT_IP_HEADER` 对其他 CDN 保留优先。
+- **待办**：ghcr `v1.0.7` 镜像为旧代码（版本未变自动发布跳过），需手动 Run Docker Publish（version=1.0.7, source_ref=main）或 bump 1.0.8 后重新部署，CF 真实 IP 才生效。工具约定：**push 需逐次明确授权**。
+
+## 第 18 轮（post-release CF IP 链路专项，视角：新增代码深审 + 独立复现）
+
+Pi / Kimi Code / DeepSeek 三 agent 独立审查 post-release 三个从未被审查的提交（`1c3dd34` HEALTHCHECK JSON、`371fcea` REAL_CLIENT_IP_HEADER、`71eea62` CF 真实 IP 自动检测），重点 `src/server/utils/cloudflareIp.ts` + `server.ts` IP 覆盖中间件。
+
+**H**（Kimi + DeepSeek 独立复现 + 我方真实 Express 实测）：`server.ts` 用 `(req).ip = candidate` 覆盖 req.ip——Express 5 用 `defineGetter` 把 `req.ip` 定义为原型 getter-only accessor（无 setter），ESM 严格模式下直接赋值抛 `TypeError: Cannot set property ip ... which has only a getter` → **500**。后果：CF 部署凡带合法 `CF-Connecting-IP` 的请求全部 500（整个 CF 真实 IP 特性=全站不可用）。**漏网原因**：测试用 plain-object mock req（自带 own 可写 ip），永远复现不了真实 IncomingMessage 的原型 getter 抛错。修复：`Object.defineProperty(req, 'ip', { value, configurable: true, writable: true })`；补真实 Express 形态（原型 getter-only ip + 无 own ip）回归测试，先临时还原代码确认该测试必红再修复。
+
+**M/L**：`parseIpv4Octets`/`parseIpv6ToBigInt` 用 `Number.parseInt` 部分解析（`1.2.3.04`/`12zz`/`0x1`/`1::1::1` 双压缩均被接受，与 `net.isIP` 语义不一致）→ 改整段正则校验（IPv4 拒绝前导零/尾随空白/字母后缀；hex 组 `^[0-9a-f]{1,4}$`；拒绝二次 `::`）；`isCloudflareAddress` IPv6 分支统一走 bigint + IPv4-mapped 位级判定（`>>32==0xffff && >>48==0`），修复 hex 记法 mapped（`::ffff:6810:102`）漏判与 dotted 分支过早 return 的形态。注释/文档精确性：config 显式头示例 `cf-connecting-ip` 改 `x-real-ip` + 明示"CF 部署勿设置（会关闭网段门禁盲信头值）"；OPERATIONS/.env.example 补多跳拓扑前提；cloudflareIp.ts 头注释补 WARP 边界限定语。补 13 项 cloudflareIp 边界测试。
+
+**排除**：`.env.example` 裸 REAL_CLIENT_IP_HEADER（实际有 `#`，Kimi 误报）；parseInt 宽松在生产被 `net.isIP` 门控不可达；Pi 判 req.ip 遮蔽"实测安全"与实测矛盾不采信。
+
+**结论**：CF 真实 IP 特性修复前不可发布——ghcr v1.0.7 仍是旧代码，重发镜像前必须先落地本轮 High 修复。
+
+## 第 19 轮（基线 `7725ebe`，视角：第 18 轮修复回归 + mock-现实偏差专项 + 前端/共享一致性）
+
+Pi / Kimi Code 独立全库审查 + DeepSeek 聚焦复核（第 18 轮修复正确性；DeepSeek 两次会话被取消，范围已由 Pi 真实 Express 5.2.1 复现覆盖，按规则跳过）。
+
+**共识**：第 18 轮 High 修复正确无回归——defineProperty own 数据属性遮蔽原型 getter 稳定生效、注册顺序恒在 limiter/session/audit 消费方之前、`req.ips` 全库零消费者（覆盖后与 req.ip 分离但无害）、新回归测试有杀伤力非假绿、全库无其他 req 原型 getter 赋值点。修复工作流（CodeBuddy 子对话）：
+
+- **A1** smoke 真机盲区：`runtime.smoke.test.js` 加真实 HTTP 用例——带 `REAL_CLIENT_IP_HEADER=x-smoke-client-ip` 登录后断言 **session 表 + audit 表** 落库 IP 为覆盖值（loopback 无法复现 CF 自动检测分支，该门禁由 server.test.js 直调用例覆盖）。5/5 过。
+- **A2/A3/A4** 死代码：`useMainStore` 整个 store 删除（全库零 import）、扩展 `serverUrlPlaceholder` 死 key（zh+en）删除、`FRONTEND_SEARCH_SUGGESTION_PROVIDER_TYPES` 运行时死导出删除。
+- **A5** 单文件内使用却 export 的 10 个 helper/常量去 export（flattenNodes/extractNodeText/getEngineProxyIcon/getEngineIconCandidates/normalizeSearchEngines/collectBranchItems/DEFAULT_APP_ICON/SITE_CARD_MIN_WIDTH/SITE_GRID_GAP/SITE_GRID_OVERSCAN_ROWS/normalizeThemeMode；同文件被跨文件引用的兄弟导出保留）。
+- **A6** `realClientIpOverride` 提取为命名中间件（`server.ts`），server.test.js 改按 `函数名 === 'realClientIpOverride'` 精确定位，摆脱"首个函数式 use"顺序耦合。
+- **B1** 新 `tests/server/middleware/ipKeyGenerator.test.js`（不 mock express-rate-limit）：真实 `ipKeyGenerator` 的 IPv6 /56 归一、跨 /56 分桶、IPv4-mapped（dotted+hex）→ IPv4、纯 IPv4 透传 4 用例。
+- **B2** limiter.ts 头注释：说明全部桶 `skip: NODE_ENV==='test'` 意图 + 上游 v8 对 RFC 7239 `Forwarded` 头/直连拓扑的 `ERR_ERL_FORWARDED_HEADER` 自检告警经 stderr 每限流器至多一次、不抛 Express；本应用不支持 Forwarded，有意不做 validate 关闭（不掩盖反代误配置）。不改安全语义。
+- **排除**：8 个疑似未引用 i18n key 核实均为间接引用；URL sink/v-html/竞态守卫在位；limiter/requestOrigin/authCookie 的 mock 形态与真实语义一致；query `fromEntries` 语义差异为 Info。
+- **未做**：时区双事实源（`SUPPORTED_TIMEZONES` vs `buildTimezoneOptions` 有 locale label 需求无法机械合一）、`findIpOverrideMiddleware` 以外其余启发式——均记 Low 观察，留待后续。
+
+**结论**：第 18 轮修复正确；本轮 14 项 Low/Info（死代码为主）已清，无新 High/M。验证门槛全绿（typecheck/lint/test:fast 193 文件 1048 测试/extension sync/openapi）。
+
+## 第 20 轮（基线 `7f4e527`，视角：后端边界/错误路径 + 契约一致性 + 运维硬化 + 幸存者复扫）
+
+Pi / Kimi / CodeBuddy 三 agent 独立全库审查；DeepSeek 本轮会话连续取消按规则跳过（M 项由 Pi/CodeBuddy 双报 + 我方源码/实证核实）。**2 M 无 High**，均经修复子对话落地（CodeBuddy 独立子对话）：
+
+- **M1 SSRF 封锁被 IPv4-mapped IPv6 绕过**：`networkTargetSafety.ts` `isPrivateIpv6Address` 不识别 `::ffff:0:0/96`，`resolvePublicHttpTarget` 放行 `::ffff:127.0.0.1`（环回）与 `::ffff:169.254.169.254`（云元数据，实测连通）。修复：位级判定解出内嵌 IPv4（复用 cloudflareIp 解析），mapped 私网在 resolve 阶段即拒 + 4 用例测试。
+- **M2 登录时序抹平失效**：`authLifecycleService` DUMMY 哈希 `$2b$10$` vs 账号 `BCRYPT_COST=12`，两条失败路径差 ~4 倍 bcrypt 耗时。修复：dummy 升真实 cost12 + 注释同步维护 + 导出锁定 + hashCost 测试。
+- **B1-B12**：共享死契约类型删除（`avatar_url` 前提不成立保留+注释）、SystemHealth dbPath 死行/类型/locale、写路径 toast 非 ApiClientError 走固定文案、`POST /login` 401 豁免清本地态、语言切换刷新 document.title（registerTitleRefreshHandler）、`formatRelativeDate` 兜底对齐配置时区、`TOKEN_EXPIRES_IN` 删兜底改必填、AuditLog 清空后回第 1 页、悬空 parentId 增量写校验（含 add 吞错 ApiError 透传修正）、`auditService.clear` 改 `strftime('%s')` 数值比较、listen error 走 `shutdown`、登录失败日志补 IP 上下文。
+- **结论**：第 19 轮变更三方复核零回归；门禁全绿（typecheck/lint/test:fast 195 文件 1064 测试/openapi）。
+
+## 第 21 轮（基线 `dd45d41`，视角：第 20 轮回归 + 幸存者 + 历轮"排除项"复核翻案）
+
+Kimi / DeepSeek 独立审查 + Pi（本轮会话异常多次，后经主会话转贴其完整报告）+ CodeBuddy 复核。**重点教训**：第 20/21 轮连续证明"历轮把 SSRF 封锁列为已排除"不可靠——第 20 轮 mapped v6、第 21 轮 IPv4-compatible/NAT64/6to4 都是"SSRF 三面排除"（第 11/16 轮）漏网同族。故按用户指示系统翻查历轮"核查后不报"项，发现 3 项实质遗漏。
+
+**第 20 轮修复回归**：12 项改动零回归（Pi 逐点实证 14 项、Kimi/DeepSeek 复核一致）。
+
+**A 档新增/翻案（安全/正确性）**
+
+- **SSRF 封锁补锁三类内嵌 IPv4**（Pi 21 + 复核实证）：`networkTargetSafety.ts` 重构为单一 `extractEmbeddedIpv4Uint` 位级判定，在 mapped `::ffff:0:0/96` 之外补 **IPv4-compatible `::/96`**、**NAT64 `64:ff9b::/96`**（含云元数据形态）、**6to4 `2002::/16`**——解出内嵌 IPv4 后统一过 `isPrivateIpv4Address`；补 4 用例（8/8）。实测确认 WHATWG URL 特殊 IP 记法（127.1/十进制/0x/前导零/尾点/`@` 双向混淆）全部 BLOCKED（11/16 轮 URL 归一化面排除成立）；favicon 外呼仅把 hostname 当固定上游 query 参数（SSRF 排除成立）。
+- **navigateFallback denylist 翻案（第 14 轮排除漏查）**：产物 NavigationRoute 无任何 denylist，SW 会把 `/api/**`、`/uploads/**`、`/api-docs.json` fallback 成 index.html（JSON 变 HTML，API_DOCS_PUBLIC 时 /api-docs.json 无法直连）。vite workbox 加 `navigateFallbackDenylist: [/^\/api\//, /^\/uploads\//, /^\/api-docs/]` + build 产物验证。
+- **`auditService.getLogs` 跨格式失序（第 20 轮 clear 同源读侧遗漏）**：`ORDER BY created_at DESC` 字符串比较在 T 形/空格形混存同日会错排 → 改 `ORDER BY strftime('%s', created_at) DESC` 与 clear/prune 同口径 + 测试。
+- **`getErrorMessage` 幸存者统一（Kimi 21 主发现）**：14+ composable/组件调用点对任意 Error 原文上屏（网络层 'Failed to fetch' 中文 UI 突兀）→ `utils/errors.ts` 统一判定（ApiClientError 保留业务文案 / 纯对象服务端信封上屏 error / 其余走调用方 i18n fallback，含 plain-object 检测防 DOMException 误判）；data.ts `getWriteErrorMessage` 合并复用 + 补 logger.debug 留痕；新 errors.test.ts 5 用例 + 4 个既有测试改建模 ApiClientError。
+
+**B 档（清理/测试/注释）**：SystemHealth fixture dbPath 残留 2 处删除；formatRelativeDate Intl 分支补测试（新 siteTableHelpers.test.ts）；i18n setLocale→title 接线补测试；`Bookmark = Item` 死别名、`User.created_at` 死字段删除；AuditLog/SiteTable 分页按钮 + select 补 aria-label（本地化 key）；server.ts listen-error 注释按真实路径重写；hashCost 测试断言对齐 `BCRYPT_COST`；networkTargetSafety IPv6 hostname `[]` 死路径注释精确化；时区双事实源互引注释（前端 9 = 服务端 9，当前一致但无共享）。
+
+**历轮排除复核结论**：`.catch(()=>{})` 全库 7 处均 fire-and-forget；pruneAuditLogs/backupThrottle 无格式问题；pendingCapture/UserDialog.scss/swagger↔API.md/动态 key/`--el-*`/`--ui-font-display`/iconfont/Statistics 消费者均真实存在——仅上述 3 项翻案。
+
+**结论**：第 20 轮零回归；本轮 4 A + 11 B（含 3 项排除翻案）已落地；门禁全绿（typecheck/lint/test:fast 197 文件 1079 测试/openapi）。
+
+## 第 22 轮（基线 `9751566`，视角：第 21 轮回归 + 幸存者复扫）
+
+Pi / Kimi 独立审查 + DeepSeek 聚焦复核（经转贴报告）。**第 21 轮零回归**：Pi 逐位验证 embed-v4 位级数学（NAT64/6to4/compat 掩码精确、分支互斥、`::1` 无冲突）；Kimi 验证 getErrorMessage 判定/12 调用点/locale 差集/aria-label 全对；DeepSeek 复核 4 点全部成立。
+
+**修复项（CodeBuddy 子对话 A+B）**
+
+- **A1**（Kimi M）`admin.ts` 登录/注册 catch 用 `error instanceof Error ? error.message` 会让网络层 'Failed to fetch' 原文上屏（LoginDialog）——21 轮 12 处收口漏网。改 `getErrorMessage(error, fallback)` + 内部业务失败载体改 `ApiClientError(0)`（普通 Error 会被判定为网络异常而吞掉）。补 8 用例。
+- **A2**（Pi L，已实测）local-use NAT64 `64:ff9b:1::/48`（RFC 6052 §3.1 local-use / RFC 8215）漏锁——well-known `/96` 已锁但 local-use 前缀环回/元数据 ALLOWED。按位级 `value>>80 === 0x64ff9b0001` 对整块 `/48` 门禁（v4 恒在低 32 位，注释引 RFC 8215 checksum-neutral 任意 /96）。补 2 用例。
+- **A3**（Pi L）audit `ORDER BY strftime` 精度整秒无决胜键 → 加 `, id DESC`。
+- **A4**（Kimi L）`accountService` users 列表 `ORDER BY created_at DESC` 与 audit 同族跨格式 → 改 `strftime` + username 决胜（users 表 username 主键无自增 id）。
+- **B1**（Kimi M）AppSelect combobox 全族 15 处无 author-provided name（内容不计 accName）→ 组件加 `label` prop + 逐个调用方补 `aria-label`（新增 table.rowsPerPage/manage.filterCategory/users.changeLevel 双语 key）+ 3 用例。
+- **B2**（Kimi L）`formatRelativeDate` 缺 NaN 守卫（垃圾 lastVisited → Intl.format(Invalid Date) 抛 RangeError 崩整表）→ `Number.isNaN(date.getTime())` 返回 '-'，与 formatDateTime 对齐。
+- **B3**（DeepSeek L）data.ts 5 处 2xx-but-falsy 防御路径 `new Error(t('feedback.*Failed'))` 被 getErrorMessage 判定为网络异常吞掉 → 改 `ApiClientError(0)` 保留细分业务文案。
+
+**结论**：第 21 轮零回归；本轮 4 A + 3 B 落地；门禁全绿（typecheck/lint/test:fast 197 文件 1089 测试）。
+
+## 第 23 轮（基线 `df4c7a3`，视角：供应链修正 + SSRF 精确性翻案 + 扩展 E2E 腐烂 + 扩展文案/a11y/文档）
+
+Pi / Kimi 独立审查 + 主会话修复。修复项 CodeBuddy 主会话直接落地（10 项 = 2 M + 1 安全 L + 7 B 档）。
+
+**A 档**
+
+- **A1（M）qs override 钉死脆弱版**：`overrides.qs` 6.15.3 恰落 GHSA-x5fp-wj9c-mxmx / GHSA-4mjr-xmp4-gh2g（修复版 6.16.0）。升 `6.16.0`（registry 最新 = 6.16.0），npm install 后 lock/node_modules qs 均解析 6.16.0，`audit:prod` 恢复 **0**。
+- **A2（安全 L，Pi+Kimi 双报，修正第 22 轮 A2）**：NAT64 local-use `64:ff9b:1::/48` 旧门禁按"低 32 位即 v4"提取——RFC 6052 仅 /96 NSP 如此，n=48 布局 v4 位窗更高、低 32 位是转换器忽略的 suffix，可构造低 32 位为公网 IP、真实内嵌 127.0.0.1 的地址骗过放行。改为对整块 `/48` **直接封锁**（`isPrivateIpv6Address` 前缀位级判断，不再尝试解 v4）；well-known `64:ff9b::/96`（固定 n=96，v4 恒低 32 位）保留提取逻辑。同步修 `extractEmbeddedIpv4Uint` 头注释（删除"任意更短 /96 NSP…v4 均放低 32 位"的错误表述）。测试翻案：原"local-use 内嵌公网 v4 放行"用例改断言 BLOCKED，新增 n=48 布局构造地址（`64:ff9b:1:7f:0:100:2a2a:2a2a`）BLOCKED；well-known /96 内嵌 8.8.8.8 仍 ALLOWED 用例保留。10/10 过。
+- **A3（M）扩展浏览器级 E2E 腐烂**：`browser-extension-e2e.mjs` 引用已删 options 页（67c4ffe）、`statusText` 元素与旧文案，必然超时失败。CI 不引用该脚本（ci.yml 无 browser 门禁），包内脚本按 **选项 (a) 重写**对齐当前 UI：options 流程整体改写为 popup 内联连接卡片（`reconnectServerUrl/Username/Password` + `reconnectBtn`），移除 `waitForOptionsReady/waitForStatusText/optionsUrl` 与 options 失效流程，新增 session 过期→连接卡片重连闭环断言；其余 popup 搜索/编辑/删除/捕获当前页/重复检测/失败处理流程保留。所有选择器逐一与 popup.html 核对（无缺失 id），`node --check` 过；真实运行需 docker playwright 环境（WSL 闭环，本地不可跑）。
+
+**B 档**
+
+- **B1（L）扩展 toast 网络错误原文上屏**：与 Web 第 21/22 轮 `getErrorMessage` 收口同族。`utils/api.js` 不再把网络层错误包成 `ApiError(error.message)`（否则 'Failed to fetch' 会被显示侧当业务文案上屏），改原样上抛并导出 `getErrorMessage(error, localizedFallback)`（ApiError=服务端信封保留原文 / 字符串透传 / 其余网络原生错误→本地化兜底）；4 个展示点（bookmarks handleDelete/submitBookmark、categories createCategory、popup handleReconnect）接入。复用各流程既有本地化 fallback key（deleteFailed/addFailed/updateFailed/catAddFailed/connectFailed），未新增 i18n key。既有 2 测试改按真实形态建模 ApiError（原用裸 Error 带业务 message），另补 api-utils 网络错误非包装 + apiRequest TypeError 断言。
+- **B2（L）popup 搜索区 a11y**：searchInput 补 `aria-label`（复用 `searchPlaceholder` 双语文案，updateUI 随语言刷新）；clearSearch "×" 补 `title` + `aria-label`，新增 `clearSearch` 中英 key（constants zh/en 对称，parity 测试保持绿）。
+- **B3（L）扩展 README 文档漂移**：安装 step1"安装后自动打开设置页面"→"点击工具栏图标打开 popup 连接卡片（onInstalled 仅注册右键菜单）"；grep 清理 `设置页/options/` 残留（README 目录结构、快捷能力、E2E 描述注释、`utils/api.js` 注释、docs/OPERATIONS.md 覆盖描述）。
+- **B4（L，Kimi）PWA manifest lang + SVG size**：manifest 显式 `lang: "zh-CN"`（站点默认 locale，避免插件默认 en 与中文 name 不符）；SVG 图标 `sizes` `"512x512"` → `"any"`。build 验证 `manifest.webmanifest` 产物 lang=zh-CN、svg sizes=any。
+- **B5（L，Kimi）logo.svg 离线破图**：`includeAssets` 加 `'logo.svg'`；build 验证 `sw.js` 预缓存清单含 `{url:"logo.svg"}`（img src 的 `?v=2` 查询由 workbox 默认忽略 URL 参数匹配，预缓存 URL 不带 query 即可命中）。
+- **B6（Info，Kimi）LoginDialog 注册兜底文案统一**：`LoginDialog.vue` 注册失败兜底 `admin.operationFailed` → `auth.registerFailed`（与 login 分支 `auth.loginFailed`、store `auth.registerFailed` 口径统一；store 恒返回非空 error，兜底实际不可达）。
+- **B7（Info，Kimi）data.ts logger.debug 语义漂移**：`getWriteErrorMessage` 按 `error.status` 区分——status>0（服务端 4xx 拒绝）debug "rejected by server"；status=0（客户端防御性抛，2xx-但信封空）debug "rejected by client-side guard"。
+
+**验证**：typecheck（server+web）、lint:check、test:fast（197 文件 1089 过 + 2 smoke 并行超时假失败降并发复跑 7/7 过）、audit:prod=0、extension:sync-common:check、versions:check、build（B4/B5 产物核验）。未改 src/shared → 不触发 openapi:types:check。
+
 ## 已知遗留 / 有意保留
 
 1. **超大组件拆分**——**已完成**（`f2a4c6a`）：SystemSettings 750→222、DataManager 655→153、BookmarkImport 605→319，各拆 3 个子组件（Account/Site/Assets、Toolbar/CategoryPanel/ItemsPanel、StepUpload/Preview/Result），纯 props/emits 拆分、行为不变。
@@ -282,6 +393,7 @@
 - **@Kimi Code**：**禁止其派生子代理**（Explore/AgentSwarm 会卡死在 `Wait for agent`）——任务里必须显式写"HARD CONSTRAINTS: DO NOT spawn any sub-agents"，并要求"优先写报告"。
 - **@DeepSeek**：部署 API 慢，且 codeg-mcp 会话经常中途被取消（"child session ended without TurnComplete"）——**不要提前取消**，给足耐心；若连续两次被取消，直接跳过改由其他 agent 覆盖，不要再重试。**第 5 轮新经验**：默认全库任务它会无限深挖不产出（等了 70+ 分钟仍无报告）；改用聚焦版 prompt——**明确写死项目目录绝对路径 + "BE SURGICAL：只读 4-6 个关键文件 + grep 验证，3-8 条，先写报告"**——约 27 分钟正常完成。以后 DeepSeek 一律用聚焦版。
 - **@CodeBuddy**：可靠（第 4 轮新加入，完整交付）。**第 6 轮新经验**：大修复任务（15 项 + 全量回归）会跑约 3-4 小时（其中 lint:check 阶段单次调用极慢，需耐心等待），过程细致（会自查 diff、补测试、跑 integration/smoke），不要提前取消。
+- **修复工作流（自第 19 轮起）**：审查完的修复项由主会话用 `delegate_to_agent(agent_type=code_buddy)` 起**独立子对话**执行（不再主会话内逐项修），prompt 给全 A/B/C 分档清单 + file:line + 约束 + 验证门槛；子对话完成后主会话抽查关键 diff 与定向测试（trust but verify）。第 19 轮 A+B 共 8 项一次子对话完成，质量高。
 - 独立全库审查 vs 切片：用户偏好**三个以上 agent 各自独立全库审查**（不切片），每个 agent 给同一基线提交 + 已知遗留清单，要求只报新增、台账格式输出、read-only。
 - 修复后：全量回归（typecheck + lint + test:fast + 各 drift check）；用户要求**本地提交**（不推送）。
 

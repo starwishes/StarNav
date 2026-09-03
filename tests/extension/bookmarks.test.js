@@ -4,6 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createBookmarkController } from '../../clients/extension/popup/modules/bookmarks.js'
+import { ApiError } from '../../clients/extension/common/api.js'
 
 const i18n = {
   zh: {
@@ -289,7 +290,9 @@ describe('browser extension bookmark controller', () => {
   it('surfaces API error messages when deletion fails', async () => {
     window.confirm = vi.fn(() => true)
     apiRequest.mockRejectedValueOnce(Object.assign(new Error(), { message: '' }))
-    apiRequest.mockRejectedValueOnce(new Error('cannot delete root'))
+    // 生产链路里服务端信封错误在 api.js 以 ApiError 抛出，这里按真实形态建模；
+    // 网络层原生 Error（非 ApiError）不展原文，回退本地化兜底文案。
+    apiRequest.mockRejectedValueOnce(new ApiError('cannot delete root', { status: 500 }))
 
     await controller.handleDelete(8)
     expect(ui.showToast).toHaveBeenNthCalledWith(1, '删除失败', 'error')
@@ -297,6 +300,16 @@ describe('browser extension bookmark controller', () => {
     await controller.handleDelete(8)
     expect(ui.showToast).toHaveBeenNthCalledWith(2, 'cannot delete root', 'error')
     expect(ui.hideLoading).toHaveBeenCalledTimes(2)
+  })
+
+  it('hides engine error text for non-ApiError failures during deletion', async () => {
+    window.confirm = vi.fn(() => true)
+    // 网络层 TypeError（真实 fetch 失败的形态）原文（Failed to fetch 等）不上屏
+    apiRequest.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    await controller.handleDelete(8)
+    expect(ui.showToast).toHaveBeenNthCalledWith(1, '删除失败', 'error')
+    expect(ui.hideLoading).toHaveBeenCalledTimes(1)
   })
 
   it('validates the add form before calling the check endpoint', async () => {

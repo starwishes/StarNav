@@ -114,6 +114,12 @@ describe.sequential('Runtime smoke tests', () => {
     process.env.ADMIN_PASSWORD = 'SmokeAdmin123!'
     process.env.CORS_ORIGINS = '*'
     process.env.LOG_LEVEL = '0'
+    // 让 server.ts 的 IP 覆盖中间件进入"显式可信头"模式：测试请求携带该头时，
+    // req.ip 会被覆盖（模拟 CDN 用专用头透传真实客户端 IP 的受支持部署形态）。
+    // 注意：CF 自动检测（socket 对端 ∈ CF 官方网段才采信 CF-Connecting-IP）无法在
+    // loopback 真机链路上复现（127.0.0.1 不在 CF 网段内），该门禁由 server.test.js
+    // 的"auto-trusts ... only when socket peer is a CF edge"直调用例覆盖。
+    process.env.REAL_CLIENT_IP_HEADER = 'x-smoke-client-ip'
 
     const { startServer } = await import('../../server.js')
     server = await startServer(0)
@@ -139,6 +145,7 @@ describe.sequential('Runtime smoke tests', () => {
 
     delete process.env.ADMIN_PASSWORD
     delete process.env.CORS_ORIGINS
+    delete process.env.REAL_CLIENT_IP_HEADER
 
     await cleanupTestDataDir(testDataDir)
   })
@@ -167,6 +174,37 @@ describe.sequential('Runtime smoke tests', () => {
     authCookie = readSetCookieHeader(login.headers)
     expect(authCookie).toContain('starnav_auth=')
     expect(authCookie).toContain('HttpOnly')
+  })
+
+  it('records the overridden real client IP in sessions and audit over real HTTP', async () => {
+    // 真机链路（真实 TCP + 真实 DB）验证 IP 覆盖中间件的接线：login 携带受信客户端
+    // IP 头（x-smoke-client-ip，见 beforeAll 的 REAL_CLIENT_IP_HEADER）时，新建会话与
+    // 审计日志落库的 IP 都应是覆盖后的真实 IP，而非 socket 对端（127.0.0.1）。
+    // 限流桶在 NODE_ENV=test 下恒 skip（见 middleware/limiter.ts），无法经 HTTP 观测
+    // 计数键；此处断言会话/审计两个持久化消费方已真实打通，IP 键由 limiter 单测覆盖。
+    const realClientIp = '203.0.113.77'
+
+    const login = await jsonRequest(`${baseUrl}/login`, {
+      method: 'POST',
+      headers: { 'x-smoke-client-ip': realClientIp },
+      body: { username: 'admin', password: 'SmokeAdmin123!' }
+    })
+    expect(login.status).toBe(200)
+    const headerToken = login.body.data.token
+    expect(headerToken).toBeTruthy()
+
+    const sessionsRes = await jsonRequest(`${baseUrl}/sessions`, { token: headerToken })
+    expect(sessionsRes.status).toBe(200)
+    expect(sessionsRes.body.data.sessions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ ip: realClientIp })])
+    )
+
+    const auditRes = await jsonRequest(`${baseUrl}/admin/audit?limit=50`, { token })
+    expect(auditRes.status).toBe(200)
+    const loginLogs = auditRes.body.data.logs.filter(
+      (log) => log.action === 'login' && log.username === 'admin'
+    )
+    expect(loginLogs[0]).toMatchObject({ ip: realClientIp })
   })
 
   it('rejects registration when disabled, then allows it once enabled', async () => {

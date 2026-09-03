@@ -4,6 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createCategoryController } from '../../clients/extension/popup/modules/categories.js'
+import { ApiError } from '../../clients/extension/common/api.js'
 
 const i18n = {
   zh: {
@@ -239,7 +240,8 @@ describe('browser extension category controller', () => {
     await controller.showCategoryModal()
     elements.newCategoryName.value = 'Broken'
     apiRequest.mockRejectedValueOnce(Object.assign(new Error(), { message: '' }))
-    apiRequest.mockRejectedValueOnce(new Error('name conflict'))
+    // 生产链路里服务端信封错误在 api.js 以 ApiError 抛出，这里按真实形态建模
+    apiRequest.mockRejectedValueOnce(new ApiError('name conflict', { status: 400 }))
 
     await controller.createCategory()
     expect(ui.showToast).toHaveBeenNthCalledWith(1, '分类创建失败', 'error')

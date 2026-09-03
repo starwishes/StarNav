@@ -8,6 +8,7 @@
     :aria-expanded="open"
     :aria-disabled="disabled"
     aria-haspopup="listbox"
+    :aria-label="accessibleName || undefined"
     :aria-controls="menuId"
     :aria-activedescendant="open && activeIndex >= 0 ? getOptionId(activeIndex) : undefined"
     :tabindex="disabled ? -1 : 0"
@@ -77,12 +78,14 @@ const props = withDefaults(
     modelValue?: SelectValue
     disabled?: boolean
     placeholder?: string
+    label?: string
     modelModifiers?: Record<string, boolean>
   }>(),
   {
     modelValue: undefined,
     disabled: false,
     placeholder: '',
+    label: '',
     modelModifiers: () => ({})
   }
 )
@@ -107,7 +110,16 @@ const getOptionId = (index: number) => `${menuId}-option-${index}`
 const rootAttrs = computed(() => {
   const nextAttrs = { ...(attrs as Record<string, unknown>) }
   delete nextAttrs.modelModifiers
+  // aria-label 由 label prop 或透传 attrs 统一经 accessibleName 渲染，避免与 :aria-label 绑定重复
+  delete nextAttrs['aria-label']
   return nextAttrs
+})
+
+// 无障碍可访问名（第 22 轮审查）：内容文本不计入 combobox 的 accName，须显式提供。
+// label prop 优先，兼容调用方直接透传 aria-label 的写法；两者皆空则不给 aria-label 属性。
+const accessibleName = computed(() => {
+  const fallthrough = attrs['aria-label']
+  return props.label || (typeof fallthrough === 'string' ? fallthrough : '')
 })
 
 const options = computed<SelectOption[]>(() => buildSelectOptionsFromSlots(slots.default?.()))

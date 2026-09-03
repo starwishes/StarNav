@@ -8,7 +8,7 @@ export interface SelectOption {
   disabled: boolean
 }
 
-export const flattenNodes = (nodes: VNode[], acc: VNode[] = []): VNode[] => {
+const flattenNodes = (nodes: VNode[], acc: VNode[] = []): VNode[] => {
   nodes.forEach((node) => {
     if (!node || node.type === Comment) {
       return
@@ -25,7 +25,7 @@ export const flattenNodes = (nodes: VNode[], acc: VNode[] = []): VNode[] => {
   return acc
 }
 
-export const extractNodeText = (node: VNode | string | null | undefined): string => {
+const extractNodeText = (node: VNode | string | null | undefined): string => {
   if (!node) {
     return ''
   }

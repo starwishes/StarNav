@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiClientError } from '@/api/client'
 
 let dataStoreMock: any
 
@@ -72,7 +73,8 @@ describe('useBatchActions', () => {
   })
 
   it('shows an error when batch move fails and leaves the selection intact', async () => {
-    dataStoreMock.batchMoveItems.mockRejectedValueOnce(new Error('move failed'))
+    // 服务端业务性拒绝以 ApiClientError 抛出，message 上屏（见 src/web/utils/errors.ts 说明）
+    dataStoreMock.batchMoveItems.mockRejectedValueOnce(new ApiClientError('move failed', 400))
 
     const composable = useBatchActions(vi.fn())
     composable.enterSelectionMode(7)

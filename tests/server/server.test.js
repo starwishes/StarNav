@@ -87,9 +87,12 @@ const loadServerModule = async ({
   })
 
   const init = vi.fn().mockResolvedValue(undefined)
+  const closeDb = vi.fn()
+  const forceCheckpoint = vi.fn()
   const logger = {
     info: vi.fn(),
-    warn: vi.fn()
+    warn: vi.fn(),
+    error: vi.fn()
   }
   const fsAccess = vi.fn().mockImplementation(async () => {
     if (!staticOpenApiSpecAvailable) {
@@ -149,6 +152,10 @@ const loadServerModule = async ({
   vi.doMock('../../src/server/utils/logger.js', () => ({
     logger
   }))
+  vi.doMock('../../src/server/services/database/database.js', () => ({
+    closeDb,
+    forceCheckpoint
+  }))
 
   if (swaggerUiAvailable) {
     vi.doMock('swagger-ui-express', () => ({
@@ -184,6 +191,8 @@ const loadServerModule = async ({
     getSwaggerSpec,
     init,
     logger,
+    closeDb,
+    forceCheckpoint,
     fsAccess,
     authRoutes,
     bookmarkRoutes,
@@ -211,12 +220,14 @@ describe('server app assembly', () => {
     runtime = null
   })
 
-  // IP 覆盖中间件是 app 上唯一的函数式 middleware（helmet/cors/json 等均为对象）
+  // 用稳定函数名标记定位 IP 覆盖中间件，不依赖“第一个函数式 use/注册顺序”等启发式
+  //（该中间件在 server.ts 中以 realClientIpOverride 命名注册，见 A6 加固）。
   const findIpOverrideMiddleware = (app) => {
     const call = app.use.mock.calls.find(
-      (c) => typeof c[0] === 'function' || typeof c[1] === 'function'
+      (c) => typeof c[0] === 'function' && c[0].name === 'realClientIpOverride'
     )
-    return typeof call?.[0] === 'function' ? call[0] : call?.[1]
+    expect(call).toBeTruthy()
+    return call[0]
   }
 
   it('assembles middleware, routes, swagger, and caches createApp()', async () => {
@@ -368,6 +379,38 @@ describe('server app assembly', () => {
     expect(logger.info).toHaveBeenCalledWith('   Running on port 9090 in test mode')
   })
 
+  it('routes listen errors through graceful shutdown so checkpoint + closeDb still run', async () => {
+    runtime = await loadServerModule({ nodeEnv: 'test' })
+
+    const { module, app, logger } = runtime
+    // 模拟 listen 未进入 listening 回调即报错（如 EADDRINUSE）：此时 serverRef 已赋 server
+    // 但尚未监听成功，shutdown 的 close 会以 not-running 错误回调，随后照常走
+    // finish（checkpoint + closeDb + exit(1)）
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {})
+    app.listen.mockImplementation((port) => ({
+      port,
+      // listen 失败后 server.close() 会以 "not running" 错误回调（真实 EADDRINUSE 路径）
+      close: vi.fn((callback) => callback?.(new Error('Server is not running'))),
+      on: vi.fn()
+    }))
+
+    const server = await module.startServer(9090)
+    const errorHandler = server.on.mock.calls.find(([event]) => event === 'error')?.[1]
+    expect(errorHandler).toBeTypeOf('function')
+
+    errorHandler(new Error('EADDRINUSE: address already in use'))
+
+    expect(logger.error).toHaveBeenCalledWith(
+      '服务器启动失败',
+      expect.objectContaining({ message: 'EADDRINUSE: address already in use' })
+    )
+    expect(logger.info).toHaveBeenCalledWith('收到 listen-error，开始优雅停机')
+    expect(runtime.forceCheckpoint).toHaveBeenCalledTimes(1)
+    expect(runtime.closeDb).toHaveBeenCalledTimes(1)
+    expect(logger.info).toHaveBeenCalledWith('已优雅停机')
+    expect(exitSpy).toHaveBeenCalledWith(1)
+  })
+
   it('trusts one reverse-proxy hop by default; TRUST_PROXY=false disables it', async () => {
     runtime = await loadServerModule({
       nodeEnv: 'test',
@@ -418,6 +461,34 @@ describe('server app assembly', () => {
     }
     middleware(reqBadHeader, {}, next)
     expect(reqBadHeader.ip).toBe('172.70.207.146')
+  })
+
+  it('overrides req.ip on a real-Express-shaped request (prototype getter, no own ip)', async () => {
+    runtime = await loadServerModule({ nodeEnv: 'test', realClientIpHeader: 'cf-connecting-ip' })
+
+    const middleware = findIpOverrideMiddleware(runtime.app)
+    expect(middleware).toBeTypeOf('function')
+
+    // Express 5 用 defineGetter 把 req.ip 定义为原型 getter-only accessor
+    //（lib/request.js:327，{ configurable, get } 无 setter），实例自身没有 own ip。
+    // 直接赋值在 ESM 严格模式抛 "Cannot set property ip ... only a getter" → 500。
+    // 早期测试用带 own 可写 ip 的 plain-object mock，永远复现不了该抛错——这里用
+    // 与真实 IncomingMessage 同形态的对象驱动真实中间件，锁死 High 修复。
+    const reqProto = {}
+    Object.defineProperty(reqProto, 'ip', {
+      configurable: true,
+      get() {
+        return '172.70.207.146'
+      }
+    })
+    const req = Object.create(reqProto)
+    req.headers = { 'cf-connecting-ip': '203.0.113.7' }
+    req.socket = { remoteAddress: '104.16.1.2' }
+
+    const next = vi.fn()
+    expect(() => middleware(req, {}, next)).not.toThrow()
+    expect(req.ip).toBe('203.0.113.7')
+    expect(next).toHaveBeenCalledTimes(1)
   })
 
   it('auto-trusts CF-Connecting-IP only when the socket peer is a Cloudflare edge', async () => {

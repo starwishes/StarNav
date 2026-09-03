@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import net from 'node:net'
 import compression from 'compression'
 import cors from 'cors'
-import express from 'express'
+import express, { type RequestHandler } from 'express'
 import helmet from 'helmet'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -88,44 +88,59 @@ const registerSwaggerUi = async (app: import('express').Express) => {
   }
 }
 
+/**
+ * 真实客户端 IP 覆盖层（注册顺序恒为 app 上第一个中间件）。两条路径：
+ *  1. 显式 REAL_CLIENT_IP_HEADER：读取指定头（适用于带专用客户端 IP 头的 CDN）。
+ *  2. 默认自动检测 Cloudflare：socket 对端落在 Cloudflare 官方网段内时，采信
+ *     CF-Connecting-IP（CF 只对真正经过其网络的流量设置/覆盖该头；绕过 CF 直连
+ *     源站的请求对端不在 CF 网段，伪造头不会被采信——见 utils/cloudflareIp.ts）。
+ * 头值取逗号分隔首个条目并校验为合法 IP，非法/缺失则回退 Express 既有解析。
+ *
+ * 函数名 realClientIpOverride 是 server.test.js 定位该中间件的稳定标记
+ *（不依赖注册顺序/“第一个函数式 use”等启发式），请勿匿名化或改名。
+ */
+const realClientIpOverride: RequestHandler = (req, _res, next) => {
+  let headerValue: unknown = null
+  if (REAL_CLIENT_IP_HEADER) {
+    headerValue = req.headers[REAL_CLIENT_IP_HEADER]
+  } else if (
+    req.headers['cf-connecting-ip'] &&
+    req.socket?.remoteAddress &&
+    isCloudflareAddress(req.socket.remoteAddress)
+  ) {
+    headerValue = req.headers['cf-connecting-ip']
+  }
+
+  if (headerValue !== null && headerValue !== undefined) {
+    const raw = Array.isArray(headerValue) ? headerValue[0] : headerValue
+    if (typeof raw === 'string') {
+      const candidate = raw.split(',')[0].trim()
+      if (net.isIP(candidate) > 0) {
+        // Express 5 用 defineGetter 把 req.ip 定义为原型上 getter-only 的 accessor
+        //（lib/request.js:327，configurable:true 但无 setter），且惰性解析（从不落 own
+        // 属性）。ESM 严格模式下对这类只读 accessor 直接赋值会抛
+        // "Cannot set property ip ... which has only a getter" → 500（实测）。
+        // 用 Object.defineProperty 定义 own 数据属性即可遮蔽原型 getter，
+        // 后续所有消费方（限流/会话/审计）读到的都是覆盖后的真实客户端 IP。
+        Object.defineProperty(req, 'ip', {
+          value: candidate,
+          configurable: true,
+          writable: true
+        })
+      }
+    }
+  }
+  next()
+}
+
 const createConfiguredApp = async () => {
   const app = express()
 
   app.set('trust proxy', TRUST_PROXY ? 1 : false)
 
-  // 真实客户端 IP 覆盖层（置于任何中间件/路由之前，限流分桶、会话与审计 IP
-  // 全部落到真实客户端 IP）。两条路径：
-  //  1. 显式 REAL_CLIENT_IP_HEADER：读取指定头（适用于带专用客户端 IP 头的 CDN）。
-  //  2. 默认自动检测 Cloudflare：socket 对端落在 Cloudflare 官方网段内时，采信
-  //     CF-Connecting-IP（CF 只对真正经过其网络的流量设置/覆盖该头；绕过 CF 直连
-  //     源站的请求对端不在 CF 网段，伪造头不会被采信——见 utils/cloudflareIp.ts）。
-  // 头值取逗号分隔首个条目并校验为合法 IP，非法/缺失则回退 Express 既有解析。
-  app.use((req, _res, next) => {
-    let headerValue: unknown = null
-    if (REAL_CLIENT_IP_HEADER) {
-      headerValue = req.headers[REAL_CLIENT_IP_HEADER]
-    } else if (
-      req.headers['cf-connecting-ip'] &&
-      req.socket?.remoteAddress &&
-      isCloudflareAddress(req.socket.remoteAddress)
-    ) {
-      headerValue = req.headers['cf-connecting-ip']
-    }
-
-    if (headerValue !== null && headerValue !== undefined) {
-      const raw = Array.isArray(headerValue) ? headerValue[0] : headerValue
-      if (typeof raw === 'string') {
-        const candidate = raw.split(',')[0].trim()
-        if (net.isIP(candidate) > 0) {
-          // Express 的 req.ip 是原型 getter（从 trust proxy/XFF 惰性解析），类型声明为只读。
-          // 赋实例 own 属性可遮蔽原型 getter（Express 原型无 setter，own 赋值安全生效），
-          // 后续所有消费方（限流/会话/审计）读到的都是覆盖后的真实客户端 IP。
-          ;(req as { ip: string }).ip = candidate
-        }
-      }
-    }
-    next()
-  })
+  // 真实客户端 IP 覆盖层必须最先注册（置于任何中间件/路由之前），
+  // 保证限流分桶、会话与审计读到的都是覆盖后的真实客户端 IP。
+  app.use(realClientIpOverride)
 
   await initService.init()
 
@@ -290,8 +305,14 @@ export const startServer = async (port = PORT) => {
   serverRef = server
 
   server.on('error', (error) => {
+    // listen 失败（如 EADDRINUSE）不走裸 process.exit(1)：复用 shutdown 统一停机流程，
+    // 保证 checkpoint + closeDb 执行（DB 已在 initService.init 阶段打开，EADDRINUSE 场景
+    // 同样需要落盘收尾）。该 error 事件在 listen 的后续事件循环轮次触发，此时 serverRef
+    // 已完成赋值（startServer 在 app.listen 返回后同步赋值），故 shutdown 不会走"跳过
+    // server.close"分支，而是对从未成功监听的 server 调用 close——其回调会以
+    // ERR_SERVER_NOT_RUNNING 报错并记一条"关闭 HTTP 服务出错"日志，随后照常 finish。
     logger.error('服务器启动失败', error)
-    process.exit(1)
+    shutdown('listen-error', 1)
   })
 
   return server

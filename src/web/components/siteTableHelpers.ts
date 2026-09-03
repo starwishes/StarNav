@@ -85,8 +85,19 @@ export const getVisibilityLabel = (level: number, t: Translate) => {
   return t('userLevel.guest')
 }
 
-export const formatRelativeDate = (dateString: string, t: Translate, now = new Date()) => {
+export const formatRelativeDate = (
+  dateString: string,
+  t: Translate,
+  options: { locale?: string; timeZone?: string } = {},
+  now = new Date()
+) => {
   const date = parseDateString(dateString)
+  // 非法/空值守卫：parseDateString 对不可解析输入产出 Invalid Date，若不加守卫，diff 为 NaN
+  // → 全部比较分支为假 → Intl.format(Invalid Date) 抛 RangeError（与 formatDateTime 的 NaN
+  // fallback 对齐，见 utils/datetime.ts）
+  if (Number.isNaN(date.getTime())) {
+    return '-'
+  }
   const diff = now.getTime() - date.getTime()
 
   if (diff < 60000) return t('time.justNow')
@@ -100,5 +111,17 @@ export const formatRelativeDate = (dateString: string, t: Translate, now = new D
     return t('time.daysAgo', { n: Math.floor(diff / 86400000) })
   }
 
-  return date.toLocaleDateString()
+  // 超过 7 天：显式传站点配置时区 + 当前 locale 渲染绝对日期，与表格内其他绝对时间
+  // （useDateTimeFormatter → formatDateTime）的时区基准一致；无参 toLocaleDateString()
+  // 会走浏览器本地时区，在配置了站点时区的部署下与其余列显示错位。
+  try {
+    return new Intl.DateTimeFormat(options.locale || undefined, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      ...(options.timeZone ? { timeZone: options.timeZone } : {})
+    }).format(date)
+  } catch {
+    return date.toLocaleDateString(options.locale || undefined)
+  }
 }

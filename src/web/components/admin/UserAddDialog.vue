@@ -51,7 +51,11 @@
 
             <label class="dialog-field">
               <span class="dialog-label">{{ t('users.level') }}</span>
-              <AppSelect v-model.number="formModel.level" class="dialog-select">
+              <AppSelect
+                v-model.number="formModel.level"
+                class="dialog-select"
+                :label="t('users.level')"
+              >
                 <option :value="1">{{ t('userLevel.user') }} (1)</option>
                 <option :value="2">{{ t('userLevel.vip') }} (2)</option>
                 <option :value="3">{{ t('userLevel.admin') }} (3)</option>

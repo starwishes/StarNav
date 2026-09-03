@@ -43,6 +43,41 @@ describe('AccountService', () => {
     })
   })
 
+  describe('getAll', () => {
+    it('orders mixed space-form and T-form rows by real time, not string order', () => {
+      const db = getDb()
+      const insert = db.prepare(
+        'INSERT INTO users (username, password, level, auth_version, created_at) VALUES (?, ?, ?, 0, ?)'
+      )
+
+      // 同日混存两种格式时，字符串倒序恒把 T 形（'T' > ' '）排前面：space-noon 真实更晚
+      // 却被排在 t-morning 之后。数值比较必须按真实时间倒序返回 space-noon 在前。
+      insert.run('t-morning', 'x', 1, '2026-04-13T09:00:00.000Z')
+      insert.run('space-noon', 'x', 1, '2026-04-13 12:00:00')
+      insert.run('next-day', 'x', 1, '2026-04-14T00:00:00.000Z')
+
+      const users = accountService.getAll()
+
+      expect(users.map((row) => row.username)).toEqual(['next-day', 'space-noon', 't-morning'])
+    })
+
+    it('keeps same-second rows in a stable order via username tiebreak', () => {
+      const db = getDb()
+      const insert = db.prepare(
+        'INSERT INTO users (username, password, level, auth_version, created_at) VALUES (?, ?, ?, 0, ?)'
+      )
+
+      insert.run('zeta', 'x', 1, '2026-04-13T10:00:00.000Z')
+      insert.run('alpha', 'x', 1, '2026-04-13 10:00:00')
+      insert.run('mid', 'x', 1, '2026-04-13T10:00:00.000Z')
+
+      const users = accountService.getAll()
+
+      // strftime('%s') 同秒相等时以 username 升序决胜，顺序确定
+      expect(users.map((row) => row.username)).toEqual(['alpha', 'mid', 'zeta'])
+    })
+  })
+
   describe('verifyPassword', () => {
     beforeEach(() => {
       accountService.create('testuser4', 'correct123', 1)

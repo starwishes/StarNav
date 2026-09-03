@@ -1,5 +1,6 @@
 import { createScopedLogger } from '../../common/logger.js'
 import { extractActiveTabDetails } from '../../utils/pageDetails.js'
+import { getErrorMessage } from '../../utils/api.js'
 
 export function createBookmarkController({
   apiRequest,
@@ -133,7 +134,8 @@ export function createBookmarkController({
 
       await loadRecentBookmarks()
     } catch (error) {
-      ui.showToast(error.message || getTexts().deleteFailed, 'error')
+      // ApiError（服务端信封）保留业务文案；网络层原生错误回退本地化文案，不展原文
+      ui.showToast(getErrorMessage(error, getTexts().deleteFailed), 'error')
     } finally {
       ui.hideLoading()
     }
@@ -206,10 +208,9 @@ export function createBookmarkController({
       ui.hideAddForm()
       await loadRecentBookmarks()
     } catch (error) {
-      ui.showToast(
-        error.message || (state.currentEditingId ? getTexts().updateFailed : getTexts().addFailed),
-        'error'
-      )
+      // ApiError（服务端信封）保留业务文案；网络层原生错误回退本地化文案，不展原文
+      const fallback = state.currentEditingId ? getTexts().updateFailed : getTexts().addFailed
+      ui.showToast(getErrorMessage(error, fallback), 'error')
     } finally {
       if (elements.submitBookmark) {
         elements.submitBookmark.disabled = false

@@ -67,12 +67,6 @@ export const SEARCH_SUGGESTION_PROVIDER_TYPES = Object.freeze(
   SEARCH_SUGGESTION_PROVIDERS.map((provider) => provider.type)
 ) as readonly SearchSuggestionProviderType[]
 
-export const FRONTEND_SEARCH_SUGGESTION_PROVIDER_TYPES = Object.freeze(
-  SEARCH_SUGGESTION_PROVIDERS.filter((provider) => provider.frontendEnabled).map(
-    (provider) => provider.type
-  )
-) as readonly FrontendSearchSuggestionProviderType[]
-
 export const getSearchSuggestionProvider = (
   type: string | null | undefined
 ): SearchSuggestionProviderDefinition | null => {
@@ -109,7 +103,9 @@ export const resolveSearchSuggestionProviderTypeFromUrl = (
 export const resolveFrontendSearchSuggestionProviderTypeFromUrl = (
   url: string | null | undefined
 ): FrontendSearchSuggestionProviderType | null =>
-  resolveSuggestionProviderType(url, { frontendOnly: true }) as FrontendSearchSuggestionProviderType | null
+  resolveSuggestionProviderType(url, {
+    frontendOnly: true
+  }) as FrontendSearchSuggestionProviderType | null
 
 export const buildSearchSuggestionUrl = (
   type: string | null | undefined,

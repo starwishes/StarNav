@@ -23,7 +23,9 @@
     "ip": "IP Address",
     "status": "Status",
     "device": "Device Info",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "prevPage": "Previous page",
+    "nextPage": "Next page"
   },
   "nav": {
     "home": "Home",
@@ -66,7 +68,8 @@
     "clearBeforeDays": "older than {days} days",
     "clearConfirm": "Are you sure you want to clear all audit logs?",
     "clearBeforeConfirm": "Delete logs older than {date}?",
-    "clearSuccess": "Logs cleared successfully"
+    "clearSuccess": "Logs cleared successfully",
+    "clearRangeLabel": "Time range of audit logs to clear"
   },
   "settings": {
     "accountSettings": "Accounts & Registration",
@@ -122,7 +125,8 @@
     "confirmAdd": "Confirm Add",
     "saveEdit": "Save Changes",
     "closeAddDialog": "Close add user dialog",
-    "closeEditDialog": "Close edit user dialog"
+    "closeEditDialog": "Close edit user dialog",
+    "changeLevel": "Change level of {name}"
   },
   "sessions": {
     "title": "Session Management",
@@ -162,7 +166,8 @@
     "exportSuccess": "Export successful",
     "importFail": "Import failed",
     "tabsLabel": "Data management tabs",
-    "clearSearch": "Clear search"
+    "clearSearch": "Clear search",
+    "filterCategory": "Filter category"
   },
   "table": {
     "id": "ID",
@@ -197,7 +202,8 @@
     "selectAll": "Select all",
     "selectRow": "Select {name}",
     "linkOk": "Link OK",
-    "linkError": "Link check failed"
+    "linkError": "Link check failed",
+    "rowsPerPage": "Rows per page"
   },
   "time": {
     "justNow": "Just now",
@@ -408,7 +414,6 @@
     "dbIntegrityOk": "OK",
     "dbJournalMode": "Journal Mode",
     "dbWritable": "Writable",
-    "dbPath": "Database Path",
     "uptimeDayUnit": "d",
     "uptimeHourUnit": "h",
     "uptimeMinuteUnit": "m",

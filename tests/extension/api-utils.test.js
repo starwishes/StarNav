@@ -83,4 +83,30 @@ describe('browser extension api utils', () => {
       expect.objectContaining({ name: 'ApiError', message: '令牌已过期', status: 401 })
     )
   })
+
+  it('rethrows native network errors unwrapped and neutralizes them at display sites', async () => {
+    global.chrome = {
+      storage: {
+        sync: createStorageArea({ serverUrl: 'https://nav.example.com', token: 'secret-token' }),
+        local: createStorageArea({})
+      }
+    }
+    // 网络层失败的真实形态：fetch 本身 reject（连接失败/超时），message 是引擎内部文本
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+
+    const { ApiError } = await import('../../clients/extension/common/api.js')
+    const { initApi, apiRequest, getErrorMessage } =
+      await import('../../clients/extension/utils/api.js')
+    await initApi(() => {})
+
+    // 必须保持原生 Error 形态：若包成 ApiError，显示侧 getErrorMessage 会把引擎原文
+    // （Failed to fetch 等）当业务文案上屏（第 23 轮审查）
+    await expect(apiRequest('/bookmark/search')).rejects.toBeInstanceOf(TypeError)
+
+    // 展示点判定：原生网络错误 → 本地化 fallback；服务端信封 ApiError → message 保留；
+    // 显式字符串 → 透传
+    expect(getErrorMessage(new TypeError('Failed to fetch'), '删除失败')).toBe('删除失败')
+    expect(getErrorMessage(new ApiError('名称冲突', { status: 400 }), '删除失败')).toBe('名称冲突')
+    expect(getErrorMessage('显式字符串', '删除失败')).toBe('显式字符串')
+  })
 })

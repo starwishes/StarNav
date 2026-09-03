@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiClientError } from '@/api/client'
 
 const mocks = vi.hoisted(() => ({
   getContent: vi.fn(),
@@ -271,7 +272,7 @@ describe('data store', () => {
       ],
       items: []
     })
-    mocks.reorderCategories.mockRejectedValueOnce(new Error('sync failed'))
+    mocks.reorderCategories.mockRejectedValueOnce(new ApiClientError('sync failed', 500))
 
     const store = useDataStore()
     await store.loadData()
@@ -326,7 +327,7 @@ describe('data store', () => {
         { id: 11, name: 'Second', url: 'https://second.test', description: '', categoryId: 2 }
       ]
     })
-    mocks.moveItem.mockRejectedValueOnce(new Error('sync failed'))
+    mocks.moveItem.mockRejectedValueOnce(new ApiClientError('sync failed', 500))
 
     const store = useDataStore()
     await store.loadData()
@@ -348,7 +349,7 @@ describe('data store', () => {
         { id: 11, name: 'Second', url: 'https://second.test', description: '', categoryId: 1 }
       ]
     })
-    mocks.batchMoveItems.mockRejectedValueOnce(new Error('sync failed'))
+    mocks.batchMoveItems.mockRejectedValueOnce(new ApiClientError('sync failed', 500))
 
     const store = useDataStore()
     await store.loadData()
@@ -356,10 +357,38 @@ describe('data store', () => {
     await expect(store.batchMoveItems([10, 11], 2)).rejects.toThrow('sync failed')
     expect(store.items.map((item) => item.categoryId)).toEqual([1, 1])
 
-    mocks.batchDeleteItems.mockRejectedValueOnce(new Error('delete failed'))
+    mocks.batchDeleteItems.mockRejectedValueOnce(new ApiClientError('delete failed', 500))
 
     await expect(store.batchDeleteItems([10, 11])).rejects.toThrow('delete failed')
     expect(store.items.map((item) => item.id)).toEqual([10, 11])
+  })
+
+  it('uses the fixed failure text for network-level write errors instead of raw messages', async () => {
+    mocks.getContent.mockResolvedValue({
+      categories: [
+        { id: 1, name: 'Source', parentId: null },
+        { id: 2, name: 'Target', parentId: null }
+      ],
+      items: [
+        { id: 10, name: 'First', url: 'https://first.test', description: '', categoryId: 1 },
+        { id: 11, name: 'Second', url: 'https://second.test', description: '', categoryId: 2 }
+      ]
+    })
+    const store = useDataStore()
+    await store.loadData()
+
+    // 网络层异常（非 ApiClientError）→ 固定失败文案；原文（Failed to fetch 等）不上屏
+    mocks.moveItem.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    await expect(store.moveItem(10, 2, 1)).rejects.toThrow('Failed to fetch')
+    expect(mocks.messageError).toHaveBeenLastCalledWith('保存失败')
+
+    mocks.reorderCategories.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    await expect(store.moveCategory(0, 1)).rejects.toThrow('Failed to fetch')
+    expect(mocks.messageError).toHaveBeenLastCalledWith('保存失败')
+
+    mocks.saveContent.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    await expect(store.saveData('import')).rejects.toThrow('Failed to fetch')
+    expect(mocks.messageError).toHaveBeenLastCalledWith('保存失败')
   })
 
   it('skips loadData refreshes while a local save is in flight', async () => {
@@ -477,7 +506,7 @@ describe('data store', () => {
   })
 
   it('surfaces full-content sync failures as an error toast and rethrows', async () => {
-    mocks.saveContent.mockRejectedValueOnce(new Error('sync boom'))
+    mocks.saveContent.mockRejectedValueOnce(new ApiClientError('sync boom', 500))
 
     const store = useDataStore()
     await expect(store.saveData('import')).rejects.toThrow('sync boom')

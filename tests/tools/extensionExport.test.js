@@ -37,14 +37,15 @@ describe('extension export bundles', () => {
       syncMetadata: false
     })
 
-    const [chromeManifest, firefoxManifest] = await Promise.all([
+    const [chromeManifest, firefoxManifest, extensionVersion] = await Promise.all([
       readJson(path.join(chromeDir, 'manifest.json')),
-      readJson(path.join(firefoxDir, 'manifest.json'))
+      readJson(path.join(firefoxDir, 'manifest.json')),
+      readJson(path.resolve('clients/extension/version.json'))
     ])
 
     expect(chromeManifest.manifest_version).toBe(3)
     expect(firefoxManifest.manifest_version).toBe(2)
-    expect(chromeManifest.version_name).toBe('v1.0.7')
+    expect(chromeManifest.version_name).toBe(extensionVersion.displayVersion)
     expect(firefoxManifest.browser_specific_settings?.gecko?.id).toBe('starnav@example.com')
 
     await expect(exists(path.join(chromeDir, 'popup', 'popup.html'))).resolves.toBe(true)

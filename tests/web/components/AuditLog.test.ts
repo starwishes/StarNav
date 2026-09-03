@@ -96,6 +96,32 @@ describe('AuditLog', () => {
     expect(wrapper.text()).toContain('2 / 3')
   })
 
+  it('resets to page 1 when clearing logs from a later page', async () => {
+    mocks.getAuditLogs
+      .mockResolvedValueOnce({ logs: [], total: 120 }) // mount: page 1
+      .mockResolvedValueOnce({ logs: [], total: 120 }) // pagination: page 2
+      .mockResolvedValueOnce({ logs: [], total: 0 }) // after clear: refetch
+    mocks.confirm.mockResolvedValue('confirm')
+    mocks.clearAuditLogs.mockResolvedValue({ success: true })
+
+    const wrapper = mount(AuditLog)
+    await Promise.resolve()
+    await wrapper.vm.$nextTick()
+
+    await wrapper.findAll('.sn-pagination-button')[1].trigger('click')
+    await Promise.resolve()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toContain('2 / 3')
+
+    await wrapper.find('.actions .table-button.danger').trigger('click')
+    await Promise.resolve()
+    await wrapper.vm.$nextTick()
+
+    // 清空后行数骤减，不再停留在旧 page 而是回到第 1 页重新拉取
+    expect(mocks.getAuditLogs).toHaveBeenCalledTimes(3)
+    expect(mocks.getAuditLogs).toHaveBeenNthCalledWith(3, 1, 50)
+  })
+
   it('clears logs after confirmation and refreshes the list', async () => {
     mocks.getAuditLogs
       .mockResolvedValueOnce({ logs: [], total: 0 })

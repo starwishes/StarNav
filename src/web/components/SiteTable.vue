@@ -140,6 +140,7 @@
       <div class="sn-pagination-controls">
         <AppSelect
           class="sn-inline-select page-size-select"
+          :label="t('table.rowsPerPage')"
           :model-value="pageSize"
           @change="handleSizeChange"
         >
@@ -149,6 +150,7 @@
           class="sn-pagination-button"
           type="button"
           :disabled="currentPage <= 1"
+          :aria-label="t('common.prevPage')"
           @click="currentPage -= 1"
         >
           ‹
@@ -158,6 +160,7 @@
           class="sn-pagination-button"
           type="button"
           :disabled="currentPage >= totalPages"
+          :aria-label="t('common.nextPage')"
           @click="currentPage += 1"
         >
           ›
@@ -172,6 +175,7 @@
       <div class="actions">
         <AppSelect
           class="sn-inline-select batch-select"
+          :label="t('table.batchMovePlaceholder')"
           :model-value="batchMoveTarget ?? ''"
           @change="handleBatchTargetChange"
         >
@@ -211,6 +215,7 @@
 import AppSelect from '@/components/AppSelect.vue'
 import type { Category, Item } from '@/types'
 import { useI18n } from 'vue-i18n'
+import { useConfigStore } from '@/store/config'
 import { useSiteTableState } from '@/composables/useSiteTableState'
 import { isSafeHttpUrl, isSafeRelativePath } from '../../shared/security/urlSafety.js'
 import {
@@ -220,7 +225,8 @@ import {
   getVisibilityLabel as getVisibilityText
 } from '@/components/siteTableHelpers'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const configStore = useConfigStore()
 
 // Neutralize unsafe hrefs (javascript:, data:, ...) so the rendered link can never
 // execute in this page's origin even if a bookmark URL was tampered with.
@@ -275,7 +281,13 @@ const {
 const getCategoryName = (categoryId: number) => getCategoryNameById(props.categories, categoryId, t)
 const getVisibilityClass = (level: number) => getVisibilityBadgeClass(level)
 const getVisibilityLabel = (level: number) => getVisibilityText(level, t)
-const formatDate = (dateString: string) => formatRelativeDate(dateString, t)
+// 相对时间超过 7 天退化为绝对日期时，显式使用站点配置时区 + 当前 locale，
+// 与后台其它表格的绝对时间（useDateTimeFormatter）基准一致。
+const formatDate = (dateString: string) =>
+  formatRelativeDate(dateString, t, {
+    locale: locale?.value || undefined,
+    timeZone: configStore.siteConfig.timezone || undefined
+  })
 </script>
 
 <style scoped lang="scss">

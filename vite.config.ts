@@ -14,7 +14,7 @@ export default defineConfig(() => {
       vue(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.svg', 'pwa-icon.svg'],
+        includeAssets: ['favicon.svg', 'pwa-icon.svg', 'logo.svg'],
         workbox: {
           // Drop previous precaches after deploy so old AdminDashboard-*.js hashes die quickly.
           cleanupOutdatedCaches: true,
@@ -23,6 +23,12 @@ export default defineConfig(() => {
           // SessionManager/StatsDashboard/SystemHealth/feedback-core）已静态并入
           // AdminDashboard chunk，其余为异步路由懒加载 chunk，名单按 dist/assets 实际
           // chunk 收敛，避免死条目。
+          //
+          // SPA fallback（NavigationRoute）只对页面导航生效：/api、/uploads 与
+          // /api-docs.json 等非导航资源请求必须排除在 navigateFallback 之外，
+          // 否则 SW 会把 404 的 API/资源路径 fallback 成 index.html（API 反而被
+          // HTML 响应替代、上传链接返回首页），见第 21 轮审查。
+          navigateFallbackDenylist: [/^\/api\//, /^\/uploads\//, /^\/api-docs/],
           globIgnores: [
             'assets/js/AdminDashboard-*.js',
             'assets/js/DataManager-*.js',
@@ -77,6 +83,8 @@ export default defineConfig(() => {
           name: '星语导航',
           short_name: 'StarNav',
           description: '您的个性化导航助手',
+          // 站点默认/回退 locale 为 zh-CN（见 plugins/i18n.ts），显式声明避免插件默认 en
+          lang: 'zh-CN',
           theme_color: '#ffffff',
           icons: [
             // Chrome 的可安装性要求 PNG 图标（SVG 不满足 install criteria）；
@@ -91,10 +99,10 @@ export default defineConfig(() => {
               sizes: '512x512',
               type: 'image/png'
             },
-            // Safari/Firefox 支持 SVG 图标，保留作为补充
+            // Safari/Firefox 支持 SVG 图标，保留作为补充；SVG 可任意缩放，sizes 用 any
             {
               src: 'pwa-icon.svg',
-              sizes: '512x512',
+              sizes: 'any',
               type: 'image/svg+xml'
             }
           ]

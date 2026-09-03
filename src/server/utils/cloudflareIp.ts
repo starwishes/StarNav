@@ -8,6 +8,12 @@ import net from 'node:net'
  * 采信该头作为真实客户端 IP；绕过 Cloudflare 直连源站的请求，socket 对端不在这些
  * 网段内，伪造的 `CF-Connecting-IP` 不会被采信，限流/审计不受污染。
  *
+ * ⚠️ 边界：CF 官方网段包含 Cloudflare WARP 等终端出口段（104.16.0.0/13 等）。若
+ * WARP 客户端能**直连**源站端口（默认 compose 暴露 8080 即属此拓扑），其 socket 对端
+ * ∈ 上述网段会触发采信——但该场景下 TRUST_PROXY 默认也信任一层 XFF，伪造头本就
+ * 可绕过按 IP 限流（详见 validateEnv 告警），WARP 仅属同一边界的边际增量。严格部署
+ * 应让源站仅接受 CF 边缘入站（防火墙按 CF 网段收口），而非依赖对端网段判断。
+ *
  * 网段来自 Cloudflare 官方发布（https://www.cloudflare.com/ips/，含常用主段；
  * 覆盖绝大多数边缘出口）。官方列表偶尔增补网段，若线上边缘 IP 未命中，请按需
  * 同步新增条目。
@@ -58,9 +64,19 @@ function parseIpv4Octets(address: string): number[] | null {
     return null
   }
 
-  const octets = parts.map((part) => Number.parseInt(part, 10))
-  if (octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) {
-    return null
+  // 每段必须是纯十进制数字：拒绝前导零、尾随空白、字母后缀等
+  // Number.parseInt 的部分解析（'12x'→12、'1.2.3.04'→通过）与 net.isIP 语义不一致，
+  // 这里用正则做整段校验（单 '0' 合法，'04' 等前导零非法）。
+  const octets: number[] = []
+  for (const part of parts) {
+    if (!/^(?:0|[1-9]\d{0,2})$/.test(part)) {
+      return null
+    }
+    const octet = Number(part)
+    if (octet > 255) {
+      return null
+    }
+    octets.push(octet)
   }
   return octets
 }
@@ -87,21 +103,22 @@ export function parseIpv6ToBigInt(address: string): bigint | null {
   if (input.includes('.') && input.startsWith('::ffff:')) {
     // IPv4-mapped IPv6：转 32-bit 嵌在 ::ffff:0:0/96 高位
     const v4 = parseIpv4Octets(input.slice(7))
-    if (!v4) {
-      return null
+    if (v4) {
+      const lo = BigInt(ipv4ToUint32(v4))
+      return (BigInt('0xffff') << 32n) | lo
     }
-    const lo = BigInt(ipv4ToUint32(v4))
-    return (BigInt('0xffff') << 32n) | lo
+    // 不是纯 dotted 形态（如 hex 记法 ::ffff:6810:102 或带多余冒号组）→ 落回通用解析
   }
 
   // 展开内嵌 IPv4（无 ::ffff 前缀的少见形态）
   const embeddedMatch = input.match(/^(.*:)(\d{1,3}(?:\.\d{1,3}){3})$/)
   if (embeddedMatch) {
     const v4 = parseIpv4Octets(embeddedMatch[2])
-    if (!v4) {
+    if (v4) {
+      input = `${embeddedMatch[1]}${((v4[0] << 8) | v4[1]).toString(16)}:${((v4[2] << 8) | v4[3]).toString(16)}`
+    } else {
       return null
     }
-    input = `${embeddedMatch[1]}${((v4[0] << 8) | v4[1]).toString(16)}:${((v4[2] << 8) | v4[3]).toString(16)}`
   }
 
   if (input.includes(':::')) {
@@ -114,6 +131,10 @@ export function parseIpv6ToBigInt(address: string): bigint | null {
   if (doubleColon === -1) {
     head = input.split(':')
   } else {
+    // 只允许一次 :: 压缩；出现第二段 ::（如 '1::1::1'）属于畸形输入
+    if (input.slice(doubleColon + 2).includes('::')) {
+      return null
+    }
     head = input.slice(0, doubleColon).split(':').filter(Boolean)
     tail = input
       .slice(doubleColon + 2)
@@ -131,11 +152,10 @@ export function parseIpv6ToBigInt(address: string): bigint | null {
 
   let value = 0n
   for (const group of head) {
-    const parsed = Number.parseInt(group || '0', 16)
-    if (!Number.isInteger(parsed) || group.length > 4) {
+    if (!/^[0-9a-f]{1,4}$/.test(group)) {
       return null
     }
-    value = (value << 16n) | BigInt(parsed)
+    value = (value << 16n) | BigInt(`0x${group}`)
   }
   const missing = 8 - head.length - tail.length
   if (missing < 0) {
@@ -143,11 +163,10 @@ export function parseIpv6ToBigInt(address: string): bigint | null {
   }
   value <<= 16n * BigInt(missing)
   for (const group of tail) {
-    const parsed = Number.parseInt(group || '0', 16)
-    if (!Number.isInteger(parsed) || group.length > 4) {
+    if (!/^[0-9a-f]{1,4}$/.test(group)) {
       return null
     }
-    value = (value << 16n) | BigInt(parsed)
+    value = (value << 16n) | BigInt(`0x${group}`)
   }
   return value
 }
@@ -195,17 +214,19 @@ export const isCloudflareAddress = (remoteAddress: string): boolean => {
   }
 
   if (version === 6) {
-    // IPv4-mapped IPv6 直接按 IPv4 段匹配（CF IPv4 边缘常以 ::ffff: 形态出现）
-    const lower = raw.toLowerCase()
-    if (lower.startsWith('::ffff:')) {
-      const v4 = parseIpv4Octets(lower.slice(7))
-      if (v4) {
-        return CLOUDFLARE_IPV4_NETS.some((net) => inIpv4Net(ipv4ToUint32(v4), net))
-      }
+    // 统一按 bigint 解析再判断。IPv4-mapped IPv6 无论 dotted（::ffff:a.b.c.d）、
+    // hex（::ffff:6810:102）还是其他合法记法，低 32 位都是 IPv4，应命中 IPv4 网段；
+    // 非 mapped 的 IPv6 才按 IPv6 网段匹配。
+    const value = parseIpv6ToBigInt(raw)
+    if (value === null) {
       return false
     }
-    const value = parseIpv6ToBigInt(lower)
-    return value !== null ? CLOUDFLARE_IPV6_NETS.some((net) => inIpv6Net(value, net)) : false
+    // ::ffff:0:0/96 前缀：高 80 位全 0 + 第 3~4 组 0xffff（即 >>32 == 0xffff 且 >>48 == 0）
+    if (value >> 32n === 0xffffn && value >> 48n === 0n) {
+      const v4 = Number(value & 0xffffffffn)
+      return CLOUDFLARE_IPV4_NETS.some((net) => inIpv4Net(v4, net))
+    }
+    return CLOUDFLARE_IPV6_NETS.some((net) => inIpv6Net(value, net))
   }
 
   return false

@@ -1,5 +1,6 @@
 import { normalizeUrl } from '../common/url.js'
 import {
+  getErrorMessage,
   initApi,
   apiRequest,
   isAllowedLoginOrigin,
@@ -338,8 +339,9 @@ async function handleReconnect() {
       console.warn('展示待捕获表单失败，已保留待重试', captureError)
     }
   } catch (error) {
-    const message = error?.message || texts.connectFailed
-    ui.showToast(message, 'error')
+    // ApiError（服务端信封，如"登录服务异常"）保留业务文案；网络层原生错误
+    // （Failed to fetch / 超时）回退本地化 connectFailed，不展原文
+    ui.showToast(getErrorMessage(error, texts.connectFailed), 'error')
   } finally {
     if (elements.reconnectBtn) {
       elements.reconnectBtn.disabled = false

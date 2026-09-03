@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthUser, User } from '@/types'
+import { ApiClientError } from '@/api/client'
 
 const mocks = vi.hoisted(() => ({
   login: vi.fn(),
@@ -101,10 +102,29 @@ describe('admin store', () => {
       error: 'bad credentials'
     })
 
-    mocks.login.mockRejectedValueOnce(new Error('network failed'))
+    // 服务端非 2xx 拒绝以 ApiClientError 抛出 → 业务文案保留
+    mocks.login.mockRejectedValueOnce(new ApiClientError('用户名或密码错误', 401))
     await expect(store.login('admin', 'secret')).resolves.toEqual({
       success: false,
-      error: 'network failed'
+      error: '用户名或密码错误'
+    })
+  })
+
+  it('maps network-layer failures to the localized fallback instead of the raw message', async () => {
+    const store = useAdminStore()
+
+    // 网络层 TypeError（'Failed to fetch'）→ auth.loginFailed 本地化文案，不上屏原文
+    mocks.login.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    await expect(store.login('admin', 'secret')).resolves.toEqual({
+      success: false,
+      error: '登录失败'
+    })
+
+    // 普通 Error（可能携带内部细节）同样落 fallback
+    mocks.register.mockRejectedValueOnce(new Error('boom at /srv/starnav/db'))
+    await expect(store.register('alice', 'secret')).resolves.toEqual({
+      success: false,
+      error: '注册失败'
     })
   })
 
@@ -114,10 +134,11 @@ describe('admin store', () => {
     mocks.register.mockResolvedValueOnce(undefined)
     await expect(store.register('alice', 'secret')).resolves.toEqual({ success: true })
 
-    mocks.register.mockRejectedValueOnce(new Error('register failed'))
+    // 服务端业务拒绝（ApiClientError）→ 保留服务端文案
+    mocks.register.mockRejectedValueOnce(new ApiClientError('用户名已存在', 409))
     await expect(store.register('alice', 'secret')).resolves.toEqual({
       success: false,
-      error: 'register failed'
+      error: '用户名已存在'
     })
   })
 
@@ -130,10 +151,11 @@ describe('admin store', () => {
       error: '登录失败'
     })
 
+    // 显式抛出的字符串被 getErrorMessage 视为应用自管文案（与 errors.ts 分类规则一致）
     mocks.register.mockRejectedValueOnce('boom')
     await expect(store.register('alice', 'secret')).resolves.toEqual({
       success: false,
-      error: '注册失败'
+      error: 'boom'
     })
   })
 

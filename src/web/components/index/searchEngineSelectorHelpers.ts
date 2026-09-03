@@ -18,7 +18,7 @@ export const getEngineInitial = (name: string) => {
   return /[a-z]/i.test(firstCharacter) ? firstCharacter.toUpperCase() : firstCharacter
 }
 
-export const getEngineProxyIcon = (url: string) => {
+const getEngineProxyIcon = (url: string) => {
   if (!url) {
     return ''
   }
@@ -31,7 +31,7 @@ export const getEngineProxyIcon = (url: string) => {
   }
 }
 
-export const getEngineIconCandidates = (url: string) =>
+const getEngineIconCandidates = (url: string) =>
   [buildOriginFaviconUrl(url), getEngineProxyIcon(url)].filter(
     (candidate, index, list) => candidate && list.indexOf(candidate) === index
   )

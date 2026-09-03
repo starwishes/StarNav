@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h, nextTick, reactive, ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { selectAppOption } from '../helpers/appSelect'
+import { ApiClientError } from '@/api/client'
 
 const mocks = vi.hoisted(() => ({
   trackClick: vi.fn(),
@@ -418,7 +419,9 @@ describe('Site', () => {
     })
     expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:admin.addSuccess')
 
-    dataStoreMock.addItem.mockRejectedValueOnce(new Error('save failed'))
+    // 服务端业务性拒绝以 ApiClientError 抛出，message 上屏（见 src/web/utils/errors.ts 说明）；
+    // 网络层原生 Error 自第 21 轮起走 i18n fallback，不回显原文
+    dataStoreMock.addItem.mockRejectedValueOnce(new ApiClientError('save failed', 400))
     ;(wrapper.vm as any).handleAddItem(7)
     await flushAsync()
     await wrapper.find('.emit-save-site').trigger('click')

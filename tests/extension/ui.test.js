@@ -14,6 +14,7 @@ const i18n = {
     toggleTheme: '切换日/夜模式',
     newCatTip: '新建分类',
     searchPlaceholder: '搜索书签...',
+    clearSearch: '清除搜索',
     descPlaceholder: '描述...',
     catPlaceholder: '分类名',
     notConnectedTip: '请先配置服务器地址',
@@ -27,6 +28,7 @@ const i18n = {
     toggleLang: 'Switch Language',
     newCatTip: 'New Category',
     searchPlaceholder: 'Search...',
+    clearSearch: 'Clear search',
     descPlaceholder: 'Description...',
     catPlaceholder: 'Category name',
     notConnectedTip: 'Please configure server address',
@@ -48,6 +50,7 @@ const renderDom = () => {
     <div id="addForm" style="display:block"></div>
     <div id="duplicateWarning" style="display:flex"></div>
     <input id="searchInput" value="" />
+    <button id="clearSearch"></button>
     <textarea id="bookmarkDesc"></textarea>
     <input id="newCategoryName" />
     <button id="openSite"></button>
@@ -71,6 +74,7 @@ const getElements = () => ({
   addForm: document.getElementById('addForm'),
   duplicateWarning: document.getElementById('duplicateWarning'),
   searchInput: document.getElementById('searchInput'),
+  clearSearch: document.getElementById('clearSearch'),
   bookmarkDesc: document.getElementById('bookmarkDesc'),
   newCategoryName: document.getElementById('newCategoryName'),
   openSite: document.getElementById('openSite'),
@@ -116,6 +120,9 @@ describe('browser extension ui helpers', () => {
     expect(elements.openSite.title).toBe('打开导航站')
     expect(elements.addCategoryBtn.title).toBe('新建分类')
     expect(elements.searchInput.placeholder).toBe('搜索书签...')
+    expect(elements.searchInput.getAttribute('aria-label')).toBe('搜索书签...')
+    expect(elements.clearSearch.title).toBe('清除搜索')
+    expect(elements.clearSearch.getAttribute('aria-label')).toBe('清除搜索')
     expect(elements.bookmarkDesc.placeholder).toBe('描述...')
     expect(elements.newCategoryName.placeholder).toBe('分类名')
     expect(elements.i18nToggle.querySelector('.main-char').textContent).toBe('文')

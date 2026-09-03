@@ -32,12 +32,17 @@ export const DEFAULT_ADMIN_NAME = process.env.ADMIN_USERNAME || 'admin'
 export const TRUST_PROXY = process.env.TRUST_PROXY !== 'false'
 
 /**
- * 可信反代提供的真实客户端 IP 请求头名（小写，如 "cf-connecting-ip"）。
+ * 可信反代提供的真实客户端 IP 请求头名（小写，如 "x-real-ip"）。
  *
  * 适用形态：CDN/反代用专用头透传真实客户端 IP 而不用/不用好 X-Forwarded-For
- * （典型如 Cloudflare：源站 socket 是 CF 边缘 IP，真实 IP 在 CF-Connecting-IP）。
+ * （其他 CDN/边缘网关，非 Cloudflare；Cloudflare 请勿设置此值——见下）。
  * 启用后 server.ts 会在最顶层用该头的首个合法 IP 覆盖 req.ip，
  * 限流分桶 / 会话 / 审计 IP 全链路获得真实客户端 IP（单点覆盖，无需逐点改）。
+ *
+ * ⚠️ 注意：一旦显式设置，server.ts 会**无条件**采信该头，不再做 socket 对端网段
+ * 校验（其他 CDN 无公开网段表可校验）。Cloudflare 部署应**留空**此变量，依赖内置的
+ * 自动检测（socket 对端 ∈ CF 官方网段才采信 CF-Connecting-IP，见 utils/cloudflareIp.ts）——
+ * 手动设成 cf-connecting-ip 反而会关闭这道网段门禁，退化为盲信头值。
  *
  * 安全前提：该头必须由受信任反代覆盖（Cloudflare 会丢弃并重写客户端伪造值）；
  * 若应用端口直连公网，客户端可伪造该头污染 IP，故 validateEnv 会提示确认部署形态。

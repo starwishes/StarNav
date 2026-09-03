@@ -6,8 +6,6 @@ import { strongPasswordSchema } from '../../validation.js'
 import { errors } from '../../utils/errors.js'
 import type { AuthCredentials, AuthUserLike } from '../../types/domain.js'
 
-const TOKEN_EXPIRES_IN = '7d'
-
 // 会话有效期（天）：默认 30 天，勾选"记住我"后延长到 90 天。
 // 同时作用于 JWT 过期、HttpOnly Cookie maxAge、数据库 sessions.expires_at。
 export const DEFAULT_SESSION_DAYS = 30
@@ -20,10 +18,15 @@ export const buildAuthUser = (user: AuthUserLike) => ({
   level: user.level
 })
 
+/**
+ * 签发 JWT。`expiresIn` 必填（调用方恒传 sessionDaysToExpiresIn 派生值，30d/90d），
+ * 不再提供 '7d' 兜底：任何比会话短或与 30/90 天不变式不一致的默认值都会导致
+ * Cookie/会话仍有效而 JWT 提前过期（或反之）的错位。
+ */
 export const issueToken = (
   user: AuthUserLike,
-  sessionId?: string | null,
-  options: { expiresIn?: string | number } = {}
+  options: { expiresIn: string | number },
+  sessionId?: string | null
 ) => {
   return jwt.sign(
     {
@@ -33,7 +36,7 @@ export const issueToken = (
       ...(sessionId ? { sessionId } : {})
     },
     JWT_SECRET,
-    { expiresIn: (options.expiresIn ?? TOKEN_EXPIRES_IN) as jwt.SignOptions['expiresIn'] }
+    { expiresIn: options.expiresIn as jwt.SignOptions['expiresIn'] }
   )
 }
 

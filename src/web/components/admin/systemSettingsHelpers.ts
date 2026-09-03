@@ -19,6 +19,9 @@ export const buildDefaultLevelOptions = (t: Translate) => [
   { label: `${t('userLevel.vip')} (2)`, value: 2 }
 ]
 
+// 时区下拉选项。校验侧的单一事实源是 src/shared/security/urlSafety.ts SUPPORTED_TIMEZONES
+//（isAllowedTimezone 白名单）——此处 value 集合必须与之逐项一致（额外需 i18n label），
+// 改动任一侧都要同步另一侧，避免"选项能选但保存被拒"或"白名单放行但 UI 选不到"。
 export const buildTimezoneOptions = (t: Translate) => [
   { label: t('timezone.local'), value: '' },
   { label: t('timezone.shanghai'), value: 'Asia/Shanghai' },

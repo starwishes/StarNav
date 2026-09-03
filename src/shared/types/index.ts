@@ -31,9 +31,6 @@ export interface Item {
   sortOrder?: number
 }
 
-/** Alias used in some docs/tools */
-export type Bookmark = Item
-
 export interface Category {
   id: number
   name: string
@@ -64,7 +61,6 @@ export interface ImportedBookmarkItem {
 export interface User {
   username: string
   level: number
-  created_at?: string
   createdAt?: string
   lastLogin?: string
 }
@@ -73,22 +69,14 @@ export interface AuthUser {
   login: string
   name: string
   level: number
+  /** 历史遗留可选字段：服务端 buildAuthUser 只产出 login/name/level，
+   *  该字段仅为兼容 localStorage `admin_user` 中可能残留的旧键（AdminSidebar 头像分支）。 */
   avatar_url?: string
 }
 
 export interface AuthResult {
   success: boolean
   error?: string
-}
-
-export interface Session {
-  session_id: string
-  username: string
-  ip?: string
-  user_agent?: string
-  created_at: string
-  last_active_at: string
-  expires_at: string
 }
 
 // ==================== System settings ====================
@@ -103,9 +91,6 @@ export interface SystemSettings {
   logoUrl?: string
   faviconUrl?: string
   defaultUserLevel?: number
-  siteDescription?: string
-  allowRegister?: boolean
-  defaultSearchEngine?: string
 }
 
 // ==================== API envelope (shared with common/api) ====================
@@ -114,29 +99,3 @@ export interface SystemSettings {
 export type ApiResponse<T = unknown> = GenericApiResponse<T>
 
 export type { GenericApiResponse }
-
-// ==================== Audit / pagination (optional shared) ====================
-
-export interface Pagination {
-  page: number
-  pageSize: number
-  total: number
-}
-
-export interface PaginatedResponse<T> {
-  success?: boolean
-  data?: T[]
-  pagination: Pagination
-  error?: string
-  message?: string
-  code?: string
-}
-
-export interface AuditLog {
-  id?: number
-  username?: string
-  action: string
-  details?: string
-  ip?: string
-  created_at?: string
-}

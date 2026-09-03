@@ -6,8 +6,8 @@
 
 ## 当前版本
 
-- 插件版本：`v1.0.7`
-- Manifest 包版本：`1.0.7`
+- 插件版本：`v1.0.8`
+- Manifest 包版本：`1.0.8`
 
 <!-- version-sync:end -->
 
@@ -67,19 +67,18 @@ npm run extension:export
 
 ## 配置
 
-1. 安装后会自动打开设置页面
+1. 点击浏览器工具栏上的 StarNav 图标打开 popup——未配置时会显示内联「连接卡片」（安装不再自动弹出设置页，onInstalled 仅注册右键菜单）
 2. 输入您部署的 StarNav 服务器地址（如 `https://nav.example.com`）
 3. 扩展不会向浏览器申请任何站点访问权限：连接与登录通过 `fetch` 直接访问您填写的服务器地址完成（出于安全考虑，仅允许 `https:` 或本地回环 `http://127.0.0.1` / `localhost` / `[::1]`）
    - **LAN 纯 HTTP 部署暂不支持扩展登录**：如 `http://192.168.x.x` 这类局域网明文 HTTP 地址会被拒绝（安全取舍：避免中间人窃取 JWT/会话）。建议使用 HTTPS，或从本机回环地址登录扩展。
 4. 输入账号密码并登录（扩展走 **`POST /api/login` 返回的 Bearer JWT**，不依赖主站 HttpOnly Cookie）
-5. 点击浏览器工具栏上的图标即可使用
 
 快捷能力：
 
 - 右键菜单「Add page to StarNav」：把当前页/链接写入待添加队列并打开 popup
 - `Alt+Shift+S`：打开扩展 popup
 - `Alt+Shift+A`：添加当前页面
-- popup / 设置页支持日/夜模式切换
+- popup 支持日/夜模式切换
 
 认证说明：主站 Web 管理端优先 Cookie、Bearer 回退；扩展与脚本客户端应始终带 `Authorization: Bearer <token>`。详见 `docs/ARCHITECTURE.md` 的 Auth and session model。
 
@@ -111,7 +110,7 @@ npm run extension:package
 npm run extension:export
 
 # 真实浏览器扩展 E2E
-# 覆盖 raw unpacked 首装/登录/401/错误分支与 popup/options 核心流程
+# 覆盖 raw unpacked 首装/连接卡片登录/401 失效/错误分支与 popup 核心流程
 npm run test:browser:extension
 
 # 目录结构
@@ -120,9 +119,8 @@ clients/extension/
 ├── manifest.json           # Chrome/Edge 配置
 ├── manifest.firefox.json   # Firefox 配置（由 versions:sync 生成）
 ├── common/                 # 扩展内共享 API 工具
-├── popup/                  # 弹窗界面
-├── options/                # 设置页面
-├── background/             # 后台脚本
+├── popup/                  # 弹窗界面（连接卡片 + 书签操作）
+├── background/             # 后台脚本（Service Worker / 右键菜单）
 └── icons/                  # 图标资源
 ```
 

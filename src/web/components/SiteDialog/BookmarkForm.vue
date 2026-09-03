@@ -16,7 +16,11 @@
         <span class="dialog-label">{{ t('site.category') }}</span>
         <div class="category-selector-stack">
           <div class="category-selector-wrap">
-            <AppSelect v-model="selectedParentCategoryId" class="dialog-select">
+            <AppSelect
+              v-model="selectedParentCategoryId"
+              class="dialog-select"
+              :label="t('site.category')"
+            >
               <option disabled value="">{{ t('site.placeholderCategory') }}</option>
               <option
                 v-for="option in parentCategoryOptions"
@@ -41,6 +45,7 @@
             v-if="selectedParentCategory?.children.length"
             v-model="selectedChildCategoryId"
             class="dialog-select dialog-select--child"
+            :label="t('category.placeholderSubCategory')"
           >
             <option value="">{{ t('category.placeholderSubCategory') }}</option>
             <option
@@ -73,7 +78,11 @@
 
             <label class="dialog-field">
               <span class="dialog-label">{{ t('category.parent') }}</span>
-              <AppSelect v-model="selectedInlineParentId" class="dialog-select">
+              <AppSelect
+                v-model="selectedInlineParentId"
+                class="dialog-select"
+                :label="t('category.parent')"
+              >
                 <option value="">{{ t('category.root') }}</option>
                 <option
                   v-for="option in parentCategoryOptions"
@@ -130,7 +139,11 @@
     <div class="form-row">
       <label class="dialog-field flex-1">
         <span class="dialog-label">{{ t('site.permission') }}</span>
-        <AppSelect v-model.number="formData.level" class="dialog-select">
+        <AppSelect
+          v-model.number="formData.level"
+          class="dialog-select"
+          :label="t('site.permission')"
+        >
           <option :value="USER_LEVEL.GUEST">{{ t('userLevel.guest') }}</option>
           <option :value="USER_LEVEL.USER">{{ t('userLevel.user') }}</option>
           <option :value="USER_LEVEL.VIP">{{ t('userLevel.vip') }}</option>

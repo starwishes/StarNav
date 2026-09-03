@@ -234,6 +234,33 @@ describe('categoryWriteService', () => {
     })
   })
 
+  it('rejects adding a category under a non-existent parent', () => {
+    const { db } = ctx
+
+    insertCategory(db, { id: 1, name: 'Root' })
+
+    expect(() => categoryWriteService.add({ name: 'Orphan Child', parentId: 99 })).toThrowError(
+      expect.objectContaining({ statusCode: 400 })
+    )
+    // 未写入任何悬空分类
+    expect(db.prepare('SELECT COUNT(*) as count FROM categories').get()).toEqual({ count: 1 })
+  })
+
+  it('rejects reparenting a category under a non-existent parent', () => {
+    const { db } = ctx
+
+    insertCategory(db, { id: 1, name: 'Root' })
+    insertCategory(db, { id: 2, name: 'Child', parentId: 1 })
+
+    expect(() => categoryWriteService.update(2, { parentId: 99 })).toThrowError(
+      expect.objectContaining({ statusCode: 400 })
+    )
+    // 数据库保持原状（仍挂在 Root 下）
+    expect(db.prepare('SELECT parent_id FROM categories WHERE id = 2').get()).toEqual({
+      parent_id: 1
+    })
+  })
+
   it('rejects bulk imports containing a self-referencing category', () => {
     const { db } = ctx
 

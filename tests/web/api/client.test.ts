@@ -74,6 +74,58 @@ describe('frontend api client', () => {
     expect(authClearedListener).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps the local auth state when a login attempt returns 401 (wrong password)', async () => {
+    // 已登录用户换号输错密码：POST /login 401 = 业务上的"密码错误"，HttpOnly 会话仍有效，
+    // 不应清空本地登录态或广播 AUTH_CLEARED_EVENT
+    localStorage.setItem('admin_user', '{"login":"admin"}')
+    const authClearedListener = vi.fn()
+    window.addEventListener('starnav:auth-cleared', authClearedListener)
+    mockFetch.mockResolvedValue(
+      createJsonResponse(
+        {
+          error: '用户名或密码错误'
+        },
+        {
+          ok: false,
+          status: 401
+        }
+      )
+    )
+
+    const { api } = await loadClientModule()
+
+    await expect(
+      api.post('/login', { username: 'other', password: 'wrong' })
+    ).rejects.toMatchObject({
+      name: 'ApiClientError',
+      message: '用户名或密码错误',
+      status: 401
+    })
+
+    expect(localStorage.getItem('admin_user')).toBe('{"login":"admin"}')
+    expect(authClearedListener).not.toHaveBeenCalled()
+  })
+
+  it('does not clear auth or broadcast on 401 when no local login state exists', async () => {
+    const authClearedListener = vi.fn()
+    window.addEventListener('starnav:auth-cleared', authClearedListener)
+    mockFetch.mockResolvedValue(
+      createJsonResponse(
+        { error: 'expired' },
+        {
+          ok: false,
+          status: 401
+        }
+      )
+    )
+
+    const { api } = await loadClientModule()
+
+    await expect(api.get('/protected')).rejects.toMatchObject({ status: 401 })
+    expect(localStorage.getItem('admin_user')).toBeNull()
+    expect(authClearedListener).not.toHaveBeenCalled()
+  })
+
   it('returns blob payloads with decoded filenames and content types', async () => {
     const archiveBlob = new Blob(['zip-data'], { type: 'application/zip' })
 

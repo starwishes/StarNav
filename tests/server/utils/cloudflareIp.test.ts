@@ -28,6 +28,37 @@ describe('cloudflareIp', () => {
       expect(parseIpv6ToBigInt('2606:4700::12345')).toBeNull()
       expect(parseIpv6ToBigInt('1:2:3')).toBeNull()
     })
+
+    it('rejects hex groups that parseInt would partially parse', () => {
+      // parseInt('12zz',16)→0x12、parseInt('0x1',16)→1；这些不是合法 1-4 位 hex 组
+      expect(parseIpv6ToBigInt('2606:4700::12zz')).toBeNull()
+      expect(parseIpv6ToBigInt('2606:4700::0x1')).toBeNull()
+      expect(parseIpv6ToBigInt('2606:4700::g')).toBeNull()
+    })
+
+    it('rejects a second :: compression group', () => {
+      expect(parseIpv6ToBigInt('1::1::1')).toBeNull()
+      expect(parseIpv6ToBigInt('2001::1::2')).toBeNull()
+      expect(parseIpv6ToBigInt(':::')).toBeNull()
+    })
+
+    it('parses bare :: and trailing :: forms', () => {
+      expect(parseIpv6ToBigInt('::')!.toString(16)).toBe('0')
+      expect(parseIpv6ToBigInt('2606:4700::')!.toString(16)).toBe(`26064700${'0'.repeat(24)}`)
+    })
+
+    it('parses hex-notation IPv4-mapped and dotted forms to the same value', () => {
+      // ::ffff:6810:102 与 ::ffff:104.16.1.2 是同一 IPv4-mapped 地址的两种记法
+      expect(parseIpv6ToBigInt('::ffff:6810:102')!.toString(16)).toBe('ffff68100102')
+      expect(parseIpv6ToBigInt('::ffff:104.16.1.2')!.toString(16)).toBe('ffff68100102')
+    })
+
+    it('rejects IPv4 octets with leading zeros or trailing garbage', () => {
+      // 仅 parseIpv6ToBigInt 的 dotted mapped 入口可触达这些 octet（isCloudflareAddress
+      // 走 net.isIP 门控）；这里锁定解析器自身不接受 net.isIP 判非法的形态
+      expect(parseIpv6ToBigInt('::ffff:1.2.3.04')).toBeNull()
+      expect(parseIpv6ToBigInt('::ffff:1.2.3.4abc')).toBeNull()
+    })
   })
 
   describe('isCloudflareAddress', () => {
@@ -54,11 +85,20 @@ describe('cloudflareIp', () => {
       expect(isCloudflareAddress('::ffff:104.23.251.5')).toBe(true)
       expect(isCloudflareAddress('::ffff:8.8.8.8')).toBe(false)
       expect(isCloudflareAddress('2001:4860:4860::8888')).toBe(false)
+      // hex 记法 IPv4-mapped：应命中 IPv4 网段
+      expect(isCloudflareAddress('::ffff:6810:102')).toBe(true) // = ::ffff:104.16.1.2
+      expect(isCloudflareAddress('::ffff:0808:0808')).toBe(false) // = ::ffff:8.8.8.8
     })
 
     it('rejects garbage or empty input', () => {
       expect(isCloudflareAddress('')).toBe(false)
       expect(isCloudflareAddress('not-an-ip')).toBe(false)
+    })
+
+    it('rejects non-canonical IPv6 forms that net.isIP classifies as invalid', () => {
+      expect(isCloudflareAddress('2606:4700::12zz')).toBe(false)
+      expect(isCloudflareAddress('1::1::1')).toBe(false)
+      expect(isCloudflareAddress('1.2.3.04')).toBe(false)
     })
   })
 })

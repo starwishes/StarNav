@@ -54,7 +54,6 @@ export interface HealthSummary {
       categoryCount?: number
       itemCount?: number
       userCount?: number
-      dbPath?: string
       fileExists?: boolean
       writable?: boolean
       journalMode?: string

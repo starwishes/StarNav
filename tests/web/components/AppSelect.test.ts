@@ -38,6 +38,31 @@ describe('AppSelect', () => {
     expect(wrapper.find('.app-select__label').classes()).toContain('is-placeholder')
   })
 
+  it('exposes the label prop as the combobox accessible name', () => {
+    // 内容文本不计入 role=combobox 的 accName，label prop 必须渲染成 aria-label（第 22 轮审查）
+    const wrapper = createWrapper(
+      { label: 'Rows per page', modelValue: '' },
+      '<option value="10">10</option>'
+    )
+
+    expect(wrapper.find('.app-select').attributes('aria-label')).toBe('Rows per page')
+  })
+
+  it('omits aria-label when neither label prop nor aria-label attribute is provided', () => {
+    const wrapper = createWrapper({ modelValue: '' }, '<option value="1">One</option>')
+
+    expect(wrapper.find('.app-select').attributes('aria-label')).toBeUndefined()
+  })
+
+  it('accepts a fallthrough aria-label attribute when label prop is absent', () => {
+    const wrapper = createWrapper(
+      { 'aria-label': 'Fallthrough label', modelValue: '' },
+      '<option value="1">One</option>'
+    )
+
+    expect(wrapper.find('.app-select').attributes('aria-label')).toBe('Fallthrough label')
+  })
+
   it('opens the menu on click and closes when clicking the root again', async () => {
     const wrapper = createWrapper(
       { modelValue: '' },

@@ -54,7 +54,11 @@
 
             <label class="dialog-field">
               <span class="dialog-label">{{ t('category.permission') }}</span>
-              <AppSelect v-model.number="localForm.level" class="dialog-select">
+              <AppSelect
+                v-model.number="localForm.level"
+                class="dialog-select"
+                :label="t('category.permission')"
+              >
                 <option :value="0">{{ t('userLevel.guest') }} ({{ t('category.public') }})</option>
                 <option :value="1">{{ t('userLevel.user') }}</option>
                 <option :value="2">{{ t('userLevel.vip') }}</option>

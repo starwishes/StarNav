@@ -1,12 +1,12 @@
 /** Pure helpers for windowed site-card grids (large categories). */
 
-export const SITE_CARD_MIN_WIDTH = 250
-export const SITE_GRID_GAP = 18
+const SITE_CARD_MIN_WIDTH = 250
+const SITE_GRID_GAP = 18
 /** Approximate card block height + gap; used for scroll windowing only. */
 export const SITE_GRID_ROW_STRIDE = 138
 /** Below this count, render every card (cheap; keeps tests simple). */
 export const SITE_GRID_VIRTUALIZE_THRESHOLD = 36
-export const SITE_GRID_OVERSCAN_ROWS = 3
+const SITE_GRID_OVERSCAN_ROWS = 3
 
 export type VirtualGridSlice<T> = {
   startIndex: number

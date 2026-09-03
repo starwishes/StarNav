@@ -45,10 +45,12 @@ describe('identityHelpers', () => {
     })
   })
 
-  it('issues tokens with the current claims and optional session id', () => {
+  it('issues tokens with the given expiresIn and optional session id', () => {
     jwt.sign.mockReturnValue('token-1')
 
-    expect(issueToken({ username: 'alice', level: 2 }, 'session-1')).toBe('token-1')
+    expect(issueToken({ username: 'alice', level: 2 }, { expiresIn: '30d' }, 'session-1')).toBe(
+      'token-1'
+    )
     expect(jwt.sign).toHaveBeenCalledWith(
       {
         username: 'alice',
@@ -57,10 +59,10 @@ describe('identityHelpers', () => {
         sessionId: 'session-1'
       },
       expect.any(String),
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     )
 
-    issueToken({ username: 'bob', level: 1 })
+    issueToken({ username: 'bob', level: 1 }, { expiresIn: '90d' })
     expect(jwt.sign).toHaveBeenLastCalledWith(
       {
         username: 'bob',
@@ -68,7 +70,7 @@ describe('identityHelpers', () => {
         authVersion: 0
       },
       expect.any(String),
-      { expiresIn: '7d' }
+      { expiresIn: '90d' }
     )
   })
 

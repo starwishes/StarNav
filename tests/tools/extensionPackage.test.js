@@ -79,10 +79,11 @@ describe('extension package bundles', () => {
       syncMetadata: false
     })
 
-    const [chromeEntries, firefoxEntries, checksums] = await Promise.all([
+    const [chromeEntries, firefoxEntries, checksums, extensionVersion] = await Promise.all([
       readZipEntries(chromeArchivePath),
       readZipEntries(firefoxArchivePath),
-      fs.readFile(checksumsPath, 'utf8')
+      fs.readFile(checksumsPath, 'utf8'),
+      fs.readFile(path.resolve('clients/extension/version.json'), 'utf8')
     ])
 
     expect(chromeEntries.has('manifest.json')).toBe(true)
@@ -96,7 +97,7 @@ describe('extension package bundles', () => {
 
     expect(JSON.parse(chromeEntries.get('manifest.json').toString('utf8'))).toMatchObject({
       manifest_version: 3,
-      version_name: 'v1.0.7'
+      version_name: JSON.parse(extensionVersion).displayVersion
     })
     expect(JSON.parse(firefoxEntries.get('manifest.json').toString('utf8'))).toMatchObject({
       manifest_version: 2

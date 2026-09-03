@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 import i18n from '@/plugins/i18n'
 import { dataApi } from '@/api'
+import { ApiClientError } from '@/api/client'
 import type { Category, Item, SiteConfig } from '@/types'
 import {
   batchMoveItemsLocally,
@@ -19,8 +20,32 @@ import {
 import { sanitizeApiData } from '@/utils/data-helpers'
 import { ElMessage } from '@/utils/feedback'
 import { createScopedLogger } from '../../shared/logger.js'
+import { getErrorMessage } from '@/utils/errors'
 
 const logger = createScopedLogger('web:data-store')
+
+/**
+ * 写路径错误文案：判定逻辑收敛到 utils/errors.getErrorMessage——ApiClientError（服务端返回的
+ * 业务文案，如 400/409 校验提示）保留上屏；其余网络层异常（TypeError: Failed to fetch /
+ * TimeoutError 等）不把原文上屏（可能携带堆栈/内部细节），显示固定失败文案（与 loadData
+ * 第 16 轮固定文案一致）。
+ */
+const getWriteErrorMessage = (error: unknown): string => {
+  const message = getErrorMessage(error, i18n.global.t('feedback.saveFailed'))
+  if (error instanceof ApiClientError) {
+    if (typeof error.status === 'number' && error.status > 0) {
+      // 服务端业务性拒绝（4xx 校验提示等）属预期路径，debug 级留痕便于排查即可
+      logger.debug('Write operation rejected by server.', error)
+    } else {
+      // status 0 = 客户端防御性抛出（2xx-但信封空/缺字段，见各 add*/update*/moveItem 路径），
+      // 非服务端拒绝，debug 文案区分开，避免误导排查（第 23 轮审查）
+      logger.debug('Write operation rejected by client-side guard.', error)
+    }
+  } else {
+    logger.error('Write operation failed.', error)
+  }
+  return message
+}
 
 export const useDataStore = defineStore('data', () => {
   const categories = ref<Category[]>([])
@@ -134,8 +159,7 @@ export const useDataStore = defineStore('data', () => {
     await withSaving(async () => {
       await dataApi.saveContent(buildSyncPayload(categories.value, items.value, action))
     }).catch((error) => {
-      logger.error('Full content sync failed.', error)
-      const message = error instanceof Error ? error.message : i18n.global.t('feedback.saveFailed')
+      const message = getWriteErrorMessage(error)
       ElMessage.error(message)
       throw error
     })
@@ -145,7 +169,9 @@ export const useDataStore = defineStore('data', () => {
     withSaving(async () => {
       const createdCategory = await dataApi.addCategory(catData)
       if (!createdCategory) {
-        throw new Error(i18n.global.t('feedback.categoryCreateFailed'))
+        // 2xx-但-信封无 item 的防御路径：以 ApiClientError(0) 携带业务文案，使调用方的
+        // getErrorMessage 保留细分文案（普通 Error 会被回退成通用 fallback，见第 22 轮审查）
+        throw new ApiClientError(i18n.global.t('feedback.categoryCreateFailed'), 0)
       }
 
       const normalizedCategory = normalizeCategory(createdCategory)
@@ -161,7 +187,7 @@ export const useDataStore = defineStore('data', () => {
     await withSaving(async () => {
       const updatedCategory = await dataApi.updateCategory(Number(catData.id), catData)
       if (!updatedCategory) {
-        throw new Error(i18n.global.t('feedback.categoryUpdateFailed'))
+        throw new ApiClientError(i18n.global.t('feedback.categoryUpdateFailed'), 0)
       }
 
       replaceCategory(normalizeCategory(updatedCategory))
@@ -207,8 +233,7 @@ export const useDataStore = defineStore('data', () => {
       }
     } catch (error) {
       categories.value = originalCategories
-      const message = error instanceof Error ? error.message : i18n.global.t('feedback.saveFailed')
-      ElMessage.error(message)
+      ElMessage.error(getWriteErrorMessage(error))
       throw error
     }
   }
@@ -217,7 +242,7 @@ export const useDataStore = defineStore('data', () => {
     withSaving(async () => {
       const createdItem = await dataApi.addItem(itemData)
       if (!createdItem) {
-        throw new Error(i18n.global.t('feedback.bookmarkAddFailed'))
+        throw new ApiClientError(i18n.global.t('feedback.bookmarkAddFailed'), 0)
       }
 
       const normalizedItem = normalizeItem(createdItem)
@@ -238,7 +263,7 @@ export const useDataStore = defineStore('data', () => {
     await withSaving(async () => {
       const updatedItem = await dataApi.updateItem(Number(itemData.id), itemData)
       if (!updatedItem) {
-        throw new Error(i18n.global.t('feedback.bookmarkUpdateFailed'))
+        throw new ApiClientError(i18n.global.t('feedback.bookmarkUpdateFailed'), 0)
       }
 
       const normalizedItem = normalizeItem(updatedItem)
@@ -277,8 +302,7 @@ export const useDataStore = defineStore('data', () => {
       await withSaving(() => dataApi.batchDeleteItems(Array.from(targetIds)))
     } catch (error) {
       restoreState(originalState)
-      const message = error instanceof Error ? error.message : i18n.global.t('feedback.saveFailed')
-      ElMessage.error(message)
+      ElMessage.error(getWriteErrorMessage(error))
       throw error
     }
   }
@@ -301,8 +325,7 @@ export const useDataStore = defineStore('data', () => {
       await withSaving(() => dataApi.batchMoveItems(ids, normalizedTargetCatId))
     } catch (error) {
       restoreState(originalState)
-      const message = error instanceof Error ? error.message : i18n.global.t('feedback.saveFailed')
-      ElMessage.error(message)
+      ElMessage.error(getWriteErrorMessage(error))
       throw error
     }
   }
@@ -321,12 +344,11 @@ export const useDataStore = defineStore('data', () => {
         dataApi.moveItem(itemId, { categoryId: targetCatId, targetIndex })
       )
       if (!movedItem) {
-        throw new Error(i18n.global.t('feedback.moveFailed'))
+        throw new ApiClientError(i18n.global.t('feedback.moveFailed'), 0)
       }
     } catch (error) {
       restoreState(originalState)
-      const message = error instanceof Error ? error.message : i18n.global.t('feedback.saveFailed')
-      ElMessage.error(message)
+      ElMessage.error(getWriteErrorMessage(error))
       throw error
     }
   }

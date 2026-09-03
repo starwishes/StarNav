@@ -35,7 +35,7 @@ export const resolveInitialActiveTabId = (category: Category) => {
   return category.children![0].id
 }
 
-export const collectBranchItems = (category: Category): DisplayedSiteItem[] => {
+const collectBranchItems = (category: Category): DisplayedSiteItem[] => {
   let items = normalizeCategoryItems(category.content, category.id)
 
   for (const child of category.children || []) {

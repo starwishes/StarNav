@@ -105,7 +105,7 @@ describe('authLifecycleService', () => {
       userAgent: 'Vitest',
       success: false
     })
-    expect(logger.warn).toHaveBeenCalledWith('登录失败尝试: alice')
+    expect(logger.warn).toHaveBeenCalledWith('登录失败尝试: alice', { ip: '1.1.1.1' })
   })
 
   it('logs out current sessions and skips revocation when no session is present', () => {

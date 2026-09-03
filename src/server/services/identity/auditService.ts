@@ -20,8 +20,12 @@ export const auditService = {
       .prepare<AuditLogRow>(
         `
             SELECT id, username, action, details, ip, created_at as timestamp
-            FROM audit_logs 
-            ORDER BY created_at DESC
+            FROM audit_logs
+            -- created_at 混存 T 形（strftime，新库）与空格形（datetime('now')，旧库）两种格式：
+            -- 同一日期前缀下字符串比较恒是 'T' > ' '，会漏排同日 T 形早于空格形晚近等真实时序，
+            -- 统一用 strftime('%s') 数值比较（与 clear()/pruneAuditLogs 同口径）。
+            -- strftime('%s') 精度整秒：同秒行以 id（自增且与时间同向）倒序作决胜键，保证分页次序稳定
+            ORDER BY strftime('%s', created_at) DESC, id DESC
             LIMIT ? OFFSET ?
         `
       )
@@ -84,7 +88,16 @@ export const auditService = {
     try {
       const db = getDb()
       if (before) {
-        db.prepare('DELETE FROM audit_logs WHERE created_at < ?').run(before)
+        // created_at 存在两种存储格式：新库 strftime（`2026-04-13T08:00:00.000Z`，T 形）与
+        // 旧库 datetime('now')（`2026-04-13 08:00:00`，空格形）。裸字符串 `created_at < ?`
+        // 在同一日期前缀下 `'T' > ' '`，当 before 带非午夜时间时会漏删同一天早于 cutoff 的
+        // T 形行（空格形行却会删）。统一用 strftime('%s') 数值比较，与 pruneAuditLogs 一致，
+        // 使两种格式的行对同一 cutoff 语义完全等价。
+        db.prepare(
+          `DELETE FROM audit_logs
+           WHERE created_at IS NOT NULL
+             AND strftime('%s', created_at) < strftime('%s', ?)`
+        ).run(before)
       } else {
         db.prepare('DELETE FROM audit_logs').run()
       }

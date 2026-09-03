@@ -63,6 +63,20 @@ describe('i18n plugin', () => {
     expect(document.documentElement.getAttribute('lang')).toBe('zh-CN')
   })
 
+  it('invokes the registered title refresh handler on every locale switch', async () => {
+    const i18nModule = await loadI18nModule()
+    const handler = vi.fn()
+
+    // 未注册前 setLocale 不应抛错（?.() 可空调用）
+    expect(() => i18nModule.setLocale('en-US')).not.toThrow()
+
+    i18nModule.registerTitleRefreshHandler(handler)
+    i18nModule.setLocale('en-US')
+    expect(handler).toHaveBeenCalledTimes(1)
+    i18nModule.setLocale('zh-CN')
+    expect(handler).toHaveBeenCalledTimes(2)
+  })
+
   it('includes health translations for the english admin dashboard', async () => {
     localStorage.setItem('locale', 'en-US')
     const i18nModule = await loadI18nModule()
