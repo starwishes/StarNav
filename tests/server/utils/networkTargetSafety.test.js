@@ -34,7 +34,8 @@ describe('networkTargetSafety', () => {
     it('allows IPv4-mapped public literals and pins the fixed address', async () => {
       const target = await resolvePublicHttpTarget('http://[::ffff:8.8.8.8]/')
       expect(target.url).toBe('http://[::ffff:808:808]/')
-      expect(target.address).toBe('::ffff:8.8.8.8')
+      // address 是 URL 归一化后的规范 hex 记法（剥 [] 的 hostname），不依赖 DNS 输出
+      expect(target.address).toBe('::ffff:808:808')
       expect(target.family).toBe(6)
     })
 
@@ -127,7 +128,8 @@ describe('networkTargetSafety', () => {
 
       const compat = await resolvePublicHttpTarget('http://[::8.8.8.8]/')
       expect(compat.url).toBe('http://[::808:808]/')
-      expect(compat.address).toBe('::8.8.8.8')
+      // URL 归一化把 dotted 内嵌 v4 转成 hex（::808:808 == 8.8.8.8），address 为规范 hex 形式
+      expect(compat.address).toBe('::808:808')
       expect(compat.family).toBe(6)
 
       const sixToFour = await resolvePublicHttpTarget('http://[2002:808:808::]/')

@@ -208,25 +208,30 @@ export const resolvePublicHttpTarget = async (
     throw errors.badRequest(LINK_CHECK_TARGET_ERROR)
   }
 
-  // hostname 上带 [] 的 IPv6 字面量（如 [::1]）经 net.isIP 恒返回 0，走不到这里的内嵌判定；
-  // 私网 IPv6/内嵌 IPv4 形态统一在 assertPublicDnsTarget 对解析结果的逐条检查中拦截
-  //（dns.lookup 对纯 IP 字面量不产生网络流量，仅做格式解析）。此分支实际拦截的是 IPv4
-  // 私网字面量（8.8.8.8 等公网 IPv4 除外）与 localhost/.local/.internal 主机名。
-  if (isBlockedHostname(parsed.hostname) || isPrivateIpAddress(parsed.hostname)) {
+  // URL 对 IPv6 字面量恒保留方括号（new URL('http://[::ffff:808:808]/').hostname ===
+  // '[::ffff:808:808]'），net.isIP 不接受带括号形态、恒返回 0。统一剥掉 [] 后按 IP 字面量
+  // 判定（私网检查 + 直连 pin 返回固定地址），使 IPv6 字面量不依赖 dns.lookup——后者对带
+  // 括号字面量的行为跨平台不一致（Windows 剥括号解析成功、Linux 抛错 → CI 差异）。
+  const literalHostname =
+    parsed.hostname.startsWith('[') && parsed.hostname.endsWith(']')
+      ? parsed.hostname.slice(1, -1)
+      : parsed.hostname
+
+  if (isBlockedHostname(literalHostname) || isPrivateIpAddress(literalHostname)) {
     throw errors.badRequest(LINK_CHECK_TARGET_ERROR)
   }
 
   const url = parsed.toString()
 
-  // 字面量直连快路径：仅 IPv4 会命中——IPv6 hostname 带 []（net.isIP 恒 0），一律走下方
-  // assertPublicDnsTarget 的 DNS 兜底解析（对 IP 字面量零网络开销，且结果会再过一遍
-  // isPrivateIpAddress，覆盖纯 IPv6 私网与 mapped/兼容/NAT64/6to4 内嵌私网形态）。
-  if (net.isIP(parsed.hostname) !== 0) {
-    const family = net.isIP(parsed.hostname)
-    return { url, address: parsed.hostname, family }
+  // IP 字面量直连快路径：IPv4 与剥括号后的 IPv6（含 mapped/兼容/NAT64/6to4 内嵌形态）都命中。
+  // 私网形态已在 isPrivateIpAddress 阶段被拒，这里能到的都是公网字面量，直接返回固定地址供
+  // 调用方以自定义 lookup 直连，杜绝 DNS rebinding 窗口。
+  if (net.isIP(literalHostname) !== 0) {
+    const family = net.isIP(literalHostname)
+    return { url, address: literalHostname, family }
   }
 
-  const results = await assertPublicDnsTarget(parsed.hostname)
+  const results = await assertPublicDnsTarget(literalHostname)
   const first = results[0]
   return {
     url,
