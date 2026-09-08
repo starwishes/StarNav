@@ -191,8 +191,22 @@ describe('AuditLog', () => {
     await wrapper.vm.$nextTick()
 
     expect(mocks.messageError).toHaveBeenCalledWith('translated:common.loadFailed')
+    // 失败必须渲染错误态 + 重试，而非落"无数据"空态误导用户
+    expect(wrapper.find('.sn-error-state').exists()).toBe(true)
+    expect(wrapper.find('.sn-empty-state').exists()).toBe(false)
+    expect(wrapper.text()).toContain('translated:common.retry')
 
+    // 复用顶部手动刷新同一链路做错误恢复
     mocks.getAuditLogs.mockResolvedValueOnce({ logs: [], total: 0 })
+    await wrapper.find('.sn-error-state .table-button').trigger('click')
+    await Promise.resolve()
+    await wrapper.vm.$nextTick()
+    await Promise.resolve()
+    await wrapper.vm.$nextTick()
+
+    expect(mocks.getAuditLogs).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('.sn-error-state').exists()).toBe(false)
+
     await wrapper.find('.actions .table-button.danger').trigger('click')
     await Promise.resolve()
     await wrapper.vm.$nextTick()

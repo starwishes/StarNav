@@ -129,6 +129,65 @@ describe('BookmarkMutationService', () => {
     expect(mocks.loggerError).toHaveBeenCalledWith('数据保存失败', error)
   })
 
+  it('rejects bulk items referencing a category missing from the import file (round-32 L1)', () => {
+    const db = {
+      prepare: vi.fn(() => ({ run: vi.fn() })),
+      transaction: vi.fn((callback) => callback)
+    }
+    mocks.getDb.mockReturnValue(db)
+
+    expect(() =>
+      bookmarkMutationService.saveData({
+        categories: [{ id: 1 }],
+        items: [{ id: 2, name: 'Bookmark B', url: 'https://a.com', categoryId: 5 }]
+      })
+    ).toThrow(/书签「Bookmark B」引用的分类 5 不存在/)
+    // 拒绝发生在备份/删除之前，库不被破坏
+    expect(mocks.backupDatabase).not.toHaveBeenCalled()
+    expect(mocks.categoryBulkInsert).not.toHaveBeenCalled()
+    expect(mocks.bookmarkBulkInsert).not.toHaveBeenCalled()
+  })
+
+  it('rejects bulk categories with a dangling parent reference (round-32 L1)', () => {
+    const db = {
+      prepare: vi.fn(() => ({ run: vi.fn() })),
+      transaction: vi.fn((callback) => callback)
+    }
+    mocks.getDb.mockReturnValue(db)
+
+    expect(() =>
+      bookmarkMutationService.saveData({
+        categories: [
+          { id: 1, name: 'Root' },
+          { id: 2, name: 'Child', parentId: 9 }
+        ],
+        items: []
+      })
+    ).toThrow(/分类「Child」的父分类 9 不存在/)
+    expect(mocks.backupDatabase).not.toHaveBeenCalled()
+  })
+
+  it('accepts bulk imports whose references resolve within the import file (round-32 L1)', () => {
+    const run = vi.fn()
+    const prepare = vi.fn(() => ({ run }))
+    const db = {
+      prepare,
+      transaction: vi.fn((callback) => callback)
+    }
+    mocks.getDb.mockReturnValue(db)
+
+    bookmarkMutationService.saveData({
+      categories: [
+        { id: 1, name: 'Root' },
+        { id: 2, name: 'Child', parentId: 1 }
+      ],
+      items: [{ id: 3, name: 'Bookmark A', url: 'https://a.com', categoryId: 1 }]
+    })
+
+    expect(mocks.backupDatabase).toHaveBeenCalled()
+    expect(mocks.invalidateBookmarkCaches).toHaveBeenCalled()
+  })
+
   it('should narrow-invalidate caches after successful click tracking', () => {
     const item = { id: 3, clickCount: 2, lastVisited: '2026-07-26T00:00:00.000Z' }
     mocks.bookmarkTrackClick.mockReturnValue(item)

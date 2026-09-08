@@ -82,6 +82,20 @@ describe('config/index', () => {
     )
   })
 
+  it('rejects a non-loginable ADMIN_USERNAME during env validation', async () => {
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code) => {
+      throw new Error(`exit:${code}`)
+    })
+
+    process.env.ADMIN_USERNAME = 'site-admin'
+
+    const config = await loadConfigModule()
+    expect(() => config.validateEnv()).toThrow('exit:1')
+    expect(logger.error).toHaveBeenCalledWith('❌ 环境变量校验失败:')
+    expect(exitSpy).toHaveBeenCalledWith(1)
+    exitSpy.mockRestore()
+  })
+
   it('rejects unsupported bootstrap password, cookie, CSP, and proxy override values during env validation', async () => {
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code) => {
       throw new Error(`exit:${code}`)

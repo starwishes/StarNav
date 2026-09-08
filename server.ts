@@ -274,6 +274,12 @@ const createConfiguredApp = async () => {
     }
   })
 
+  // 缺失的上传文件返回 404，而不是被下方 SPA fallback 吞成 200 index.html——
+  // 浏览器/图片解码与"删除后清理悬空设置"依赖 404 语义（第 25 轮盲审 L）。
+  app.use('/uploads', (req, res) => {
+    res.status(404).send()
+  })
+
   app.get('/{*splat}', (req, res) => {
     res.setHeader('Cache-Control', 'no-cache')
     res.sendFile(path.join(__dirname, 'dist/index.html'))

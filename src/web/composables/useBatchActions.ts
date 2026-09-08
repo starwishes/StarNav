@@ -1,7 +1,6 @@
 import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from '@/utils/feedback'
 import { useDataStore } from '@/store/data'
-import { getErrorMessage } from '@/utils/errors'
 import { useI18n } from 'vue-i18n'
 
 /**
@@ -47,8 +46,8 @@ export function useBatchActions(closeContextMenu: () => void) {
       await dataStore.batchMoveItems(ids, targetCatId)
       ElMessage.success(t('table.batchMoveSuccess', { count: ids.length }))
       exitSelectionMode()
-    } catch (error) {
-      ElMessage.error(getErrorMessage(error, t('table.batchMoveFail')))
+    } catch {
+      // store batchMoveItems 失败已回滚 + 上屏（rethrow），空吞防双重 toast（第 29 轮盲审 L3）
     }
   }
 

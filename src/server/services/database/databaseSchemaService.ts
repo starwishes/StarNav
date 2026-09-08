@@ -88,6 +88,12 @@ export const databaseSchemaService = {
     `)
 
     db.exec(`
+        -- items.url 的 UNIQUE 即服务端去重键：精确原始 URL 字符串，不做归一化
+        -- （normalizeOptionalUrl 只校验不重写）。前端 useImportExport 合并导入时用
+        -- 共享 normalizeUrl（协议补全/主机小写/剥尾斜杠/剥跟踪参数）做更宽的去重，
+        -- 因此 https://x.com 与 https://x.com/ 在 UI 合并路径会被判重跳过，但服务端
+        -- 不认为是同一条。对齐取舍见第 33 轮台账：服务端为权威不动存量数据，不做
+        -- 历史迁移；若强行在写入侧归一化需同步改写存量 URL，风险大于收益。
         CREATE TABLE IF NOT EXISTS items (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,

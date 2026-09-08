@@ -25,6 +25,27 @@ const CLASSIC_ACCENT_RGB = '64, 158, 255'
 
 const normalizeThemeMode = (value: unknown): ThemeMode => (value === 'dark' ? 'dark' : 'light')
 
+// localStorage 访问在禁用站点数据/隐私模式下会抛 SecurityError。主题读写必须
+// 降级而不是把异常抛给调用方——theme 应用不依赖持久化，失败静默回退即可
+//（第 34 轮盲审 L5）。storage 参数为显式注入（测试用），无注入时取真实 localStorage。
+const readStoredThemeMode = (storage?: Storage): string | null => {
+  try {
+    const target = storage ?? localStorage
+    return target.getItem(THEME_MODE_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+const writeStoredThemeMode = (mode: ThemeMode, storage?: Storage) => {
+  try {
+    const target = storage ?? localStorage
+    target.setItem(THEME_MODE_STORAGE_KEY, mode)
+  } catch {
+    // 存储不可用/配额满：本次选择仅影响当前会话
+  }
+}
+
 const prefersDarkScheme = (): boolean => {
   if (typeof window === 'undefined') {
     return false
@@ -36,19 +57,19 @@ const prefersDarkScheme = (): boolean => {
   }
 }
 
-export const getStoredThemeMode = (storage: Storage = localStorage): ThemeMode => {
-  const stored = storage.getItem(THEME_MODE_STORAGE_KEY)
+export const getStoredThemeMode = (storage?: Storage): ThemeMode => {
+  const stored = readStoredThemeMode(storage)
   if (stored === 'light' || stored === 'dark') {
     return stored
   }
-  // 与扩展端一致：无存储值（首访）时跟随系统深色偏好，而非恒 light。
+  // 与扩展端一致：无存储值（首访/存储不可用）时跟随系统深色偏好，而非恒 light。
   return prefersDarkScheme() ? 'dark' : 'light'
 }
 
 export const applyThemeMode = (
   modeInput: unknown,
   root: HTMLElement = document.documentElement,
-  storage: Storage = localStorage
+  storage?: Storage
 ): ThemeMode => {
   const mode = normalizeThemeMode(modeInput)
 
@@ -60,14 +81,14 @@ export const applyThemeMode = (
     root.classList.remove('dark')
   }
 
-  storage.setItem(THEME_MODE_STORAGE_KEY, mode)
+  writeStoredThemeMode(mode, storage)
   return mode
 }
 
 export const toggleThemeMode = (
   currentMode: ThemeMode,
   root: HTMLElement = document.documentElement,
-  storage: Storage = localStorage
+  storage?: Storage
 ): ThemeMode => applyThemeMode(currentMode === 'dark' ? 'light' : 'dark', root, storage)
 
 const CLASSIC_TOKENS = {

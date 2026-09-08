@@ -4,6 +4,7 @@
     ref="menuRef"
     class="context-menu"
     role="menu"
+    :aria-label="menuLabel"
     :style="menuStyle"
     @click.stop
     @keydown="handleMenuKeydown"
@@ -94,6 +95,11 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+
+// role=menu 需要可访问名：按当前内容区分书签/分类菜单（第 34 轮盲审 L4）。
+const menuLabel = computed(() =>
+  props.item ? t('context.itemMenuLabel') : t('context.categoryMenuLabel')
+)
 
 const menuRef = ref<HTMLElement | null>(null)
 const VIEWPORT_MARGIN = 8

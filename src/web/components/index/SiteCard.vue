@@ -3,6 +3,7 @@
     class="site-card-wrapper"
     @click="handleClick"
     @contextmenu.prevent="$emit('contextmenu', $event)"
+    @keydown="handleMenuKeydown"
   >
     <a
       class="inherit-text"
@@ -63,6 +64,7 @@ import { useI18n } from 'vue-i18n'
 import type { Item } from '@/types'
 import { isSafeHttpUrl, isSafeRelativePath } from '@common/security/urlSafety'
 import { buildIconCandidates, isRenderableIconUrl, markIconUnavailable } from './siteIconHelpers'
+import { isContextMenuKey } from '@/utils/events'
 
 const { t } = useI18n()
 
@@ -76,10 +78,20 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'click', event: MouseEvent): void
-  (e: 'contextmenu', event: MouseEvent): void
+  (e: 'contextmenu', event: MouseEvent | KeyboardEvent): void
   (e: 'touchstart', event: TouchEvent): void
   (e: 'toggle-select'): void
 }>()
+
+// 键盘入口（第 34 轮盲审 L4）：焦点在卡片 <a> 上时，按 ContextMenu 键或 Shift+F10
+// 打开书签右键菜单。preventDefault 抑制浏览器原生菜单；坐标由上游 useSiteMenu 按
+// 触发元素位置计算（键盘事件没有 clientX/Y）。
+const handleMenuKeydown = (event: KeyboardEvent) => {
+  if (!isContextMenuKey(event)) return
+  event.preventDefault()
+  event.stopPropagation()
+  emit('contextmenu', event)
+}
 
 const handleClick = (e: MouseEvent) => {
   if (props.selectionMode) {

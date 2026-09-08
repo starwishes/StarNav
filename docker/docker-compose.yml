@@ -15,6 +15,18 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
+      # Trust a dedicated client-IP header (e.g. x-real-ip) when a trusted reverse proxy /
+      # CDN sits in front and the socket peer is NOT the CDN edge (CF auto-detect only fires
+      # when the app faces CF directly). Only enable for the header your front proxy actually
+      # overwrites (e.g. Traefik set from CF-Connecting-IP); empty disables the override.
+      # CF 直连部署请保持留空——设 cf-connecting-ip 会关闭网段门禁、盲信任意客户端头值
+      # （CF 自动检测已覆盖直连场景；本示例拓扑需先让反代把客户端 IP 写入所选头）。
+      REAL_CLIENT_IP_HEADER: ${REAL_CLIENT_IP_HEADER:-}
+      # Compose 默认把 8080 直连映射、无受信反代 → TRUST_PROXY 默认 false：
+      # Express 不再采信客户端自带的 X-Forwarded-For，按 IP 的限流（登录/点击）不可被
+      # 伪造 XFF 换桶绕过。仅当 compose 前方确有受信反代/入口（并把真实客户端 IP 写入
+      # XFF）时才设 TRUST_PROXY=true（第 29 轮盲审 M1）。
+      TRUST_PROXY: ${TRUST_PROXY:-false}
       LOG_LEVEL: ${LOG_LEVEL:-3}
       NODE_ENV: production
       PORT: 8080

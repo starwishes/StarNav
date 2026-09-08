@@ -38,6 +38,11 @@ describe('formatRelativeDate', () => {
   })
 
   it('falls back to locale default formatting when timeZone is rejected by Intl', () => {
+    // fallback 走 date.toLocaleDateString(locale)（无 timeZone → 机器本地时区）。断言不能用
+    // 固定日期字符串：2026-04-01T10:00:00Z 在 UTC−11（美属萨摩亚）渲染 03/31、UTC+14
+    // （基里巴斯）渲染 04/02，固定 '4/1/2026' 依赖机器时区（第 24 轮平台差异同族）。
+    // 现场用同一 API 算期望值，断言只验证"与裸 toLocaleDateString 一致"这一 fallback 语义。
+    const expected = new Date('2026-04-01T10:00:00.000Z').toLocaleDateString('en-US')
     expect(
       formatRelativeDate(
         '2026-04-01T10:00:00.000Z',
@@ -45,7 +50,7 @@ describe('formatRelativeDate', () => {
         { locale: 'en-US', timeZone: 'Not/AZone' },
         NOW
       )
-    ).toBe('4/1/2026')
+    ).toBe(expected)
   })
 
   it('renders a dash for unparseable timestamps instead of throwing', () => {

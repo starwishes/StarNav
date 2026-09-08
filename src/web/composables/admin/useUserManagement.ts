@@ -4,6 +4,7 @@ import { getErrorMessage } from '@/utils/errors'
 import { useI18n } from 'vue-i18n'
 import { useAdminStore } from '@/store/admin'
 import type { User as ApiUser } from '@/api'
+import { createScopedLogger } from '../../../shared/logger.js'
 
 /**
  * 用户管理 Composable
@@ -12,6 +13,7 @@ import type { User as ApiUser } from '@/api'
 export function useUserManagement() {
   const { t } = useI18n()
   const adminStore = useAdminStore()
+  const logger = createScopedLogger('web:user-management')
 
   const users = ref<ApiUser[]>([])
 
@@ -28,7 +30,13 @@ export function useUserManagement() {
         return false
       }
       ElMessage.success(t(successKey))
-      await fetchUserList()
+      // 列表刷新失败 ≠ 动作失败：单独捕获并降级为日志，避免"操作成功+操作失败"
+      // 矛盾双 toast 与调用方误判（第 30 轮盲审 M2）
+      try {
+        await fetchUserList()
+      } catch (error) {
+        logger.warn('Action succeeded but user list refresh failed.', error)
+      }
       return true
     } catch (error) {
       ElMessage.error(getErrorMessage(error, t('admin.operationFailed')))

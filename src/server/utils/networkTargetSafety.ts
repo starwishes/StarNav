@@ -29,7 +29,7 @@ const isPrivateIpv4Address = (address: string): boolean => {
     return false
   }
 
-  const [first, second] = octets
+  const [first, second, third] = octets
 
   return (
     first === 0 ||
@@ -38,6 +38,18 @@ const isPrivateIpv4Address = (address: string): boolean => {
     (first === 169 && second === 254) ||
     (first === 172 && second >= 16 && second <= 31) ||
     (first === 192 && second === 168) ||
+    // 特殊用途/文档/测试网段（均不可公网路由，防御性封禁；third 判定保持 /24 精确，
+    // 避免误伤同第二字节的其它公网地址）：
+    // - RFC 2544 基准 198.18.0.0/15（部分内网占用）
+    // - RFC 5737 文档测试 TEST-NET-1/2/3（192.0.2.0/24、198.51.100.0/24、203.0.113.0/24）
+    // - RFC 7335 特殊用途 192.0.0.0/24
+    // - 已废弃 6to4 relay anycast 192.88.99.0/24
+    //（第 27/31 轮盲审收口）
+    (first === 198 && (second === 18 || second === 19)) ||
+    (first === 198 && second === 51) ||
+    (first === 192 && second === 0 && (third === 0 || third === 2)) ||
+    (first === 192 && second === 88 && third === 99) ||
+    (first === 203 && second === 0 && third === 113) ||
     (first === 100 && second >= 64 && second <= 127) ||
     first >= 224
   )
@@ -98,6 +110,12 @@ const isPrivateIpv6Address = (address: string): boolean => {
   // IPv6 前缀表下会漏判，导致 resolvePublicHttpTarget 放行
   const value = parseIpv6ToBigInt(normalized)
   if (value !== null) {
+    // 未指定地址（0:0:0:0:0:0:0:0，含 ::/::0/0::0/::0.0.0.0 等非规范拼写）按本机处理，
+    // 与 IPv4 0.0.0.0 同族封锁——此前仅靠 normalized==='::' 字符串匹配，拼写变体全部
+    // 漏判放行（第 32 轮盲审 M1）。value===0n 位级判定对任何拼写等价。
+    if (value === 0n) {
+      return true
+    }
     // NAT64 local-use 64:ff9b:1::/48（RFC 8215）整块封锁：该前缀内实际部署的 NSP 前缀
     // 长度 n 不定（RFC 6052 下 n<96 时 v4 位窗高于低 32 位，低 32 位是转换器忽略的
     // suffix），无法用"低 32 位即 v4"精确解出内嵌地址——低 32 位可被构造成公网 IP 而
@@ -109,6 +127,13 @@ const isPrivateIpv6Address = (address: string): boolean => {
     const embeddedV4 = extractEmbeddedIpv4Uint(value)
     if (embeddedV4 !== null) {
       return isPrivateIpv4Address(ipv4UintToOctets(embeddedV4).join('.'))
+    }
+    // fe00::/9 全段非全局：RFC 4291 §2.4 保留 fe00-fe7f + 链路本地 fe80::/10（fe80-febf）
+    // + RFC 3879 已废弃站点本地 fec0::/10（fec0-feff）。首字节 0xfe 即覆盖全段，位级整块
+    // 拦截不依赖文本前缀——字符串回退表只列出 fe8-feb（链路本地），fec0 等站点本地曾漏判
+    // （第 24 轮翻案，20-23 轮 SSRF 封锁同族的最后一段 fe 缝隙）。
+    if (value >> 120n === 0xfen) {
+      return true
     }
   }
 

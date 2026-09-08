@@ -5,6 +5,10 @@ import type { DialogController, DialogKind, DialogOptions, MessageType } from '.
 
 const dialogStack: DialogController[] = []
 
+// 弹层可访问名/描述的稳定 id 计数：id 只需在 DOM 存活期间唯一，
+// 单调递增即可（关闭后的旧 id 不再被引用，无需回收）。
+let dialogInstanceCounter = 0
+
 const FOCUSABLE_SELECTOR = [
   'a[href]',
   'button:not([disabled])',
@@ -22,11 +26,7 @@ const normalizeDialogOptions = (input: unknown) => {
       confirmButtonText: options.confirmButtonText || feedbackText('feedback.confirm'),
       cancelButtonText: options.cancelButtonText || feedbackText('feedback.cancel'),
       showClose: Boolean(options.showClose),
-      closeOnClickModal: options.closeOnClickModal !== false,
-      inputValue: typeof options.inputValue === 'string' ? options.inputValue : '',
-      inputPlaceholder:
-        typeof options.inputPlaceholder === 'string' ? options.inputPlaceholder : '',
-      inputType: typeof options.inputType === 'string' ? options.inputType : 'text'
+      closeOnClickModal: options.closeOnClickModal !== false
     }
   }
 
@@ -35,10 +35,7 @@ const normalizeDialogOptions = (input: unknown) => {
     confirmButtonText: feedbackText('feedback.confirm'),
     cancelButtonText: feedbackText('feedback.cancel'),
     showClose: false,
-    closeOnClickModal: true,
-    inputValue: '',
-    inputPlaceholder: '',
-    inputType: 'text'
+    closeOnClickModal: true
   }
 }
 
@@ -56,13 +53,13 @@ export const openDialog = (
   options?: unknown
 ) => {
   if (!hasDOM()) {
-    return Promise.resolve(kind === 'prompt' ? { value: '', action: 'close' } : 'close')
+    return Promise.resolve('close')
   }
 
   ensureStyles()
   const root = ensureRoot(DIALOG_ROOT_ID)
   if (!root) {
-    return Promise.resolve(kind === 'prompt' ? { value: '', action: 'close' } : 'close')
+    return Promise.resolve('close')
   }
 
   const normalized = normalizeDialogOptions(options)
@@ -80,6 +77,12 @@ export const openDialog = (
     dialog.className = `sn-feedback-dialog is-${normalized.type}`
     dialog.setAttribute('role', kind === 'alert' ? 'alertdialog' : 'dialog')
     dialog.setAttribute('aria-modal', 'true')
+    // 自绘弹层必须有可访问名/描述：给标题与消息元素生成稳定 id 并挂
+    // aria-labelledby/describedby，否则读屏会把整段文本当无名弹层播报
+    //（第 34 轮盲审 L2）。
+    const dialogInstanceId = ++dialogInstanceCounter
+    const titleId = `sn-feedback-dialog-title-${dialogInstanceId}`
+    const messageId = `sn-feedback-dialog-message-${dialogInstanceId}`
 
     const body = document.createElement('div')
     body.className = 'sn-feedback-dialog-body'
@@ -96,14 +99,22 @@ export const openDialog = (
 
     const titleEl = document.createElement('h3')
     titleEl.className = 'sn-feedback-dialog-title'
+    titleEl.id = titleId
     titleEl.textContent = dialogTitle
 
     const messageEl = document.createElement('p')
     messageEl.className = 'sn-feedback-dialog-message'
+    messageEl.id = messageId
     messageEl.textContent = dialogMessage
 
     copy.append(titleEl, messageEl)
     head.append(icon, copy)
+
+    dialog.setAttribute('aria-labelledby', titleId)
+    // 消息为空时不必挂 describedby（空引用不会带来有用信息）
+    if (dialogMessage) {
+      dialog.setAttribute('aria-describedby', messageId)
+    }
 
     let closeButton: HTMLButtonElement | null = null
     if (normalized.showClose) {
@@ -116,16 +127,6 @@ export const openDialog = (
     }
 
     body.appendChild(head)
-
-    let inputEl: HTMLInputElement | null = null
-    if (kind === 'prompt') {
-      inputEl = document.createElement('input')
-      inputEl.className = 'sn-feedback-dialog-input'
-      inputEl.value = normalized.inputValue
-      inputEl.placeholder = normalized.inputPlaceholder
-      inputEl.type = normalized.inputType
-      body.appendChild(inputEl)
-    }
 
     const footer = document.createElement('div')
     footer.className = 'sn-feedback-dialog-footer'
@@ -184,13 +185,6 @@ export const openDialog = (
     dialogStack.push(controller)
 
     const confirm = () => {
-      if (kind === 'prompt') {
-        finish(resolve, {
-          value: inputEl?.value ?? '',
-          action: 'confirm'
-        })
-        return
-      }
       finish(resolve, 'confirm')
     }
 
@@ -204,10 +198,6 @@ export const openDialog = (
         event.preventDefault()
         event.stopPropagation()
         dismiss()
-      }
-      if (event.key === 'Enter' && kind === 'prompt' && event.target === inputEl) {
-        event.preventDefault()
-        confirm()
       }
     }
 
@@ -246,12 +236,7 @@ export const openDialog = (
 
     onNextFrame(() => {
       overlay.classList.add('is-visible')
-      if (inputEl) {
-        inputEl.focus()
-        inputEl.select()
-      } else {
-        confirmButton.focus()
-      }
+      confirmButton.focus()
     })
   })
 }

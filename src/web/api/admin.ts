@@ -145,10 +145,13 @@ export const adminApi = {
   addUser: (user: { username: string; password: string; level?: number }) =>
     api.post<ApiResponse>('/admin/users', user),
 
-  deleteUser: (username: string) => api.del<ApiResponse>(`/admin/users/${username}`),
+  // 用户名经 encodeURIComponent：与 deleteUpload 的编码纪律一致（当前靠服务端 alnum
+  // 校验兜底，客户端不应对上游格式做隐式假设，第 30 轮盲审 L2）
+  deleteUser: (username: string) =>
+    api.del<ApiResponse>(`/admin/users/${encodeURIComponent(username)}`),
 
   updateUser: (username: string, data: UpdateUserPayload) =>
-    api.patch<ApiResponse>(`/admin/users/${username}`, data),
+    api.patch<ApiResponse>(`/admin/users/${encodeURIComponent(username)}`, data),
 
   getSessions: async () => {
     const payload = await api.get<SessionsResponse>('/sessions')
@@ -202,7 +205,9 @@ export const adminApi = {
 
   getSystemHealth: async () => {
     try {
-      return unwrapApiPayload<HealthSummary>(await api.get<HealthResponse>('/health'))
+      // 第 26 轮：管理员健康明细改走独立鉴权端点——匿名 /health 只返回最小负载，
+      // 会话失效时这里会得到真 401（走既有清登录态链），而不是最小负载 200
+      return unwrapApiPayload<HealthSummary>(await api.get<HealthResponse>('/admin/system/health'))
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 503 && error.payload) {
         return unwrapApiPayload<HealthSummary>(error.payload as HealthResponse)

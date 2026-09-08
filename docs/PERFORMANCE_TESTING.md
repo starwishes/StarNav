@@ -32,7 +32,7 @@ npm run test:performance:bookmarks:mixed
 读路径优化验收建议：
 
 1. 冷启动后跑 `npm run test:performance:bookmarks`，关注 `GET /api/data` / search / categories
-2. 对比点击风暴：首页多次打开书签后，`GET /api/health` → `checks.queries` 与 cache hitRate 是否异常变差
+2. 对比点击风暴：首页多次打开书签后，`GET /api/admin/system/health`（需管理员会话，见 API.md）→ `checks.queries` 与 cache hitRate 是否异常变差
 3. 结构写（增删改）后 search 结果应立即一致；纯点击统计允许 search 缓存中 clickCount 短暂滞后
 
 ### 本地 smoke 基线（`K6_PROFILE=smoke`）
@@ -64,10 +64,10 @@ docker run --rm --network host \
 
 **参考基线（2026-07-26，demo 100 书签，`starnav-manual-demo`）：**
 
-| 场景 | checks | 失败率 | p(95) 延迟 | 备注 |
-|------|--------|--------|------------|------|
-| read smoke | 3702/3702 | 0% | **6.7ms** | 阈值 800ms |
-| mixed smoke | 4669/4669 | 0% | **67ms** | 含 CRUD 写流；阈值 1200ms |
+| 场景        | checks    | 失败率 | p(95) 延迟 | 备注                      |
+| ----------- | --------- | ------ | ---------- | ------------------------- |
+| read smoke  | 3702/3702 | 0%     | **6.7ms**  | 阈值 800ms                |
+| mixed smoke | 4669/4669 | 0%     | **67ms**   | 含 CRUD 写流；阈值 1200ms |
 
 结论：当前读路径与混合写在 demo 规模下远低于阈值；写路径已用 `trackClick` 窄失效，结构写仍全量 `invalidateBookmarkCaches()`。full 档（50–100 VU）留给发布前/容量评估。
 

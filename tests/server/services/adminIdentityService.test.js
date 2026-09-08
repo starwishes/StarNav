@@ -131,39 +131,35 @@ describe('adminIdentityService', () => {
     })
   })
 
-  it('updates users, validates password changes, logs audit entries, and handles failures', () => {
-    ensureExistingUser.mockReturnValue({ username: 'admin', level: 3 })
+  it('updates users, logs audit entries, and handles accountService failures', () => {
+    ensureExistingUser.mockReturnValue({ username: 'alice', level: 1 })
 
     accountService.update.mockReturnValueOnce({ error: '用户名已存在' })
     expect(() => {
-      adminIdentityService.updateUser('admin', { username: 'owner' }, {})
+      adminIdentityService.updateUser('alice', { newUsername: 'owner' }, {})
     }).toThrow('用户名已存在')
 
     accountService.update.mockReturnValueOnce(null)
     expect(() => {
-      adminIdentityService.updateUser('admin', { username: 'owner' }, {})
+      adminIdentityService.updateUser('alice', { newUsername: 'owner' }, {})
     }).toThrow('更新失败')
 
     accountService.update.mockReturnValueOnce({ username: 'owner', level: 3 })
     const result = adminIdentityService.updateUser(
-      'admin',
+      'alice',
       { newUsername: 'owner', password: 'Secret123!', level: 3 },
       { operator: 'root', ip: '1.1.1.1', userAgent: 'Vitest' }
     )
 
-    expect(ensureStrongPassword).toHaveBeenCalledWith({
-      username: 'owner',
-      password: 'Secret123!',
-      level: 3
-    })
-    expect(sessionService.revokeByUsername).toHaveBeenCalledWith('admin')
+    expect(sessionService.revokeByUsername).toHaveBeenCalledWith('alice')
     expect(sessionService.revokeByUsername).toHaveBeenCalledWith('owner')
-    expect(clearBootstrapPasswordFile).toHaveBeenCalled()
+    // 非主管理员改名不触发 bootstrap 密码文件清理
+    expect(clearBootstrapPasswordFile).not.toHaveBeenCalled()
     expect(auditService.log).toHaveBeenCalledWith('admin_update_user', {
       username: 'root',
       ip: '1.1.1.1',
       userAgent: 'Vitest',
-      details: 'Updated user: admin -> owner'
+      details: 'Updated user: alice -> owner'
     })
     expect(result).toEqual({
       user: {
@@ -171,6 +167,62 @@ describe('adminIdentityService', () => {
         level: 3
       }
     })
+  })
+
+  it('validates level/newUsername/password even when no password is supplied (round-27 M1)', () => {
+    ensureExistingUser.mockReturnValue({ username: 'alice', level: 1 })
+
+    // 非数值 level 曾原样入库并让 requireAdmin 对 NaN fail-open
+    expect(() => {
+      adminIdentityService.updateUser('alice', { level: 'boss' }, {})
+    }).toThrow()
+    expect(accountService.update).not.toHaveBeenCalled()
+
+    // 越界 level 拒绝（可见性仅 0..3）
+    expect(() => {
+      adminIdentityService.updateUser('alice', { level: 99 }, {})
+    }).toThrow()
+    expect(accountService.update).not.toHaveBeenCalled()
+
+    // 非法 newUsername 会改砖（登录校验 alphanum 3-30），拒绝
+    expect(() => {
+      adminIdentityService.updateUser('alice', { newUsername: 'a b!' }, {})
+    }).toThrow()
+    expect(accountService.update).not.toHaveBeenCalled()
+
+    // 弱密码拒绝
+    expect(() => {
+      adminIdentityService.updateUser('alice', { newUsername: 'owner', password: 'weakpass1' }, {})
+    }).toThrow()
+    expect(accountService.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects self-demotion below admin but allows demoting other users (round-30 M1)', () => {
+    ensureExistingUser.mockReturnValue({ username: 'alice', level: 3 })
+
+    expect(() => {
+      adminIdentityService.updateUser('alice', { level: 0 }, { operator: 'alice' })
+    }).toThrow('不能降级当前登录的管理员账户')
+    expect(accountService.update).not.toHaveBeenCalled()
+
+    accountService.update.mockReturnValueOnce({ username: 'alice', level: 1 })
+    expect(adminIdentityService.updateUser('alice', { level: 1 }, { operator: 'root' })).toEqual({
+      user: { username: 'alice', level: 1 }
+    })
+  })
+
+  it('protects the master admin from rename and from demotion below admin (round-27 M1)', () => {
+    ensureExistingUser.mockReturnValue({ username: 'admin', level: 3 })
+
+    expect(() => {
+      adminIdentityService.updateUser('admin', { newUsername: 'root' }, {})
+    }).toThrow('不能重命名主管理员账户')
+
+    expect(() => {
+      adminIdentityService.updateUser('admin', { level: 0 }, {})
+    }).toThrow('不能将主管理员降级为非管理员')
+
+    expect(accountService.update).not.toHaveBeenCalled()
   })
 
   it('revokes sessions before delete and logs audit entries with defaults', () => {

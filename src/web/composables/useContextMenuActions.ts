@@ -2,6 +2,7 @@ import { computed } from 'vue'
 import { ElMessage, ElMessageBox } from '@/utils/feedback'
 import { useI18n } from 'vue-i18n'
 import { useDataStore } from '@/store/data'
+import { getErrorMessage } from '@/utils/errors'
 import type { ContextMenuState } from './useSiteMenu'
 
 /**
@@ -17,8 +18,10 @@ export function useContextMenuActions(contextMenu: ContextMenuState, closeContex
     try {
       await dataStore.updateItem({ id: contextMenu.item.id, pinned: !contextMenu.item.pinned })
       closeContextMenu()
-    } catch {
-      /* empty */
+    } catch (error) {
+      // store 的 updateItem 只 throw 不上屏（对话框路径自行提示），这里补上屏
+      //（第 28 轮盲审 M4）
+      ElMessage.error(getErrorMessage(error, t('feedback.saveFailed')))
     }
   }
 
@@ -28,8 +31,12 @@ export function useContextMenuActions(contextMenu: ContextMenuState, closeContex
     const catId = contextMenu.category.id
     const currentRealIndex = dataStore.categories.findIndex((c) => c.id === catId)
     if (currentRealIndex === -1) return
-    await dataStore.moveCategory(currentRealIndex, currentRealIndex + dir)
-    closeContextMenu()
+    try {
+      await dataStore.moveCategory(currentRealIndex, currentRealIndex + dir)
+      closeContextMenu()
+    } catch {
+      // store 的 moveCategory 已回滚并上屏（rethrow 供对话框等调用方感知），这里吞掉防全局二次提示
+    }
   }
 
   // 判断是否为第一个分类

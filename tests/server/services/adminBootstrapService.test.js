@@ -11,6 +11,7 @@ const logger = {
 
 const mkdirSync = vi.fn()
 const writeFileSync = vi.fn()
+const chmodSync = vi.fn()
 const existsSync = vi.fn(() => false)
 const readFileSync = vi.fn(() => '')
 const rmSync = vi.fn()
@@ -49,6 +50,7 @@ vi.mock('fs', () => ({
   default: {
     mkdirSync,
     writeFileSync,
+    chmodSync,
     existsSync,
     readFileSync,
     rmSync
@@ -112,6 +114,8 @@ describe('AdminBootstrapService', () => {
       expect.stringContaining('password='),
       { mode: 0o600 }
     )
+    // writeFileSync 的 mode 只对新建生效，补 chmodSync 对已存在文件也强制收紧（第 24 轮）
+    expect(chmodSync).toHaveBeenCalledWith('/secure/.admin_bootstrap_password', 0o600)
     expect(logger.warn).toHaveBeenCalledWith('出于安全考虑，系统已生成随机密码并写入受限文件')
     expect(logger.warn).toHaveBeenCalledWith('密码文件: /secure/.admin_bootstrap_password')
     expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('初始密码: '))

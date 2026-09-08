@@ -25,6 +25,40 @@ describe('SessionService', () => {
       expect(sessionId1).toBe(sessionId2)
     })
 
+    it('extends expires_at to the requested duration when reusing a session (round-28 M1)', () => {
+      const db = getDb()
+      const firstId = sessionService.create('testuser', '127.0.0.1', 'Reuse UA')
+      const first = db.prepare('SELECT expires_at FROM sessions WHERE session_id = ?').get(firstId)
+
+      const reusedId = sessionService.create('testuser', '127.0.0.1', 'Reuse UA', {
+        expiresInDays: 90
+      })
+      expect(reusedId).toBe(firstId)
+
+      const after = db.prepare('SELECT expires_at FROM sessions WHERE session_id = ?').get(reusedId)
+      // remember(90 天) 重登后 sessions 行不再卡在旧 30 天过期
+      expect(new Date(after.expires_at).getTime()).toBeGreaterThan(
+        new Date(first.expires_at).getTime()
+      )
+    })
+
+    it('keeps the longer expiry when a shorter re-login reuses a session (round-32 L3)', () => {
+      const db = getDb()
+      const longId = sessionService.create('testuser', '127.0.0.1', 'Keep Longer UA', {
+        expiresInDays: 90
+      })
+      const long = db.prepare('SELECT expires_at FROM sessions WHERE session_id = ?').get(longId)
+
+      // 同设备后续普通 30 天登录复用同一会话：过期只向更长方向移动，不缩短
+      const reusedId = sessionService.create('testuser', '127.0.0.1', 'Keep Longer UA', {
+        expiresInDays: 30
+      })
+      expect(reusedId).toBe(longId)
+
+      const after = db.prepare('SELECT expires_at FROM sessions WHERE session_id = ?').get(reusedId)
+      expect(new Date(after.expires_at).getTime()).toBe(new Date(long.expires_at).getTime())
+    })
+
     it('should create a new session when a same-day ISO session is already expired', () => {
       const db = getDb()
       const today = new Date().toISOString().split('T')[0]

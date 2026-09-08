@@ -5,7 +5,11 @@ import { clearBootstrapPasswordFile } from '../../../src/server/services/identit
 import { auditService } from '../../../src/server/services/identity/auditService.js'
 import { sessionService } from '../../../src/server/services/identity/sessionService.js'
 import { settingsService } from '../../../src/server/services/system/settingsService.js'
-import { loginSchema, strongPasswordSchema } from '../../../src/server/validation.js'
+import {
+  loginSchema,
+  strongPasswordSchema,
+  adminUpdateUserSchema
+} from '../../../src/server/validation.js'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import { adminIdentityService } from '../../../src/server/services/identity/adminIdentityService.js'
@@ -28,6 +32,10 @@ describe('Identity Services', () => {
     vi.clearAllMocks()
     loginSchema.validate = vi.fn().mockReturnValue({ error: null })
     strongPasswordSchema.validate = vi.fn().mockReturnValue({ error: null })
+    // validation.js 被整模块 auto-mock，updateUser 用到的 adminUpdateUserSchema 需透传回 payload
+    adminUpdateUserSchema.validate = vi
+      .fn()
+      .mockImplementation((updates) => ({ error: null, value: updates }))
   })
 
   it('should login successfully and return token, user and session', () => {

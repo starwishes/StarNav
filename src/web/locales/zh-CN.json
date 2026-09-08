@@ -19,6 +19,7 @@
     "time": "时间",
     "action": "操作",
     "deleteSuccess": "删除成功",
+    "total": "共",
     "username": "用户名",
     "ip": "IP 地址",
     "status": "状态",
@@ -194,6 +195,7 @@
     "edit": "编辑",
     "delete": "删除",
     "deleteConfirm": "确定要删除选中的 {count} 个网站吗？",
+    "deleteSuccess": "删除成功",
     "checkSuccess": "所有链接正常！",
     "checkInvalid": "发现 {count} 个无效链接",
     "checkFail": "检查失败",
@@ -305,7 +307,9 @@
     "moveDown": "下移分类",
     "multiSelect": "多选",
     "dragDropClickHint": "点击目标位置放置",
-    "dragDropReleaseHint": "拖动到目标位置松手"
+    "dragDropReleaseHint": "拖动到目标位置松手",
+    "itemMenuLabel": "书签操作菜单",
+    "categoryMenuLabel": "分类操作菜单"
   },
   "bookmarkImport": {
     "kicker": "书签导入",
@@ -434,6 +438,9 @@
     "categoryUpdateFailed": "分类更新失败",
     "moveFailed": "移动失败",
     "unexpectedError": "发生了错误，请刷新页面重试",
-    "staleAssetsReload": "页面资源已更新，请刷新页面后重试"
+    "staleAssetsReload": "页面资源已更新，请刷新页面后重试",
+    "newVersionReady": "发现新版本",
+    "newVersionMessage": "检测到网站新版本，点击“立即刷新”将重新加载页面——若正在编辑，请先保存当前内容。",
+    "refreshNow": "立即刷新"
   }
 }

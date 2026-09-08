@@ -241,6 +241,59 @@ describe('SiteCategory', () => {
     expect(wrapper.findAll('.tab-item')[2].classes()).toContain('active')
   })
 
+  it('makes the category title keyboard-focusable and opens its menu from the context-menu key', async () => {
+    // 键盘入口（第 34 轮 L4）：无子分类的叶分类只有标题可聚焦来触发右键菜单
+    const wrapper = createWrapper({
+      id: 5,
+      name: 'Tools',
+      content: [buildItem(1, 5, 'Tool Site')],
+      children: []
+    })
+
+    const title = wrapper.find('.category-title')
+    expect(title.exists()).toBe(true)
+    expect(title.attributes('tabindex')).toBe('0')
+
+    await title.trigger('keydown', { key: 'ContextMenu' })
+    const payload = wrapper.emitted('header-contextmenu')?.[0]?.[0] as
+      | {
+          event: KeyboardEvent
+          category: Category
+        }
+      | undefined
+    expect(payload?.event).toBeInstanceOf(KeyboardEvent)
+    expect(payload?.category.id).toBe(5)
+  })
+
+  it('opens the category menu from Shift+F10 on a child sub-category tab', async () => {
+    const wrapper = createWrapper({
+      id: 10,
+      name: 'Parent',
+      content: [],
+      children: [
+        {
+          id: 11,
+          name: 'Docs',
+          content: [buildItem(101, 11, 'Docs Site')],
+          children: []
+        }
+      ]
+    })
+
+    await nextTick()
+    const childTab = wrapper.findAll('.tab-item')[1]
+    await childTab.trigger('keydown', { key: 'F10', shiftKey: true })
+
+    const payload = wrapper.emitted('header-contextmenu')?.[0]?.[0] as
+      | {
+          event: KeyboardEvent
+          category: Category
+        }
+      | undefined
+    expect(payload?.event).toBeInstanceOf(KeyboardEvent)
+    expect(payload?.category.id).toBe(11)
+  })
+
   it('moves the roving-tabindex active tab with arrow keys and keeps focus on the tab', async () => {
     const wrapper = createWrapper({
       id: 10,

@@ -176,6 +176,24 @@ describe.sequential('Runtime smoke tests', () => {
     expect(authCookie).toContain('HttpOnly')
   })
 
+  it('serves minimal health anonymously and detailed health only to admins', async () => {
+    // 第 26/27 轮收口：公开 /health 匿名最小负载（无 version/运行时/统计）；
+    // 完整明细走 /admin/system/health（requireAdmin），会话失效回到真 401 语义
+    const anonymous = await jsonRequest(`${baseUrl}/health`)
+    expect(anonymous.status).toBe(200)
+    expect(anonymous.body.data).not.toHaveProperty('version')
+    expect(anonymous.body.data.checks).toEqual({ database: { ok: true } })
+    expect(anonymous.body.data.checks).not.toHaveProperty('runtime')
+    expect(anonymous.body.data.checks.database).not.toHaveProperty('userCount')
+
+    const detailed = await jsonRequest(`${baseUrl}/admin/system/health`, { token })
+    expect(detailed.status).toBe(200)
+    expect(detailed.body.data.version).toBeTruthy()
+    expect(detailed.body.data.checks).toHaveProperty('runtime.nodeEnv')
+    expect(detailed.body.data.checks).toHaveProperty('memory')
+    expect(detailed.body.data.checks.database).toHaveProperty('size')
+  })
+
   it('records the overridden real client IP in sessions and audit over real HTTP', async () => {
     // 真机链路（真实 TCP + 真实 DB）验证 IP 覆盖中间件的接线：login 携带受信客户端
     // IP 头（x-smoke-client-ip，见 beforeAll 的 REAL_CLIENT_IP_HEADER）时，新建会话与

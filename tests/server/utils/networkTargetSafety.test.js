@@ -31,6 +31,37 @@ describe('networkTargetSafety', () => {
       )
     })
 
+    it('rejects RFC 2544 benchmark and RFC 7335 special-use IPv4 literals', async () => {
+      // 198.18.0.0/15（RFC 2544 基准测试，部分内网占用）与 192.0.0.0/24（RFC 7335）
+      // 曾放行（第 27 轮盲审 L1）
+      await expect(resolvePublicHttpTarget('http://198.18.0.1/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+      await expect(resolvePublicHttpTarget('http://198.19.255.254/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+      await expect(resolvePublicHttpTarget('http://192.0.0.1/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+    })
+
+    it('rejects TEST-NET and deprecated 6to4 relay IPv4 literals', async () => {
+      // 192.0.2.0/24、198.51.100.0/24、203.0.113.0/24（RFC 5737 文档测试）与
+      // 192.88.99.0/24（已废弃 6to4 relay anycast）——不可公网路由，防御性封禁（第 31 轮盲审 L2）
+      await expect(resolvePublicHttpTarget('http://192.0.2.1/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+      await expect(resolvePublicHttpTarget('http://198.51.100.7/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+      await expect(resolvePublicHttpTarget('http://203.0.113.5/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+      await expect(resolvePublicHttpTarget('http://192.88.99.2/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+    })
+
     it('allows IPv4-mapped public literals and pins the fixed address', async () => {
       const target = await resolvePublicHttpTarget('http://[::ffff:8.8.8.8]/')
       expect(target.url).toBe('http://[::ffff:808:808]/')
@@ -48,6 +79,41 @@ describe('networkTargetSafety', () => {
         LINK_CHECK_TARGET_ERROR
       )
       await expect(resolvePublicHttpTarget('http://[fe80::1]/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+    })
+
+    it('rejects non-canonical zero-address IPv6 spellings (round-32 M1)', async () => {
+      // 未指定地址的拼写变体（::0 / 0:0:0:0:0:0:0:0 / 0::0 / ::0.0.0.0）解析为同一
+      // 0 值，此前仅 normalized==='::' 字符串匹配被放行——内核按本机处理，与 0.0.0.0 同族
+      await expect(resolvePublicHttpTarget('http://[::0]/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+      await expect(resolvePublicHttpTarget('http://[0:0:0:0:0:0:0:0]/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+      await expect(resolvePublicHttpTarget('http://[0::0]/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+      await expect(resolvePublicHttpTarget('http://[::0.0.0.0]/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+    })
+
+    it('rejects deprecated site-local (fec0::/10) and reserved fe00::/9 literals', async () => {
+      // 第 24 轮翻案：字符串回退表只覆盖链路本地 fe80-febf（fe8-feb），RFC 3879 已废弃
+      // 站点本地 fec0::/10（fec0-feff）与 RFC 4291 保留 fe00-fe7f 曾漏判实测放行；
+      // 现按首字节 0xfe 对整段 fe00::/9 位级封锁
+      await expect(resolvePublicHttpTarget('http://[fe00::1]/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+      await expect(resolvePublicHttpTarget('http://[fe0f::1]/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+      await expect(resolvePublicHttpTarget('http://[fec0::1]/')).rejects.toThrow(
+        LINK_CHECK_TARGET_ERROR
+      )
+      await expect(resolvePublicHttpTarget('http://[feff::1]/')).rejects.toThrow(
         LINK_CHECK_TARGET_ERROR
       )
     })

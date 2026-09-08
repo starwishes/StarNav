@@ -138,14 +138,37 @@ describe('SessionManager', () => {
     expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:admin.sessionsRevoked')
   })
 
-  it('shows a load error when the session list request fails', async () => {
-    mocks.getSessions.mockRejectedValue(new Error('boom'))
+  it('shows a load error with retry instead of the empty state, and recovers on retry', async () => {
+    mocks.getSessions.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce([
+      {
+        sessionId: 'current',
+        ip: '127.0.0.1',
+        userAgent: 'UA-1',
+        createdAt: '2026-04-13T10:00:00.000Z',
+        lastActiveAt: '2026-04-13T10:10:00.000Z',
+        isCurrent: true
+      }
+    ])
     vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    mount(SessionManager)
+    const wrapper = mount(SessionManager)
     await Promise.resolve()
-    await Promise.resolve()
+    await wrapper.vm.$nextTick()
 
     expect(mocks.messageError).toHaveBeenCalledWith('translated:common.loadFailed')
+    // 失败必须渲染错误态 + 重试，而非落"无数据"空态误导用户
+    expect(wrapper.find('.sn-error-state').exists()).toBe(true)
+    expect(wrapper.find('.sn-empty-state').exists()).toBe(false)
+    expect(wrapper.text()).toContain('translated:common.retry')
+
+    await wrapper.find('.sn-error-state .table-button').trigger('click')
+    await Promise.resolve()
+    await wrapper.vm.$nextTick()
+    await Promise.resolve()
+    await wrapper.vm.$nextTick()
+
+    expect(mocks.getSessions).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('.sn-error-state').exists()).toBe(false)
+    expect(wrapper.text()).toContain('translated:sessions.current')
   })
 })

@@ -200,10 +200,17 @@ export const useDataStore = defineStore('data', () => {
       return
     }
 
-    await withSaving(async () => {
-      await dataApi.deleteCategory(targetId)
-      removeCategoryLocally(targetId)
-    })
+    try {
+      await withSaving(async () => {
+        await dataApi.deleteCategory(targetId)
+        removeCategoryLocally(targetId)
+      })
+    } catch (error) {
+      // 单独删除此前静默吞错（调用方把"用户取消"与"API 失败"混吞），这里补上屏，
+      // 与 batchDelete 的反馈语义对齐（第 27 轮盲审 M2）
+      ElMessage.error(getWriteErrorMessage(error))
+      throw error
+    }
   }
 
   const moveCategory = async (fromIndex: number, toIndex: number) => {
@@ -278,10 +285,16 @@ export const useDataStore = defineStore('data', () => {
   const deleteItem = async (id: number) => {
     const targetId = Number(id)
 
-    await withSaving(async () => {
-      await dataApi.deleteItem(targetId)
-      items.value = items.value.filter((item) => item.id !== targetId)
-    })
+    try {
+      await withSaving(async () => {
+        await dataApi.deleteItem(targetId)
+        items.value = items.value.filter((item) => item.id !== targetId)
+      })
+    } catch (error) {
+      // 同 deleteCategory：删除失败需上屏，不再被调用方的取消 catch 静默吞掉
+      ElMessage.error(getWriteErrorMessage(error))
+      throw error
+    }
   }
 
   const batchDeleteItems = async (ids: number[]) => {

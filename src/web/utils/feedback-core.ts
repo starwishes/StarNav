@@ -29,9 +29,6 @@ const ElMessageBox = {
   alert(message: unknown, title?: unknown, options?: unknown) {
     return openDialog('alert', message, title, options)
   },
-  prompt(message: unknown, title?: unknown, options?: unknown) {
-    return openDialog('prompt', message, title, options)
-  },
   close() {
     closeActiveDialog()
   }

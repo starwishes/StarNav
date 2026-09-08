@@ -10,10 +10,12 @@ const createLoadMainModule = async (options: { themeMode?: string } = {}) => {
   const notifyUnexpectedErrorMock = vi.fn()
   const notifyStaleAssetReloadNeededMock = vi.fn()
   let swOptions: Record<string, unknown> | undefined
+  const updateServiceWorkerMock = vi.fn()
   const registerSWMock = vi.fn((options: Record<string, unknown>) => {
     swOptions = options
-    return vi.fn()
+    return updateServiceWorkerMock
   })
+  const confirmMessageBoxMock = vi.fn(() => Promise.resolve())
   const loggerMock = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }
   const swEventListenerMock = vi.fn()
 
@@ -30,7 +32,10 @@ const createLoadMainModule = async (options: { themeMode?: string } = {}) => {
     use: piniaUseMock
   }))
   const routerStub = { name: 'router-stub' }
-  const i18nStub = { name: 'i18n-stub' }
+  const i18nStub = {
+    name: 'i18n-stub',
+    global: { t: (key: string) => key }
+  }
   const appStub = { name: 'app-stub' }
 
   vi.doMock('vue', () => ({
@@ -38,9 +43,6 @@ const createLoadMainModule = async (options: { themeMode?: string } = {}) => {
   }))
   vi.doMock('pinia', () => ({
     createPinia: createPiniaMock
-  }))
-  vi.doMock('pinia-plugin-persistedstate', () => ({
-    default: 'persistedstate-plugin'
   }))
   vi.doMock('../../src/web/router/index.ts', () => ({
     default: routerStub
@@ -62,6 +64,16 @@ const createLoadMainModule = async (options: { themeMode?: string } = {}) => {
   vi.doMock('../../src/web/utils/unexpectedErrorFeedback.ts', () => ({
     notifyUnexpectedError: notifyUnexpectedErrorMock,
     notifyStaleAssetReloadNeeded: notifyStaleAssetReloadNeededMock
+  }))
+  vi.doMock('../../src/web/utils/feedback.ts', () => ({
+    ElMessageBox: { confirm: confirmMessageBoxMock },
+    ElMessage: {
+      success: vi.fn(),
+      warning: vi.fn(),
+      info: vi.fn(),
+      error: vi.fn(),
+      closeAll: vi.fn()
+    }
   }))
   vi.doMock('virtual:pwa-register', () => ({
     registerSW: registerSWMock
@@ -88,6 +100,8 @@ const createLoadMainModule = async (options: { themeMode?: string } = {}) => {
     notifyUnexpectedErrorMock,
     notifyStaleAssetReloadNeededMock,
     registerSWMock,
+    updateServiceWorkerMock,
+    confirmMessageBoxMock,
     swOptions,
     loggerMock,
     swEventListenerMock
@@ -193,29 +207,69 @@ describe('frontend main bootstrap', () => {
     }
   )
 
-  it('reloads the page when the service worker takes control', { timeout: 15_000 }, async () => {
-    let controllerListener: (() => void) | null = null
-    Object.defineProperty(navigator, 'serviceWorker', {
-      configurable: true,
-      value: {
-        addEventListener: vi.fn((_type: string, cb: () => void) => {
-          controllerListener = cb
-        })
-      }
-    })
-    const reloadMock = vi.fn()
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: { reload: reloadMock }
-    })
+  it(
+    'reloads the page when a controlled page’s service worker is replaced',
+    { timeout: 15_000 },
+    async () => {
+      let controllerListener: (() => void) | null = null
+      // controller 非空 = 页面在注册时已被 SW 控制：此后的 controllerchange 是"被替换"
+      Object.defineProperty(navigator, 'serviceWorker', {
+        configurable: true,
+        value: {
+          controller: {},
+          addEventListener: vi.fn((_type: string, cb: () => void) => {
+            controllerListener = cb
+          })
+        }
+      })
+      const reloadMock = vi.fn()
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { reload: reloadMock }
+      })
 
-    await createLoadMainModule()
-    const getListener = () => controllerListener
-    getListener()?.()
+      await createLoadMainModule()
+      const getListener = () => controllerListener
+      getListener()?.()
 
-    expect(reloadMock).toHaveBeenCalled()
-    delete (navigator as any).serviceWorker
-  })
+      expect(reloadMock).toHaveBeenCalled()
+      delete (navigator as any).serviceWorker
+    }
+  )
+
+  it(
+    'skips the reload on the first controllerchange (initial claim) and reloads on later ones',
+    { timeout: 15_000 },
+    async () => {
+      let controllerListener: (() => void) | null = null
+      // controller 为空 = 全新访客：首个 controllerchange 来自 clientsClaim 的首次
+      // 接管，不应整页 reload（第 34 轮盲审 L8）
+      Object.defineProperty(navigator, 'serviceWorker', {
+        configurable: true,
+        value: {
+          controller: null,
+          addEventListener: vi.fn((_type: string, cb: () => void) => {
+            controllerListener = cb
+          })
+        }
+      })
+      const reloadMock = vi.fn()
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { reload: reloadMock }
+      })
+
+      await createLoadMainModule()
+      const getListener = () => controllerListener
+
+      getListener()?.() // 首次 claim：跳过 reload
+      expect(reloadMock).not.toHaveBeenCalled()
+
+      getListener()?.() // 后续部署激活接管：正常 reload
+      expect(reloadMock).toHaveBeenCalledTimes(1)
+      delete (navigator as any).serviceWorker
+    }
+  )
 
   it(
     'handles service worker registration, refresh and error callbacks',
@@ -248,6 +302,56 @@ describe('frontend main bootstrap', () => {
         expect.any(Error)
       )
 
+      delete (navigator as any).serviceWorker
+    }
+  )
+
+  it(
+    'prompts the user and only activates the new service worker after confirmation',
+    { timeout: 15_000 },
+    async () => {
+      Object.defineProperty(navigator, 'serviceWorker', {
+        configurable: true,
+        value: { addEventListener: vi.fn() }
+      })
+      const runtime = await createLoadMainModule()
+      const options = runtime.swOptions as { onNeedRefresh: () => void }
+
+      options.onNeedRefresh()
+      expect(runtime.confirmMessageBoxMock).toHaveBeenCalledWith(
+        'feedback.newVersionMessage',
+        'feedback.newVersionReady',
+        expect.objectContaining({ confirmButtonText: 'feedback.refreshNow' })
+      )
+      // 用户确认前不得自动激活（防丢未保存输入）
+      expect(runtime.updateServiceWorkerMock).not.toHaveBeenCalled()
+
+      await vi.waitFor(() => {
+        expect(runtime.updateServiceWorkerMock).toHaveBeenCalledWith(true)
+      })
+      delete (navigator as any).serviceWorker
+    }
+  )
+
+  it(
+    'keeps the current version when the user postpones the refresh',
+    { timeout: 15_000 },
+    async () => {
+      Object.defineProperty(navigator, 'serviceWorker', {
+        configurable: true,
+        value: { addEventListener: vi.fn() }
+      })
+      const runtime = await createLoadMainModule()
+      runtime.confirmMessageBoxMock.mockReturnValueOnce(Promise.reject(new Error('cancel')))
+      const options = runtime.swOptions as { onNeedRefresh: () => void }
+
+      options.onNeedRefresh()
+      await vi.waitFor(() => {
+        expect(runtime.loggerMock.info).toHaveBeenCalledWith(
+          'User postponed the service worker refresh.'
+        )
+      })
+      expect(runtime.updateServiceWorkerMock).not.toHaveBeenCalled()
       delete (navigator as any).serviceWorker
     }
   )

@@ -131,6 +131,110 @@ describe('BookmarkCommandService', () => {
     expect(result).toEqual({ statusCode: 200, body: { success: true, message: '数据保存成功' } })
   })
 
+  it('should map legacy private:true bookmarks/categories to level 1 on bulk import', () => {
+    // 第 25 轮盲审 M2：schema 接受旧格式 private 布尔但本模型无 private 列，裸导入会让
+    // private:true 项以 level 0（游客可见）入库——私密项静默变公开
+    bookmarkMutationService.saveData.mockReturnValue(true)
+
+    const validatedPayload = validatePayload(
+      dataSchema,
+      {
+        content: {
+          categories: [{ id: 1, name: 'Secret Cat', private: true }],
+          items: [
+            {
+              id: 2,
+              name: 'Private',
+              url: 'https://example.com',
+              categoryId: 1,
+              private: true
+            }
+          ],
+          action: 'import'
+        }
+      },
+      '数据格式不正确'
+    )
+    bookmarkCommandService.saveData('alice', validatedPayload)
+
+    expect(bookmarkMutationService.saveData).toHaveBeenCalledWith({
+      categories: [expect.objectContaining({ id: 1, name: 'Secret Cat', private: true, level: 1 })],
+      items: [
+        expect.objectContaining({
+          id: 2,
+          name: 'Private',
+          url: 'https://example.com',
+          private: true,
+          level: 1
+        })
+      ]
+    })
+  })
+
+  it('keeps an explicit higher level when legacy private:true is present', () => {
+    bookmarkMutationService.saveData.mockReturnValue(true)
+
+    const validatedPayload = validatePayload(
+      dataSchema,
+      {
+        content: {
+          categories: [],
+          items: [
+            {
+              id: 3,
+              name: 'Admin Only',
+              url: 'https://example.com',
+              categoryId: 0,
+              private: true,
+              level: 3
+            }
+          ],
+          action: 'import'
+        }
+      },
+      '数据格式不正确'
+    )
+    bookmarkCommandService.saveData('alice', validatedPayload)
+
+    expect(bookmarkMutationService.saveData).toHaveBeenCalledWith({
+      categories: [],
+      items: [expect.objectContaining({ id: 3, private: true, level: 3 })]
+    })
+  })
+
+  it('treats private:true as authoritative when an explicit conflicting level 0 is present', () => {
+    // 第 26 轮审查明确语义：private:true 是权威可见性位，显式 level:0 与它冲突
+    //（0=游客可见）时仍提升为 level 1；Joi 对缺失 level 填默认 0，无法区分显式 0 与缺省 0
+    bookmarkMutationService.saveData.mockReturnValue(true)
+
+    const validatedPayload = validatePayload(
+      dataSchema,
+      {
+        content: {
+          categories: [],
+          items: [
+            {
+              id: 4,
+              name: 'Explicit Level 0',
+              url: 'https://example.com',
+              categoryId: 0,
+              private: true,
+              level: 0
+            }
+          ],
+          action: 'import'
+        }
+      },
+      '数据格式不正确'
+    )
+    bookmarkCommandService.saveData('alice', validatedPayload)
+
+    expect(bookmarkMutationService.saveData).toHaveBeenCalledWith({
+      categories: [],
+      items: [expect.objectContaining({ id: 4, private: true, level: 1 })]
+    })
+  })
+
   it('should return tracked bookmarks after tracking a click', () => {
     const item = { id: 3, clickCount: 1 }
     bookmarkMutationService.trackClick.mockReturnValue(item)

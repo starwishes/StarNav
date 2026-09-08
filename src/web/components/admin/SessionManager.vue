@@ -11,8 +11,14 @@
       <div v-if="loading" class="table-loading">
         <div class="loading-spinner" aria-hidden="true"></div>
       </div>
-      <div v-if="sessions.length === 0 && !loading" class="sn-empty-state">
-        {{ t('common.empty') || 'No data' }}
+      <div v-if="loadError" class="sn-error-state" role="status">
+        <p class="sn-error-state__text">{{ t('common.loadFailed') }}</p>
+        <button type="button" class="table-button" @click="fetchSessions">
+          {{ t('common.retry') }}
+        </button>
+      </div>
+      <div v-else-if="sessions.length === 0 && !loading" class="sn-empty-state">
+        {{ t('common.noData') }}
       </div>
       <div v-else class="sn-table-scroll">
         <table class="sn-table">
@@ -62,6 +68,7 @@ import { useI18n } from 'vue-i18n'
 import { adminApi, type SessionRecord } from '@/api/admin'
 import { useDateTimeFormatter } from '@/composables/useDateTimeFormatter'
 import { describeUserAgent } from '@/utils/userAgent'
+import { getErrorMessage } from '@/utils/errors'
 import { createScopedLogger } from '../../../shared/logger.js'
 
 const { t } = useI18n()
@@ -69,14 +76,19 @@ const { formatDateTime } = useDateTimeFormatter()
 const logger = createScopedLogger('web:session-manager')
 const sessions = ref<SessionRecord[]>([])
 const loading = ref(false)
+const loadError = ref(false)
 const revoking = ref(false)
 
 const fetchSessions = async () => {
   loading.value = true
+  loadError.value = false
   try {
     sessions.value = await adminApi.getSessions()
   } catch (err) {
+    // 失败不再只弹瞬态 toast 后落"无数据"空态：置 loadError 渲染错误态 + 重试入口
+    //（第 34 轮盲审 M2），避免用户误判"当前无会话"。
     logger.error('Failed to fetch sessions.', err)
+    loadError.value = true
     ElMessage.error(t('common.loadFailed'))
   } finally {
     loading.value = false
@@ -91,8 +103,11 @@ const revokeSession = async (sessionId: string) => {
     await adminApi.revokeSession(sessionId)
     ElMessage.success(t('common.success'))
     fetchSessions()
-  } catch {
-    // 取消操作
+  } catch (error) {
+    // 仅静默"取消"；真实 API 失败必须上屏（第 28 轮盲审 M3）
+    if (error !== 'cancel') {
+      ElMessage.error(getErrorMessage(error, t('common.fail')))
+    }
   }
 }
 
@@ -105,8 +120,10 @@ const revokeOthers = async () => {
     const revokedCount = await adminApi.revokeOtherSessions()
     ElMessage.success(t('admin.sessionsRevoked', { count: revokedCount }))
     fetchSessions()
-  } catch {
-    // 取消操作
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(getErrorMessage(error, t('common.fail')))
+    }
   } finally {
     revoking.value = false
   }
@@ -193,6 +210,22 @@ onMounted(fetchSessions)
 
 .sn-table-shell {
   position: relative;
+}
+
+.sn-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 180px;
+  color: var(--gray-500, rgba(100, 116, 139, 0.85));
+}
+
+.sn-error-state__text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .table-loading {

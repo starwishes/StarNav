@@ -114,6 +114,11 @@ const handleImport = (e: Event) => {
       target.value = ''
     }
   }
+  reader.onerror = () => {
+    // 读取失败（权限/中断）此前完全静默（第 28 轮盲审 L4）
+    ElMessage.error(t('manage.importFail'))
+    target.value = ''
+  }
   reader.readAsText(file)
 }
 </script>

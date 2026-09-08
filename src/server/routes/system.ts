@@ -27,6 +27,9 @@ const router = express.Router()
  *             schema:
  *               $ref: '#/components/schemas/HealthCheck'
  */
+// 公开探活端点（docker healthcheck / 负载均衡 / 运维 curl）：恒返回最小负载
+//（status/timestamp/checks.database.ok，不含 version/运行时/DB 统计）。完整运行时/DB
+// 明细走 /admin/system/health（requireAdmin，见下）——匿名不暴露部署指纹（第 25/26/29 轮收口）。
 router.get('/health', healthLimiter, systemController.getHealth)
 
 /**
@@ -104,6 +107,35 @@ router.get('/settings', systemController.getPublicSettings)
  */
 router.get('/admin/settings', authenticate, requireAdmin, systemController.getAdminSettings)
 router.post('/admin/settings', authenticate, requireAdmin, systemController.updateAdminSettings)
+
+/**
+ * @swagger
+ * /admin/system/health:
+ *   get:
+ *     tags: [System]
+ *     summary: 获取完整系统健康状态（管理员专用）
+ *     description: 返回运行时/内存/缓存/慢查询与数据库全量统计；匿名 `/health` 只返回最小负载。
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 系统健康
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/HealthCheck'
+ *       503:
+ *         description: 系统处于降级或异常状态
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/HealthCheck'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get('/admin/system/health', authenticate, requireAdmin, systemController.getHealth)
 
 /**
  * @swagger

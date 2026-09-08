@@ -194,7 +194,7 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
         (item) => `
       <div class="bookmark-item-wrapper">
         <a href="${isSafeHttpUrl(item.url) ? escapeHtml(item.url) : '#'}" class="bookmark-item" target="_blank" rel="noopener">
-          <div class="bookmark-icon">${(item.name || '?').charAt(0).toUpperCase()}</div>
+          <div class="bookmark-icon">${escapeHtml((item.name || '?').charAt(0).toUpperCase())}</div>
           <div class="bookmark-info">
             <div class="bookmark-name">${escapeHtml(item.name)}</div>
             <div class="bookmark-url">${escapeHtml(item.url)}</div>
@@ -202,8 +202,8 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
           <span class="bookmark-category">${escapeHtml(item.categoryName || '')}</span>
         </a>
         <div class="item-actions">
-          <button class="icon-btn edit-btn" data-id="${item.id}" title="${texts.edit}">✎</button>
-          <button class="icon-btn delete-btn" data-id="${item.id}" title="${texts.delete}">🗑️</button>
+          <button class="icon-btn edit-btn" data-id="${escapeHtml(item.id)}" title="${texts.edit}">✎</button>
+          <button class="icon-btn delete-btn" data-id="${escapeHtml(item.id)}" title="${texts.delete}">🗑️</button>
         </div>
       </div>
     `

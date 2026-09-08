@@ -39,7 +39,7 @@ export const parseBookmarkHtml = (
         const name = anchor.textContent?.trim() || ''
         const url = anchor.getAttribute('href') || ''
 
-        if (name && url && url.startsWith('http')) {
+        if (name && url && (url.startsWith('http://') || url.startsWith('https://'))) {
           items.push({
             name,
             url,

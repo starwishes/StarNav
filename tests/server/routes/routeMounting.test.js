@@ -305,6 +305,11 @@ describe('route mounting', () => {
       healthLimiter,
       systemController.getHealth
     ])
+    expect(getHandlers(systemRoutes, 'get', '/admin/system/health')).toEqual([
+      authenticate,
+      requireAdmin,
+      systemController.getHealth
+    ])
     expect(getHandlers(systemRoutes, 'get', '/settings')).toEqual([
       systemController.getPublicSettings
     ])

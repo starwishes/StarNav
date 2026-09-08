@@ -249,7 +249,7 @@ const onItemContextMenu = (
   payload: { item: Item; itemIndex: number; event: Event },
   catIndex: number
 ) => {
-  showContextMenu(payload.event as MouseEvent, payload.item, catIndex, payload.itemIndex)
+  showContextMenu(payload.event, payload.item, catIndex, payload.itemIndex)
 }
 
 const onItemTouchStart = (
@@ -259,10 +259,7 @@ const onItemTouchStart = (
   handleTouchStart(payload.event as TouchEvent, payload.item, catIndex, payload.itemIndex)
 }
 
-const onCategoryContextMenu = (
-  payload: { event: MouseEvent; category: Category },
-  catIndex: number
-) => {
+const onCategoryContextMenu = (payload: { event: Event; category: Category }, catIndex: number) => {
   showCategoryContextMenu(payload.event, payload.category, catIndex)
 }
 

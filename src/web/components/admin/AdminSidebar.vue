@@ -53,13 +53,9 @@
 
     <div class="sidebar-footer">
       <div class="user-block">
-        <img
-          v-if="adminStore.user?.avatar_url"
-          :src="adminStore.user?.avatar_url"
-          class="user-avatar"
-          alt=""
-        />
-        <div v-else class="user-avatar fallback">
+        <!-- 服务端 buildAuthUser 只下发 login/name/level，恒无 avatar_url（历史遗留
+             可选字段，见 shared/types 注释）；移除死 img 分支，只保留首字母占位 -->
+        <div class="user-avatar fallback">
           {{ adminStore.user?.login?.charAt(0).toUpperCase() }}
         </div>
         <div class="user-info">

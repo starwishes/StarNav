@@ -5,7 +5,10 @@ const DEFAULT_CACHE_OPTIONS = {
   stdTTL: 300,
   checkperiod: 60,
   useClones: false,
-  // 防止 search:level:keyword:limit 这类键随独特关键词无界增长（超出按最旧逐出）
+  // maxKeys=1000 是容量上限而非"超限自动逐出最旧"：node-cache 满载后新 set 直接抛
+  // ECACHEFULL（TTL 过期才删键）。search:{level}:{keyword} 等键受 60s TTL 约束；
+  // 满载时 set() 的 try/catch 会把写缓存降级为跳过，绝不让缓存写失败打挂已成功的数据
+  // 请求（第 30 轮盲审 M1）。
   maxKeys: 1000
 }
 
@@ -51,13 +54,21 @@ export class CacheRuntimeService {
 
   set(key: string, value: unknown, ttl?: number) {
     this.stats.sets++
-    const success = ttl === undefined ? this.cache.set(key, value) : this.cache.set(key, value, ttl)
+    try {
+      const success =
+        ttl === undefined ? this.cache.set(key, value) : this.cache.set(key, value, ttl)
 
-    if (success) {
-      logger.debug(`缓存设置: ${key}`)
+      if (success) {
+        logger.debug(`缓存设置: ${key}`)
+      }
+
+      return success
+    } catch (error) {
+      // 满载（ECACHEFULL）等写失败仅降级跳过：数据已由调用方从 DB 取到，
+      // 缓存写失败 ≠ 业务失败（第 30 轮盲审 M1）
+      logger.warn(`缓存写入失败（可能已满载）: ${key}`, error)
+      return false
     }
-
-    return success
   }
 
   del(key: string) {
@@ -80,22 +91,6 @@ export class CacheRuntimeService {
       ...this.stats,
       keys: this.cache.keys().length,
       hitRate: formatHitRate(this.stats.hits, this.stats.misses)
-    }
-  }
-
-  async getOrSet<T>(key: string, fetchFn: () => Promise<T> | T, ttl?: number) {
-    let value = this.get(key) as T | undefined
-    if (value !== undefined) {
-      return value
-    }
-
-    try {
-      value = await fetchFn()
-      this.set(key, value, ttl)
-      return value
-    } catch (error) {
-      logger.error(`缓存获取失败: ${key}`, error)
-      throw error
     }
   }
 }

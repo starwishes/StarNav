@@ -152,6 +152,21 @@ describe('LoginDialog', () => {
     expect(mocks.login).toHaveBeenCalledWith('alice', 'secret', true)
   })
 
+  it('clears the password after a successful login but keeps the username', async () => {
+    mocks.login.mockResolvedValue({ success: true })
+
+    const wrapper = createWrapper()
+    const inputs = wrapper.findAll('input')
+    await inputs[0].setValue('alice')
+    await inputs[1].setValue('secret')
+    await wrapper.find('form').trigger('submit')
+    await nextTick()
+
+    expect(mocks.login).toHaveBeenCalledWith('alice', 'secret', false)
+    expect((inputs[0].element as HTMLInputElement).value).toBe('alice')
+    expect((inputs[1].element as HTMLInputElement).value).toBe('')
+  })
+
   it('navigates to an internal redirect target after a successful login', async () => {
     routeState.query = { login: '1', redirect: '/admin/dashboard' }
     mocks.login.mockResolvedValue({ success: true })
@@ -181,6 +196,9 @@ describe('LoginDialog', () => {
 
     vi.clearAllMocks()
     routeState.query = { login: '1', redirect: '//evil.com' }
+    // 成功登录已清空 password，第二次提交需重新输入（与真实交互一致）。
+    const reentered = wrapper.findAll('input')
+    await reentered[1].setValue('secret')
     await wrapper.find('form').trigger('submit')
     await nextTick()
 

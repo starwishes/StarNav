@@ -29,8 +29,14 @@
       <div v-if="loading" class="table-loading">
         <div class="loading-spinner" aria-hidden="true"></div>
       </div>
-      <div v-if="logs.length === 0 && !loading" class="sn-empty-state">
-        {{ t('common.empty') || 'No data' }}
+      <div v-if="loadError" class="sn-error-state" role="status">
+        <p class="sn-error-state__text">{{ t('common.loadFailed') }}</p>
+        <button type="button" class="table-button" @click="fetchLogs">
+          {{ t('common.retry') }}
+        </button>
+      </div>
+      <div v-else-if="logs.length === 0 && !loading" class="sn-empty-state">
+        {{ t('common.noData') }}
       </div>
       <div v-else class="sn-table-scroll">
         <table class="sn-table">
@@ -113,6 +119,7 @@ const { formatDateTime } = useDateTimeFormatter()
 const logger = createScopedLogger('web:audit-log')
 const logs = ref<AuditLogRecord[]>([])
 const loading = ref(false)
+const loadError = ref(false)
 const page = ref(1)
 const limit = ref(50)
 const total = ref(0)
@@ -121,12 +128,16 @@ const totalPages = computed(() => Math.max(1, Math.ceil(total.value / limit.valu
 
 const fetchLogs = async () => {
   loading.value = true
+  loadError.value = false
   try {
     const result = await adminApi.getAuditLogs(page.value, limit.value)
     logs.value = result.logs
     total.value = result.total
   } catch (err) {
+    // 失败不再只弹瞬态 toast 后落"无数据"空态：置 loadError 渲染错误态 + 重试按钮
+    //（与顶部手动刷新共用同一链路，第 34 轮盲审 M2）。
     logger.error('Failed to fetch audit logs.', err)
+    loadError.value = true
     ElMessage.error(t('common.loadFailed'))
   } finally {
     loading.value = false
@@ -287,6 +298,22 @@ onMounted(fetchLogs)
 
 .sn-table-shell {
   position: relative;
+}
+
+.sn-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 180px;
+  color: var(--gray-500, rgba(100, 116, 139, 0.85));
+}
+
+.sn-error-state__text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .table-loading {

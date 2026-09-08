@@ -31,13 +31,24 @@ const escapeAttribute = (value: string) => escapeHtml(value)
 
 const decodeEntities = (value: string) =>
   String(value)
-    .replace(/&#(\d+);/g, (_match, codePoint: string) =>
-      String.fromCodePoint(Number.parseInt(codePoint, 10))
-    )
-    .replace(/&#x([0-9a-fA-F]+);/g, (_match, codePoint: string) =>
-      String.fromCodePoint(Number.parseInt(codePoint, 16))
+    .replace(/&#(\d+);/g, (match, codePoint: string) => decodeCodePoint(codePoint, 10, match))
+    .replace(/&#x([0-9a-fA-F]+);/g, (match, codePoint: string) =>
+      decodeCodePoint(codePoint, 16, match)
     )
     .replace(/&([a-zA-Z]+);/g, (match, entity: string) => NAMED_ENTITIES[entity] || match)
+
+/**
+ * 把数值字符引用解码为对应字符。String.fromCodePoint 对 > 0x10FFFF 的码点抛
+ * RangeError（如 &#1114112;），而本清洗同时跑在管理员写路径与 settingsService.getPublic()
+ * 读路径上——越界输入曾使公开 GET /api/settings 对全体访客 500（第 25 轮盲审 M1）。
+ * 越界/非法码点保留原文（后续 escapeHtml 会把 `&` 转义为 &amp;，安全按字面量输出）。
+ */
+const decodeCodePoint = (codePoint: string, radix: number, original: string): string => {
+  const parsed = Number.parseInt(codePoint, radix)
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= 0x10ffff
+    ? String.fromCodePoint(parsed)
+    : original
+}
 
 const readAttribute = (input: string, name: string) => {
   const targetName = name.toLowerCase()

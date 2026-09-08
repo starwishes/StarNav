@@ -7,7 +7,15 @@
       @contextmenu.prevent="$emit('header-contextmenu', { event: $event, category: category })"
     >
       <i class="category-icon relative left-px-2 iconfont icon-tag"></i>
-      <a class="category-title" :name="category.name">{{ category.name }}</a>
+      <!-- tabindex 让分类标题可被键盘聚焦：无子分类的叶分类只有这里能触发右键菜单 -->
+      <a
+        class="category-title"
+        :name="category.name"
+        tabindex="0"
+        @keydown="(e) => handleMenuKeydown(e, category)"
+      >
+        {{ category.name }}
+      </a>
     </header>
 
     <div
@@ -26,6 +34,7 @@
         @click.stop="activeTabId = category.id"
         @keydown.enter="activeTabId = category.id"
         @keydown.space.prevent="activeTabId = category.id"
+        @keydown="(e) => handleMenuKeydown(e, category)"
         @contextmenu.prevent="$emit('header-contextmenu', { event: $event, category: category })"
       >
         {{ t('category.allTab') }}
@@ -42,6 +51,7 @@
         @click.stop="activeTabId = child.id"
         @keydown.enter="activeTabId = child.id"
         @keydown.space.prevent="activeTabId = child.id"
+        @keydown="(e) => handleMenuKeydown(e, child)"
         @contextmenu.prevent="$emit('header-contextmenu', { event: $event, category: child })"
       >
         {{ child.name }}
@@ -133,6 +143,7 @@ import {
   type DisplayedSiteItem,
   type SiteMoveState
 } from '@/components/index/siteCategoryHelpers'
+import { isContextMenuKey } from '@/utils/events'
 
 const { t } = useI18n()
 
@@ -146,9 +157,9 @@ const props = defineProps<{
   showAdd?: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'header-click', event: Event): void
-  (e: 'header-contextmenu', payload: { event: MouseEvent; category: Category }): void
+  (e: 'header-contextmenu', payload: { event: Event; category: Category }): void
   (e: 'item-mouseenter', payload: { itemIndex: number; categoryId: number }): void
   (e: 'item-click', payload: { item: DisplayedSiteItem; event: Event }): void
   (
@@ -196,6 +207,16 @@ const handleTablistKeydown = (event: KeyboardEvent) => {
     activeTabId.value = tabId
     nextTab.focus()
   }
+}
+
+// 分类标题 / 子分类 tab 上触发右键菜单的键盘入口（ContextMenu 键 / Shift+F10）。
+// 复用右键菜单同一事件流：mouse 的 contextmenu 与键盘 keydown 都 emit
+// header-contextmenu，上游 useSiteMenu 按事件类型区分坐标来源与焦点归还。
+const handleMenuKeydown = (event: KeyboardEvent, menuCategory: Category) => {
+  if (!isContextMenuKey(event)) return
+  event.preventDefault()
+  event.stopPropagation()
+  emit('header-contextmenu', { event, category: menuCategory })
 }
 
 const resolveMatchedTabId = (category: Category, selectedCategoryId?: number | null) => {
@@ -291,6 +312,12 @@ const getFallbackFaviconUrl = (item: DisplayedSiteItem) =>
   color: var(--category-text);
   text-decoration: none;
   transition: color 0.18s ease;
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--ui-theme-rgb), 0.4);
+    outline-offset: 6px;
+    border-radius: 6px;
+  }
 }
 
 .sub-category-tabs {

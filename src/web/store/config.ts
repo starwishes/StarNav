@@ -60,7 +60,16 @@ const sanitizePublicSiteConfig = (config: Partial<PublicSiteConfig> = {}): Publi
 })
 
 const readStoredConfig = (): PublicSiteConfig => {
-  const storedConfig = localStorage.getItem(STORAGE_KEY)
+  // localStorage 访问可能在禁用站点数据/隐私模式下抛 SecurityError；读取失败时
+  // 直接回退默认配置，不得让 store 初始化把异常抛给启动链路（第 34 轮盲审 L5）。
+  let storedConfig: string | null
+  try {
+    storedConfig = localStorage.getItem(STORAGE_KEY)
+  } catch (error) {
+    logger.warn('Failed to read stored site config.', error)
+    return { ...DEFAULT_CONFIG }
+  }
+
   if (!storedConfig) {
     return { ...DEFAULT_CONFIG }
   }

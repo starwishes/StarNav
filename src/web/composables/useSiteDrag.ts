@@ -3,7 +3,6 @@ import { ElMessage } from '@/utils/feedback'
 import { useDataStore } from '@/store/data'
 import { useAdminStore } from '@/store/admin'
 import type { Item, Category } from '@/types'
-import { getErrorMessage } from '@/utils/errors'
 import { useI18n } from 'vue-i18n'
 
 interface MoveState {
@@ -93,31 +92,39 @@ export function useSiteDrag(dataSource: Ref<Category[]> | (() => Category[])) {
     cleanupListeners()
     cleanupTouchListeners()
 
-    const finalTargetId =
+    // 落点分类：真实分类 id>0，或"未分类"虚拟分类 id=0。id 0 是合法 move 目标
+    //（bookmarkMoveSchema 允许 categoryId=0，注释"0 表示未分类"）。此前要求
+    // finalTargetId>0，拖到未分类条目槽时 hoverCategoryId=0 被误判为"无落点"而
+    // 静默 no-op——用户只能改用编辑对话框移动（第 25 轮盲审 M3）。
+    const targetCategoryId =
       hoverCategoryId > 0
         ? hoverCategoryId
-        : hoverCatIndex !== -1
-          ? getData()[hoverCatIndex]?.id
-          : 0
+        : hoverCatIndex >= 0 && hoverCatIndex < getData().length
+          ? (getData()[hoverCatIndex]?.id ?? 0)
+          : hoverCategoryId
 
-    const hasValidDropTarget = Boolean(finalTargetId > 0 && item && hoverItemIndex >= 0)
+    const isOverItemSlot = Boolean(item && hoverItemIndex >= 0)
+    const isOverUncategorized = targetCategoryId === 0 && hoverCategoryId === 0
+    const hasValidDropTarget = isOverItemSlot && (targetCategoryId > 0 || isOverUncategorized)
     const isNoOpSameSlot =
       hasValidDropTarget &&
-      Number(fromCategoryId) === Number(finalTargetId) &&
+      Number(fromCategoryId) === Number(targetCategoryId) &&
       fromItemIndex === hoverItemIndex
 
-    if (!hasValidDropTarget || isNoOpSameSlot || !item) {
+    if (!item || !hasValidDropTarget || isNoOpSameSlot) {
       isCommitting = false
       restoreScrollY(scrollY)
       return
     }
 
     try {
-      await dataStore.moveItem(item.id, finalTargetId, hoverItemIndex)
+      await dataStore.moveItem(item.id, targetCategoryId, hoverItemIndex)
       ElMessage.closeAll()
       ElMessage.success(t('table.moveSuccess'))
-    } catch (error) {
-      ElMessage.error(getErrorMessage(error, t('table.moveFail')))
+    } catch {
+      // store moveItem 失败已回滚 + ElMessage.error 上屏（rethrow 供调用方感知）；
+      // 这里空吞，避免双重错误 toast（与 useContextMenuActions.moveCategory 同模式，
+      // 第 29 轮盲审 L2）
     } finally {
       isCommitting = false
       restoreScrollY(scrollY)

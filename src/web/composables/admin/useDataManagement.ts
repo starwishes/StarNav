@@ -6,6 +6,7 @@ import { storeToRefs } from 'pinia'
 import { useDebounce } from '@/composables/useDebounce'
 import type { Category, Item } from '@/types'
 import { normalizeUrl } from '@common/url'
+import { getErrorMessage } from '@/utils/errors'
 
 /**
  * 数据管理 Composable
@@ -89,8 +90,10 @@ export function useDataManagement() {
         ElMessage.success(t('category.addSuccess'))
       }
       categoryDialogVisible.value = false
-    } catch {
-      // Error handled in store
+    } catch (error) {
+      // store 只 throw 不上屏；此前注释谎称"已处理"，实际增改失败完全静默
+      //（第 28 轮盲审 M4）
+      ElMessage.error(getErrorMessage(error, t('feedback.saveFailed')))
     }
   }
 
@@ -177,8 +180,9 @@ export function useDataManagement() {
         ElMessage.success(t('admin.addSuccess'))
       }
       itemDialogVisible.value = false
-    } catch {
-      // Error handled in store
+    } catch (error) {
+      // 同 saveCategory：增改失败需上屏（store 只 throw）
+      ElMessage.error(getErrorMessage(error, t('feedback.saveFailed')))
     } finally {
       savingItem.value = false
     }

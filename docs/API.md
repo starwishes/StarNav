@@ -157,7 +157,8 @@ Content-Type: application/json
 
 ## Health contract
 
-`GET /api/health` 典型返回：
+`GET /api/health` 匿名探活（docker healthcheck / 负载均衡 / 运维 curl）只返回最小负载
+（无 version——精确版本号属部署指纹，仅管理员端点返回）：
 
 ```json
 {
@@ -165,23 +166,18 @@ Content-Type: application/json
   "message": "Success",
   "data": {
     "status": "healthy",
-    "version": "<app-version>",
     "timestamp": "2026-04-09T12:00:00.000Z",
     "checks": {
-      "database": {
-        "ok": true
-      },
-      "cache": {},
-      "memory": {
-        "heapUsed": "32MB",
-        "heapTotal": "48MB",
-        "rss": "92MB"
-      },
-      "uptime": 1234
+      "database": { "ok": true }
     }
   }
 }
 ```
+
+携带有效管理员会话访问 `GET /api/admin/system/health` 时，响应额外包含 `checks.runtime` /
+`checks.memory` / `checks.uptime` / `checks.cache` / `checks.queries` 与 database 全量统计
+（系统健康面板消费，requireAdmin）。这些明细含 NODE_ENV、cookie/CSP 姿态、慢查询内部名、
+内存与注册用户数等部署指纹，匿名 `/api/health` 不公开（第 25/26 轮收口）。
 
 ## Docs source of truth
 

@@ -90,7 +90,9 @@ const resolveAuthenticatedUser = (decoded: AuthTokenPayload) => {
   return {
     user: {
       username: currentUser.username,
-      level: currentUser.level,
+      // Number 归一：users.level 若被历史脏数据写坏（字符串等），在鉴权判定前收敛为
+      // 数值，避免后续比较在 NaN 上 fail-open（第 27 轮盲审 M1）
+      level: Number(currentUser.level),
       authVersion: Number(currentUser.authVersion || 0),
       ...(decoded.sessionId ? { sessionId: decoded.sessionId } : {}),
       ...(decoded.source ? { source: decoded.source } : {})
@@ -275,7 +277,9 @@ export const optionalAuth = (req: AuthRequest, res: Response, next: NextFunction
 }
 
 export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
-  if (!req.user || req.user.level < USER_LEVEL.ADMIN) {
+  // fail-closed：非整数/NaN level 一律拒绝（脏数据不得等价于管理员，第 27 轮盲审 M1）
+  const level = Number(req.user?.level)
+  if (!req.user || !Number.isInteger(level) || level < USER_LEVEL.ADMIN) {
     return sendForbidden(res, '权限不足')
   }
   next()

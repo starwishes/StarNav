@@ -211,6 +211,11 @@ export const migrateUsers = (): MigrateUsersResult => {
   // bcrypt 哈希以 $2a$/$2b$/$2y$ 开头；其余视为明文，禁止原样入库
   const BCRYPT_HASH_PATTERN = /^\$2[aby]\$/
 
+  // 迁移用户名来自 users/*.json 文件名，未走注册/登录的 alphanum 3-30 校验——超长/含特殊
+  // 字符的旧用户名会污染审计展示且永远无法登录（第 31 轮盲审 L3），跳过并告警（与明文
+  // 密码同处置），不静默归一
+  const USERNAME_PATTERN = /^[a-zA-Z0-9]{3,30}$/
+
   // 每个用户一个独立事务：写入成功则提交，失败仅回滚该用户，不影响其他文件
   const insertUserTx = db.transaction((username: string, password: string, level: number) => {
     insertUser.run(username, password, level)
@@ -227,6 +232,14 @@ export const migrateUsers = (): MigrateUsersResult => {
   for (const file of files) {
     const username = path.basename(file, '.json')
     const userPath = path.join(usersDir, file)
+
+    if (!USERNAME_PATTERN.test(username)) {
+      result.skipped += 1
+      logger.warn(
+        `迁移用户跳过: ${username} — 用户名不符合登录规范（3-30 位字母/数字），请手动处理该账户文件 ${file}`
+      )
+      continue
+    }
 
     let userData: { password?: unknown; level?: unknown }
     try {

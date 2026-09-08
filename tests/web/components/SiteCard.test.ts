@@ -140,6 +140,21 @@ describe('SiteCard', () => {
     expect(wrapper.emitted('toggle-select')).toBeUndefined()
   })
 
+  it('opens the context menu from the keyboard when the card link is focused', async () => {
+    // 键盘入口（第 34 轮 L4）：ContextMenu 键 / Shift+F10 走与右键相同的事件流
+    const wrapper = createWrapper()
+
+    await wrapper.find('.site-card-wrapper').trigger('keydown', { key: 'ContextMenu' })
+    let emittedEvent = wrapper.emitted('contextmenu')?.[0]?.[0]
+    expect(emittedEvent).toBeInstanceOf(KeyboardEvent)
+    expect((emittedEvent as KeyboardEvent).key).toBe('ContextMenu')
+
+    await wrapper.find('.site-card-wrapper').trigger('keydown', { key: 'F10', shiftKey: true })
+    emittedEvent = wrapper.emitted('contextmenu')?.[1]?.[0]
+    expect(emittedEvent).toBeInstanceOf(KeyboardEvent)
+    expect((emittedEvent as KeyboardEvent).shiftKey).toBe(true)
+  })
+
   it('switches to selection mode, disables the link, and emits toggle-select from wrapper clicks', async () => {
     const wrapper = createWrapper({
       selectionMode: true,

@@ -5,6 +5,8 @@ import { auditService } from './auditService.js'
 import { sessionService } from './sessionService.js'
 import { ensureExistingUser, ensureStrongPassword } from './identityHelpers.js'
 import { errors } from '../../utils/errors.js'
+import { USER_LEVEL } from '../../../shared/constants.js'
+import { adminUpdateUserSchema } from '../../validation.js'
 import type {
   AuditClearQuery,
   AuthCredentials,
@@ -42,7 +44,8 @@ export const adminIdentityService = {
     const parsedPage = Number.parseInt(String(query.page ?? ''), 10)
     const parsedLimit = Number.parseInt(String(query.limit ?? ''), 10)
 
-    const page = Number.isNaN(parsedPage) ? 1 : Math.max(1, parsedPage)
+    // page 钳上限：超大 offset 会让 SQLite 做无谓的全表跳过扫描（第 28 轮盲审 L3）
+    const page = Number.isNaN(parsedPage) ? 1 : Math.min(10000, Math.max(1, parsedPage))
     const limit = Number.isNaN(parsedLimit) ? 50 : Math.min(200, Math.max(1, parsedLimit))
 
     return auditService.getLogs(page, limit)
@@ -87,13 +90,35 @@ export const adminIdentityService = {
   ) {
     ensureExistingUser(targetUsername)
 
-    const { newUsername, password, level } = updates
-    if (password) {
-      ensureStrongPassword({
-        username: newUsername || targetUsername,
-        password,
-        level
-      })
+    // 无 password 时也必须校验：level 任意类型原样入库曾让非数值绕过 requireAdmin
+    // 数值比较、newUsername 任意字符可把账号改砖（第 27 轮盲审 M1）
+    const { error, value } = adminUpdateUserSchema.validate(updates)
+    if (error) {
+      throw errors.badRequest(error.details[0].message)
+    }
+
+    const { newUsername, password, level } = value as {
+      newUsername?: string
+      password?: string
+      level?: number
+    }
+
+    const isMaster = targetUsername === DEFAULT_ADMIN_NAME
+    if (isMaster && newUsername && newUsername !== targetUsername) {
+      throw errors.badRequest('不能重命名主管理员账户')
+    }
+    if (isMaster && level !== undefined && Number(level) < USER_LEVEL.ADMIN) {
+      throw errors.badRequest('不能将主管理员降级为非管理员')
+    }
+    // 自降级守卫（与 deleteUser 的"不能删除自己"对称，第 30 轮盲审 M1）：
+    // 非主管理员对自己降级会立即撤销全部会话并失去管理权，若站内无其他管理员即锁死
+    if (
+      context.operator &&
+      targetUsername === context.operator &&
+      level !== undefined &&
+      Number(level) < USER_LEVEL.ADMIN
+    ) {
+      throw errors.badRequest('不能降级当前登录的管理员账户')
     }
 
     const result = accountService.update(targetUsername, { newUsername, password, level })

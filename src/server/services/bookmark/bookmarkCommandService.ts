@@ -30,18 +30,40 @@ const normalizeBulkPayload = (payload: BulkDataContent = {}) => {
   const items = ((content.items || []) as Array<Record<string, unknown>>).map((item) => {
     // 与增量路径一致：仅允许 http(s) URL，javascript: 等非 http(s) 方案直接拒绝，
     // 防止被原样入库（存储型 XSS）。合法 URL 原样保留，不做重写。
+    // 注意：这里不做归一化去重——服务端去重键是 items.url UNIQUE（精确字符串），
+    // 与前端 useImportExport 的 normalizeUrl 合并去重口径差异见第 33 轮台账结论。
     const normalizedUrl = normalizeOptionalUrl(String(item.url ?? ''))
     if (!normalizedUrl) {
       throw errors.badRequest(`无效的 URL 格式: ${String(item.url).slice(0, 80)}`)
     }
-    return { ...item, url: normalizedUrl }
+    return applyLegacyPrivateFlag({ ...item, url: normalizedUrl })
   })
 
+  const categories = ((content.categories || []) as Array<Record<string, unknown>>).map(
+    applyLegacyPrivateFlag
+  )
+
   return {
-    categories: content.categories || [],
+    categories,
     items,
     action: content.action || payload.action || ''
   }
+}
+
+/**
+ * 旧版/第三方 JSON 的 private 布尔标记兼容：本数据模型无 private 列（可见性=level，
+ * 0=游客可见）。private:true 视为**权威可见性位**：显式 level:0 与 private:true 冲突
+ * （0=游客可见），仍提升为 level 1（USER，仅登录用户可见），防止私密书签/分类静默变
+ * 公开（第 25 轮盲审 M2）；显式 level≥1 保留原值。注意 Joi 对缺失 level 会填默认 0，
+ * 无法区分"显式 0"与"缺省 0"，故统一按 level<1 提升（第 26 轮审查明确该语义并补边界）。
+ */
+const applyLegacyPrivateFlag = <T extends Record<string, unknown>>(row: T): T => {
+  if (row.private !== true) {
+    return row
+  }
+
+  const level = Number(row.level ?? 0)
+  return !Number.isFinite(level) || level < 1 ? { ...row, level: 1 } : row
 }
 
 const isUniqueConstraintError = (error: unknown) => {

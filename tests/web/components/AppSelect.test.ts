@@ -203,4 +203,32 @@ describe('AppSelect', () => {
     await wrapper.vm.$nextTick()
     expect(document.body.querySelector('.app-select__menu')).not.toBeNull()
   })
+
+  it('keeps menu options out of the tab sequence (pure aria-activedescendant)', async () => {
+    // 第 34 轮盲审 L3：菜单 Teleport 到 body 后，若选项可被 Tab 聚焦，焦点落入菜单即
+    // 丢失方向键/Esc 处理（keydown 只绑 combobox root）。选项按钮必须 tabindex=-1，
+    // 键盘焦点恒留 combobox，活动项经 aria-activedescendant 表达；鼠标点击不受影响。
+    const wrapper = createWrapper(
+      { modelValue: '' },
+      '<option value="1">One</option><option value="2">Two</option>'
+    )
+
+    await wrapper.find('.app-select').trigger('click')
+    const optionButtons = document.body.querySelectorAll(
+      '.app-select__menu button.app-select__option'
+    )
+    expect(optionButtons.length).toBe(2)
+    optionButtons.forEach((button) => {
+      expect(button.getAttribute('tabindex')).toBe('-1')
+    })
+
+    // 键盘焦点在 combobox root 时菜单内导航仍可用（聚焦/高亮/选择链路不受影响）
+    const activeOption = document.body.querySelector(
+      '.app-select__menu button.app-select__option.is-active'
+    )
+    expect(activeOption?.getAttribute('data-option-value')).toBe('1')
+    await wrapper.find('.app-select').trigger('keydown', { key: 'Enter' })
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['1'])
+  })
 })

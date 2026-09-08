@@ -139,6 +139,21 @@ describe('SiteContextMenu', () => {
     expect(stopPropagation).toHaveBeenCalled()
   })
 
+  it('exposes a localized accessible name for item and category menus', () => {
+    const itemWrapper = createWrapper({
+      item: { id: 1, name: 'Example', pinned: false, url: '', categoryId: 1 }
+    })
+    expect(itemWrapper.find('.context-menu').attributes('role')).toBe('menu')
+    expect(itemWrapper.find('.context-menu').attributes('aria-label')).toBe('context.itemMenuLabel')
+
+    const categoryWrapper = createWrapper({
+      category: { id: 5, name: 'Tools', order: 0 }
+    })
+    expect(categoryWrapper.find('.context-menu').attributes('aria-label')).toBe(
+      'context.categoryMenuLabel'
+    )
+  })
+
   it('emits close when Escape is pressed', async () => {
     const item = { id: 1, name: 'Ex', pinned: false, url: '', categoryId: 1 }
     const wrapper = createWrapper({ item })

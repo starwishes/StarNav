@@ -181,6 +181,56 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/admin/system/health': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * 获取完整系统健康状态（管理员专用）
+     * @description 返回运行时/内存/缓存/慢查询与数据库全量统计；匿名 `/health` 只返回最小负载。
+     */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description 系统健康 */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['HealthCheck']
+          }
+        }
+        401: components['responses']['Unauthorized']
+        403: components['responses']['Forbidden']
+        /** @description 系统处于降级或异常状态 */
+        503: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            'application/json': components['schemas']['HealthCheck']
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/set-background': {
     parameters: {
       query?: never
@@ -1533,13 +1583,14 @@ export interface components {
        */
       role?: 'admin' | 'user' | 'guest'
     }
+    /** @description 完整字段（runtime/memory/cache/queries/uptime/version/database 统计）仅管理员端点 GET /admin/system/health 返回；公开 GET /health（匿名探活）只返回 status/timestamp/checks.database.ok（第 25/26 轮分级收口，第 29 轮文档同步）。 */
     HealthCheck: {
       /**
        * @example healthy
        * @enum {string}
        */
       status?: 'healthy' | 'unhealthy'
-      /** @example 1.0.8 */
+      /** @example 1.0.9 */
       version?: string
       /** Format: date-time */
       timestamp?: string

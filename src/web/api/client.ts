@@ -101,7 +101,13 @@ const parseFilename = (contentDisposition: string | null) => {
 
   const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
   if (utf8Match?.[1]) {
-    return decodeURIComponent(utf8Match[1])
+    // 头值理论上服务端生成、恒为合法 percent 编码；畸形值（被代理改写/损坏）会让
+    // decodeURIComponent 抛 URIError，这里兜底回退到原始头值解析（第 25 轮盲审 L）
+    try {
+      return decodeURIComponent(utf8Match[1])
+    } catch {
+      // fallthrough 到 ascii 分支
+    }
   }
 
   const asciiMatch = contentDisposition.match(/filename="?([^"]+)"?/i)

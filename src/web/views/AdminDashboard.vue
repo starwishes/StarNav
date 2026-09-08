@@ -55,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminStore } from '@/store/admin'
 import { useDataStore } from '@/store/data'
@@ -204,6 +204,16 @@ onMounted(() => {
   }
   loadData()
 })
+
+// 会话中途过期/被撤销（401 清态）后自动回首页，避免停留在后台逐个 401（第 32 轮 Kimi 视角 L1）
+watch(
+  () => adminStore.isAuthenticated,
+  (authenticated) => {
+    if (!authenticated) {
+      router.push('/')
+    }
+  }
+)
 </script>
 
 <style scoped lang="scss">

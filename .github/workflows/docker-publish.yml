@@ -34,18 +34,34 @@ jobs:
     steps:
       - name: Resolve release version
         id: version
+        env:
+          # 经 env 传递而非直接内插进 run 脚本，避免输入含 shell 元字符时构成脚本注入
+          #（第 27 轮盲审 L3；GHA 官方推荐写法）
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_SOURCE_REF: ${{ inputs.source_ref }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            RAW_VERSION="${{ github.event.release.tag_name }}"
-            SOURCE_REF="${{ github.event.release.tag_name }}"
+          if [ "$EVENT_NAME" = "release" ]; then
+            RAW_VERSION="$RELEASE_TAG"
+            SOURCE_REF="$RELEASE_TAG"
           else
-            RAW_VERSION="${{ inputs.version }}"
-            SOURCE_REF="${{ inputs.source_ref }}"
+            RAW_VERSION="$INPUT_VERSION"
+            SOURCE_REF="$INPUT_SOURCE_REF"
           fi
           VERSION="${RAW_VERSION#v}"
 
+          # 手动 dispatch 的 version 未经校验会直接进入 metadata-action 的 yaml 块（可注入
+          # 额外行伪造 tag/label）；与 release.yml 同一条 semver 正则，非法即 fail
+          #（第 32 轮 Kimi 视角 L2）
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
+            echo "::error::docker-publish 'version' must be semver like 1.2.3 (got '${VERSION}')"
+            exit 1
+          fi
+
           if [ -z "${SOURCE_REF}" ]; then
-            SOURCE_REF="${{ github.ref_name }}"
+            SOURCE_REF="$REF_NAME"
           fi
 
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"

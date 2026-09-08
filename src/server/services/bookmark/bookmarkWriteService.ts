@@ -3,6 +3,8 @@ import type { BookmarkItemRow, ItemCategoryRefRow } from '../../types/sqliteRows
 import { getDb, forceCheckpoint } from '../database/database.js'
 import { backupDatabaseThrottled } from '../database/backupThrottle.js'
 import { logger } from '../../utils/logger.js'
+import { errors } from '../../utils/errors.js'
+import { categoryReadService } from './categoryReadService.js'
 import {
   mapBookmarkRow,
   normalizeApiCategoryId,
@@ -19,6 +21,20 @@ import {
 } from './bookmarkWriteOrder.js'
 
 type IdList = IdLike[]
+
+/**
+ * 前置校验移动目标分类存在（move/batchMove 共用，第 34 轮 L6）。
+ *
+ * normalizedCategoryId 为 null 表示"未分类"（DB 中 items.category_id 存 NULL，
+ * FK 对 NULL 不生效），无需校验；否则分类必须在 categories 表中真实存在，
+ * 否则写入时命中 items.category_id 外键约束，报错会泛化成原始 SQLITE 错误（500）。
+ * 与 addBookmark/updateBookmark 的"分类不存在 → 400"口径保持一致。
+ */
+const assertTargetCategoryExists = (normalizedCategoryId: number | null) => {
+  if (normalizedCategoryId !== null && !categoryReadService.exists(normalizedCategoryId)) {
+    throw errors.badRequest('分类不存在')
+  }
+}
 
 export const bookmarkWriteService = {
   add(itemData: BookmarkPayload) {
@@ -178,6 +194,11 @@ export const bookmarkWriteService = {
     const id = Number(itemId)
     const normalizedTargetCategoryId = normalizeDbCategoryId(targetCategoryId)
 
+    // 目标分类不存在时在写前按 400 拒绝（与 addBookmark/updateBookmark 同口径），
+    // 避免 UPDATE 命中 items.category_id 外键约束后把原始 SQLITE 错误当 500 抛出。
+    // 分类 0/缺失 = 未分类（DB 中存 NULL），无需存在性校验。
+    assertTargetCategoryExists(normalizedTargetCategoryId)
+
     try {
       // Skip full-file backup on reorder — it blocks for seconds and the UI
       // already optimistically updates. Scheduled backups cover durability.
@@ -246,6 +267,9 @@ export const bookmarkWriteService = {
     if (normalizedIds.length === 0) {
       return []
     }
+
+    // 与 move() 同口径：目标分类不存在时写前按 400 拒绝（batch 后端口径见上）。
+    assertTargetCategoryExists(normalizedTargetCategoryId)
 
     try {
       // 整库备份已改为 5s 节流（见 backupThrottle.ts）。

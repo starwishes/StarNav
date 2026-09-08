@@ -9,25 +9,21 @@ type FeedbackMessage = typeof coreElMessage
 type FeedbackMessageBox = typeof coreElMessageBox
 type MessageType = keyof Pick<FeedbackMessage, 'success' | 'warning' | 'info' | 'error'>
 type MessageInput = Parameters<FeedbackMessage['success']>[0]
-type DialogKind = keyof Pick<FeedbackMessageBox, 'confirm' | 'alert' | 'prompt'>
+// prompt（输入弹层）全库零调用，第 34 轮 Info 决策删除，保留 API 面仅 confirm/alert
+type DialogKind = keyof Pick<FeedbackMessageBox, 'confirm' | 'alert'>
 type ConfirmArgs = Parameters<FeedbackMessageBox['confirm']>
 type AlertArgs = Parameters<FeedbackMessageBox['alert']>
-type PromptArgs = Parameters<FeedbackMessageBox['prompt']>
 
 const callMessage = (type: MessageType, options: MessageInput) => {
   return Promise.resolve(coreElMessage[type](options))
 }
 
-const callMessageBox = (type: DialogKind, args: ConfirmArgs | AlertArgs | PromptArgs) => {
+const callMessageBox = (type: DialogKind, args: ConfirmArgs | AlertArgs) => {
   if (type === 'confirm') {
     return Promise.resolve(coreElMessageBox.confirm(...(args as ConfirmArgs)))
   }
 
-  if (type === 'alert') {
-    return Promise.resolve(coreElMessageBox.alert(...(args as AlertArgs)))
-  }
-
-  return Promise.resolve(coreElMessageBox.prompt(...(args as PromptArgs)))
+  return Promise.resolve(coreElMessageBox.alert(...(args as AlertArgs)))
 }
 
 const feedbackMessage = {
@@ -54,9 +50,6 @@ const feedbackMessageBox = {
   },
   alert(...args: AlertArgs) {
     return callMessageBox('alert', args)
-  },
-  prompt(...args: PromptArgs) {
-    return callMessageBox('prompt', args)
   },
   close() {
     coreElMessageBox.close()

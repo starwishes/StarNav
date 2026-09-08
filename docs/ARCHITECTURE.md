@@ -27,7 +27,7 @@ StarNav 是单仓、单进程的全栈应用：
 这意味着：
 
 - PWA 相关依赖只参与 `vite build`，生产环境真正运行的是生成出来的 `dist/sw.js`、`dist/workbox-*.js` 和静态资源
-- 前端运行时库（`vue`、`vue-router`、`pinia`、`pinia-plugin-persistedstate`、`vue-i18n`）自第 16 轮审查起归类为 `dependencies`：它们被打包进 `dist` 由浏览器消费，在容器 node_modules 中并不执行，归类目的是让 `npm audit --omit=dev`（`audit:prod`）覆盖前端运行时攻击面；代价是 prod-deps 安装的 node_modules 体积相应增加
+- 前端运行时库（`vue`、`vue-router`、`pinia`、`vue-i18n`）自第 16 轮审查起归类为 `dependencies`：它们被打包进 `dist` 由浏览器消费，在容器 node_modules 中并不执行，归类目的是让 `npm audit --omit=dev`（`audit:prod`）覆盖前端运行时攻击面；代价是 prod-deps 安装的 node_modules 体积相应增加（曾列于其中的 `pinia-plugin-persistedstate` 为死依赖，第 33 轮移除——全库无任何 store 使用 `persist:` 选项）
 - `/api-docs.json` 在构建期写入 `dist/api-docs.json`（openapi-typescript 类型链读取该文件）；生产默认不向匿名访客公开，需显式 `API_DOCS_PUBLIC=true` 才放行，且只服务静态产物（无静态产物时 404，不会在运行时 import devDependency `swagger-jsdoc`）
 - Swagger 依赖不属于生产镜像运行面的核心能力；它们的真实健康度应通过非生产环境的 `/api-docs.json` 生成验证，而不是靠运行时接口流量间接证明
 - 处理构建链依赖升级时，必须至少同时验证 `npm run build`、`npm run test:browser` 和 `npm run docker:smoke`，避免“本地 audit 绿了，但产物链坏了”
@@ -131,7 +131,7 @@ StarNav 是单仓、单进程的全栈应用：
 - **结构写**（增删改分类/书签、整库 replace）：`invalidateBookmarkCaches()` 清快照 + data TTL + search TTL
 - **点击统计**（`trackClick`）：优先 `patchItemClickInCache` 原地改快照；再 `invalidateBookmarkCaches({ includeSnapshot: false, includeSearch: false })` 只刷 data TTL，避免每次点击整表与搜索缓存雪崩
 
-慢查询：`queryMonitor` 记录 >100ms 查询；`GET /api/health` 的 `checks.queries` 带最近慢查询摘要（运维可观测，无需另起指标栈）。
+慢查询：`queryMonitor` 记录 >100ms 查询；`GET /api/admin/system/health`（requireAdmin）的 `checks.queries` 带最近慢查询摘要；匿名 `GET /api/health` 只返回最小负载（不暴露内部指纹）。
 
 ## Frontend architecture
 

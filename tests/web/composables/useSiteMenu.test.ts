@@ -128,4 +128,61 @@ describe('useSiteMenu', () => {
     await nextTick()
     expect(api.contextMenu.visible).toBe(true)
   })
+
+  it('returns focus to the trigger element after a keyboard-opened menu closes', async () => {
+    const { api } = mountHarness()
+    const trigger = document.createElement('a')
+    trigger.href = '#'
+    document.body.appendChild(trigger)
+    try {
+      // 真实 dispatch 让 event.target 落在触发元素上（键盘事件没有 clientX/Y，
+      // useSiteMenu 用触发元素矩形计算菜单位置并记录它用于归还焦点）
+      const keyEvent = new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true })
+      trigger.dispatchEvent(keyEvent)
+      api.showContextMenu(keyEvent, { id: 10, name: 'Docs' } as any, 1, 2)
+
+      expect(api.contextMenu.visible).toBe(true)
+      expect(api.contextMenu.catIndex).toBe(1)
+
+      // 模拟打开后焦点已移入菜单（SiteContextMenu 打开即聚焦首项），关闭须归还
+      const fakeMenu = document.createElement('div')
+      fakeMenu.className = 'context-menu'
+      const menuItem = document.createElement('button')
+      menuItem.className = 'menu-item'
+      fakeMenu.appendChild(menuItem)
+      document.body.appendChild(fakeMenu)
+      menuItem.focus()
+
+      api.closeContextMenu()
+      expect(api.contextMenu.visible).toBe(false)
+      expect(document.activeElement).toBe(trigger)
+    } finally {
+      document.body.removeChild(trigger)
+      document.body.querySelector('.context-menu')?.remove()
+    }
+  })
+
+  it('does not steal focus from an outside pointer click that focused another element', async () => {
+    const { api } = mountHarness()
+    const trigger = document.createElement('a')
+    trigger.href = '#'
+    document.body.appendChild(trigger)
+    const elsewhere = document.createElement('button')
+    elsewhere.id = 'elsewhere'
+    document.body.appendChild(elsewhere)
+    try {
+      const mouseEvent = new MouseEvent('contextmenu', { bubbles: true })
+      trigger.dispatchEvent(mouseEvent)
+      api.showContextMenu(mouseEvent, { id: 1, name: 'Docs' } as any, 0, 0)
+
+      // 外部指针点击已把焦点带到其他元素：关闭菜单不得抢回焦点
+      elsewhere.focus()
+      api.closeContextMenu()
+      expect(api.contextMenu.visible).toBe(false)
+      expect(document.activeElement).toBe(elsewhere)
+    } finally {
+      document.body.removeChild(trigger)
+      document.body.removeChild(elsewhere)
+    }
+  })
 })

@@ -19,6 +19,7 @@
     "time": "Time",
     "action": "Action",
     "deleteSuccess": "Deleted successfully",
+    "total": "Total",
     "username": "Username",
     "ip": "IP Address",
     "status": "Status",
@@ -194,6 +195,7 @@
     "edit": "Edit",
     "delete": "Delete",
     "deleteConfirm": "Are you sure you want to delete {count} selected sites?",
+    "deleteSuccess": "Deleted successfully",
     "checkSuccess": "All links are valid!",
     "checkInvalid": "Found {count} invalid links",
     "checkFail": "Check failed",
@@ -305,7 +307,9 @@
     "moveDown": "Move Down",
     "multiSelect": "Multi Select",
     "dragDropClickHint": "Click the target position to place it",
-    "dragDropReleaseHint": "Drag to the target position and release"
+    "dragDropReleaseHint": "Drag to the target position and release",
+    "itemMenuLabel": "Bookmark actions menu",
+    "categoryMenuLabel": "Category actions menu"
   },
   "bookmarkImport": {
     "kicker": "Bookmark Import",
@@ -434,6 +438,9 @@
     "categoryUpdateFailed": "Failed to update category",
     "moveFailed": "Failed to move",
     "unexpectedError": "Something went wrong. Please refresh the page and try again.",
-    "staleAssetsReload": "Page assets have been updated. Please refresh the page and try again."
+    "staleAssetsReload": "Page assets have been updated. Please refresh the page and try again.",
+    "newVersionReady": "New version available",
+    "newVersionMessage": "A new version of this site was detected. Clicking “Refresh now” will reload the page — save any in-progress work first.",
+    "refreshNow": "Refresh now"
   }
 }

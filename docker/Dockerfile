@@ -106,6 +106,10 @@ ENV NODE_ENV=production \
 EXPOSE 8080
 
 # 与 docker-compose.yml 的探针保持一致：镜像自身也暴露健康状态。
+# 注：Docker HEALTHCHECK 无 --user 选项，探活进程以镜像默认 root 运行（应用本身由
+# entrypoint 经 gosu 降权为 node）。有意保留现状而非引入多层 USER 指令（会复杂化
+# entrypoint 降权/数据目录权限链路，风险大于收益）：探活只对 127.0.0.1 的 GET
+# /api/health 做只读请求，无任何写入面，root 探活无实际风险（第 34 轮盲审 L11）。
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s \
   CMD ["node", "-e", "fetch('http://127.0.0.1:8080/api/health').then((res)=>process.exit(res.ok?0:1)).catch(()=>process.exit(1))"]
 

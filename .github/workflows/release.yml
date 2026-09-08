@@ -60,6 +60,15 @@ jobs:
 
       - name: Resolve version and whether to publish
         id: plan
+        env:
+          # 经 env 传递而非直接内插进 run 脚本，避免 workflow_dispatch 输入含 shell 元字符
+          # 时构成脚本注入（第 27 轮盲审 L3）
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_SOURCE_REF: ${{ inputs.source_ref }}
+          FORCE: ${{ inputs.force }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -eu
 
@@ -76,8 +85,8 @@ jobs:
             " "$1"
           }
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
-            VERSION="${{ inputs.version }}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
             VERSION="${VERSION#v}"
             # 与 read_version 的 package.json 校验同一条 semver 正则；手动输入未过校验则直接失败
             if ! printf '%s' "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
@@ -90,17 +99,17 @@ jobs:
 
           TARGET_SHA="$(git rev-parse HEAD)"
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.source_ref }}" ]; then
-            SOURCE_REF="${{ inputs.source_ref }}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -n "$INPUT_SOURCE_REF" ]; then
+            SOURCE_REF="$INPUT_SOURCE_REF"
           else
             # Prefer the commit that just passed CI (no GitHub Release tag required).
             SOURCE_REF="${TARGET_SHA}"
           fi
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            WORKFLOW_REF="${{ github.ref_name }}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            WORKFLOW_REF="$REF_NAME"
           else
-            WORKFLOW_REF="${{ github.event.workflow_run.head_branch }}"
+            WORKFLOW_REF="$RUN_HEAD_BRANCH"
           fi
 
           VERSION_CHANGED=false
@@ -137,8 +146,8 @@ jobs:
           SHOULD_PUBLISH=false
           REASON="skip"
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            if [ "${{ inputs.force }}" = "true" ] || [ "${VERSION_CHANGED}" = "true" ] || [ "${PUBLISH_EXISTS}" = "false" ]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$FORCE" = "true" ] || [ "${VERSION_CHANGED}" = "true" ] || [ "${PUBLISH_EXISTS}" = "false" ]; then
               SHOULD_PUBLISH=true
               REASON="workflow_dispatch"
             else
@@ -178,14 +187,24 @@ jobs:
 
       - name: Trigger Docker publish workflow
         if: steps.plan.outputs.should_publish == 'true'
+        env:
+          # 经 env 传递：workflow_ref 在 dispatch 场景源自 git 分支名（可含 " $ 反引号等
+          # shell 元字符），直接内插进 run 有脚本注入面（round-27 只覆盖了 plan 步，
+          # 本步是漏网，第 31 轮盲审 L1）
+          GITHUB_REPO: ${{ github.repository }}
+          WORKFLOW_REF: ${{ steps.plan.outputs.workflow_ref }}
+          VERSION: ${{ steps.plan.outputs.version }}
+          SOURCE_REF: ${{ steps.plan.outputs.source_ref }}
         run: |
           gh workflow run docker-publish.yml \
-            --repo "${{ github.repository }}" \
-            --ref "${{ steps.plan.outputs.workflow_ref }}" \
-            -f version="${{ steps.plan.outputs.version }}" \
-            -f source_ref="${{ steps.plan.outputs.source_ref }}"
+            --repo "$GITHUB_REPO" \
+            --ref "$WORKFLOW_REF" \
+            -f version="$VERSION" \
+            -f source_ref="$SOURCE_REF"
 
       - name: Skip Docker publish
         if: steps.plan.outputs.should_publish != 'true'
+        env:
+          REASON: ${{ steps.plan.outputs.reason }}
         run: |
-          echo "Skipping Docker publish: ${{ steps.plan.outputs.reason }}"
+          echo "Skipping Docker publish: $REASON"

@@ -16,6 +16,17 @@ const SESSION_EXPIRE_DAYS = 7
 const ACTIVE_SESSION_CONDITION = `replace(expires_at, ' ', 'T') > strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`
 const EXPIRED_SESSION_CONDITION = `replace(expires_at, ' ', 'T') <= strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`
 
+/** 解析库里存储的过期时间（兼容 ISO T 形与旧版空格形），非法返回 null（视为应延长）。 */
+const parseStoredExpiresAtMs = (raw: unknown): number | null => {
+  if (!raw) {
+    return null
+  }
+  const text = String(raw)
+  const normalized = text.includes('T') ? text : `${text.replace(' ', 'T')}Z`
+  const ms = Date.parse(normalized)
+  return Number.isFinite(ms) ? ms : null
+}
+
 /**
  * 会话管理服务 (SQLite 版本)
  */
@@ -48,10 +59,26 @@ export const sessionService = {
       .get(username, ip, userAgent)
 
     if (existingSession) {
-      // 会话仍然有效，更新活跃时间
-      db.prepare(
-        `UPDATE sessions SET last_active_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE session_id = ?`
-      ).run(existingSession.session_id)
+      // 会话仍然有效：刷活跃时间，并把过期时间只向"更长方向"续到本次请求的到期点。
+      // round-28 起复用直接覆盖 expires_at——当同 (ip+ua) 设备先 90 天 remember 再普通
+      // 30 天登录时会把既有会话缩短，使先前签发的长效 JWT 提前失效；仅延长可同时满足
+      // "remember 90 不被旧 30 卡死"与"不让短档位缩短长会话"（第 28/32 轮）。
+      const requestedExpiresMs = expiresAt.getTime()
+      const existingExpiresMs = parseStoredExpiresAtMs(existingSession.expires_at)
+      const shouldExtend = existingExpiresMs === null || requestedExpiresMs > existingExpiresMs
+
+      if (shouldExtend) {
+        db.prepare(
+          `UPDATE sessions
+           SET last_active_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), expires_at = ?
+           WHERE session_id = ?`
+        ).run(expiresAt.toISOString(), existingSession.session_id)
+      } else {
+        db.prepare(
+          `UPDATE sessions SET last_active_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+           WHERE session_id = ?`
+        ).run(existingSession.session_id)
+      }
       logger.info(`复用现有会话: ${username} (${existingSession.session_id.substring(0, 8)}...)`)
       return existingSession.session_id
     }
@@ -150,7 +177,7 @@ export const sessionService = {
                    created_at as createdAt, last_active_at as lastActiveAt
             FROM sessions 
             WHERE username = ? AND ${ACTIVE_SESSION_CONDITION}
-            ORDER BY last_active_at DESC
+            ORDER BY replace(last_active_at, ' ', 'T') DESC, session_id DESC
         `
       )
       .all(username)

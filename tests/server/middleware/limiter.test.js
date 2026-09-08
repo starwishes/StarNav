@@ -30,6 +30,8 @@ describe('limiter middleware config', () => {
       windowMs: 15 * 60 * 1000,
       max: 10,
       skip: expect.any(Function),
+      // 只计失败登录（第 25 轮盲审 L3：成功登录不计桶，防合法用户自锁 429）
+      skipSuccessfulRequests: true,
       keyGenerator: expect.any(Function),
       message: { success: false, code: 'RATE_LIMITED', error: '尝试过于频繁，请稍后再试' },
       standardHeaders: true,
@@ -93,6 +95,8 @@ describe('limiter middleware config', () => {
       windowMs: 15 * 60 * 1000,
       max: 60,
       skip: expect.any(Function),
+      // 同 loginLimiter：只计失败（第 25 轮盲审 L3）
+      skipSuccessfulRequests: true,
       keyGenerator: expect.any(Function),
       message: { success: false, code: 'RATE_LIMITED', error: '尝试过于频繁，请稍后再试' },
       standardHeaders: true,

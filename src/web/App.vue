@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import { useDataStore } from '@/store/data'
 import { useAdminStore } from '@/store/admin'
 import { useConfigStore } from '@/store/config'
@@ -14,13 +14,26 @@ const logger = createScopedLogger('web:app')
 let lastSyncTime = 0
 const SYNC_THRESHOLD = 5000
 
+// 认证状态变化（登录成功 / 主动登出 / 401 清态）后，首页数据必须按新权限级重取：
+// 登出不刷新会残留 level1-3 私有书签（同机旁站可见），登录不刷新则只见游客视图。
+// loadData 自带 in-flight 去重与写操作在途保护，直接调用安全（第 32 轮 Kimi 视角 M1）。
+watch(
+  () => adminStore.isAuthenticated,
+  () => {
+    dataStore.loadData()
+  }
+)
+
 const handleVisibilityChange = () => {
   if (document.visibilityState !== 'visible') {
     return
   }
 
+  // 游客与管理员一视同仁：回前台时若距上次同步 >5s 则刷新数据，避免游客标签页永远
+  // 看不到管理员刚做的改动（loadData 自带 in-flight 去重与写操作在途保护，放开无副作用，
+  // 第 30 轮盲审 L1）
   const now = Date.now()
-  if (adminStore.isAuthenticated && now - lastSyncTime > SYNC_THRESHOLD) {
+  if (now - lastSyncTime > SYNC_THRESHOLD) {
     lastSyncTime = now
     dataStore.loadData()
   }

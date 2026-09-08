@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { bookmarkWriteService } from '../../../src/server/services/bookmark/bookmarkWriteService.js'
+import { ApiError } from '../../../src/server/utils/errors.js'
 import {
   cleanupBookmarkTestContext,
   createBookmarkTestContext,
@@ -158,6 +159,76 @@ describe('bookmarkWriteService', () => {
     // 空 payload 是"无操作"，返回当前行而非误报 404
     const noop = bookmarkWriteService.update(1, {})
     expect(noop).toMatchObject({ id: 1, name: 'Existing' })
+  })
+
+  it('rejects move/batchMove to a nonexistent target category with 400', () => {
+    const { db } = ctx
+
+    insertCategory(db, { id: 1, name: 'Source' })
+    insertItem(db, {
+      id: 1,
+      name: 'Move Me',
+      url: createUniqueUrl('move-missing-target'),
+      categoryId: 1
+    })
+    insertItem(db, {
+      id: 2,
+      name: 'Batch Me',
+      url: createUniqueUrl('batch-missing-target'),
+      categoryId: 1
+    })
+
+    // 目标分类 999 不存在：写前校验按 400 拒绝，而不是 FK 约束原始错误落 500
+    let error
+    try {
+      bookmarkWriteService.move(1, 999, 0)
+    } catch (caught) {
+      error = caught
+    }
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error.statusCode).toBe(400)
+    expect(error.code).toBe('BAD_REQUEST')
+    expect(error.message).toBe('分类不存在')
+
+    error = undefined
+    try {
+      bookmarkWriteService.batchMove([2], 999)
+    } catch (caught) {
+      error = caught
+    }
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error.statusCode).toBe(400)
+    expect(error.code).toBe('BAD_REQUEST')
+    expect(error.message).toBe('分类不存在')
+
+    // 校验拒绝发生在任何写之前：源分类的书签保持不变
+    expect(db.prepare('SELECT COUNT(*) as count FROM items WHERE id IN (1, 2)').get().count).toBe(2)
+  })
+
+  it('still moves to an existing category or to uncategorized (id 0)', () => {
+    const { db } = ctx
+
+    insertCategory(db, { id: 1, name: 'Source' })
+    insertCategory(db, { id: 2, name: 'Target' })
+    insertItem(db, {
+      id: 1,
+      name: 'Move Me',
+      url: createUniqueUrl('move-valid-target'),
+      categoryId: 1
+    })
+    insertItem(db, {
+      id: 2,
+      name: 'To Uncategorized',
+      url: createUniqueUrl('move-uncategorized'),
+      categoryId: 1
+    })
+
+    const movedToCategory = bookmarkWriteService.move(1, 2, 0)
+    expect(movedToCategory).toMatchObject({ id: 1, categoryId: 2 })
+
+    const movedToUncategorized = bookmarkWriteService.move(2, 0, 0)
+    expect(movedToUncategorized).toMatchObject({ id: 2, categoryId: 0 })
+    expect(db.prepare('SELECT category_id FROM items WHERE id = 2').get().category_id).toBeNull()
   })
 
   it('deletes bookmarks and reports missing ids cleanly', () => {

@@ -31,6 +31,11 @@
           :style="menuStyle"
           role="listbox"
         >
+          <!-- 纯 aria-activedescendant 模式（第 34 轮盲审 L3）：选项虽是真 button 但
+               tabindex=-1，键盘焦点始终留在 combobox root。菜单 Teleport 到 body 后，
+               若允许 Tab 落入选项按钮，方向键/Esc 的 keydown 只绑在 combobox root 上会
+               失效（键盘死角）；移出 Tab 序列后活动项由 aria-activedescendant + 键盘
+               高亮表达，鼠标点击/悬停不受影响。 -->
           <button
             v-for="(option, index) in options"
             :key="getOptionKey(option, index)"
@@ -38,6 +43,7 @@
             type="button"
             class="app-select__option"
             role="option"
+            tabindex="-1"
             :class="{
               'is-selected': isOptionSelected(option),
               'is-active': activeIndex === index,

@@ -27,6 +27,10 @@ export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   skip: () => process.env.NODE_ENV === 'test',
+  // 只计失败登录：成功登录（200）不计入桶，避免合法用户在 15 分钟内反复登出登入
+  // 触发自我 429 锁死（第 25 轮盲审 L3）。爆破防护依赖的是失败计数，成功登录
+  // 计桶只带来误伤、无安全增益。
+  skipSuccessfulRequests: true,
   // 注意 key 的退化语义：请求缺少 body 或 body 解析失败时，username 取空字符串，
   // 复合 key 退化为纯 IP key——同一 IP 的所有用户名共享同一个计数桶。这是有意
   // 的保守行为（拿不到用户名时按 IP 整体限流），而不是绕过限流的缺口。
@@ -58,6 +62,8 @@ export const loginIpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 60,
   skip: () => process.env.NODE_ENV === 'test',
+  // 同 loginLimiter：只计失败，成功登录不计桶（防合法用户/多账号同 IP 误伤）
+  skipSuccessfulRequests: true,
   keyGenerator: (req) => ipKeyGenerator(req.ip || ''),
   message: { success: false, code: 'RATE_LIMITED', error: '尝试过于频繁，请稍后再试' },
   standardHeaders: true,

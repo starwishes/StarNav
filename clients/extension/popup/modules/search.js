@@ -1,6 +1,15 @@
+// 服务端日期存在两种格式：ISO T 形（`YYYY-MM-DDTHH:MM:SS.sssZ`）与历史库空格形
+// （`YYYY-MM-DD HH:MM:SS`，无时区标记但实际是 UTC，第 4 轮前 datetime('now') 写入）。
+// 空格形不补 Z 会被 Date.parse 按本地时区解析（Chrome/FF 实现相关），新旧行混排时
+// "最近访问"排序可偏移至多一个时区差——与 Web 侧 parseDateString（src/web/utils/datetime.ts）
+// 同族问题，扩展此前漏网（第 24 轮）。
 const visitTimestamp = (item) => {
-  const raw = item?.lastVisited || item?.last_visited || item?.updatedAt || item?.createdAt || ''
-  const parsed = Date.parse(raw)
+  const raw = item?.lastVisited || item?.updatedAt || item?.createdAt || ''
+  const normalized =
+    typeof raw === 'string'
+      ? raw.replace(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})/, '$1T$2Z')
+      : raw
+  const parsed = Date.parse(normalized)
   return Number.isFinite(parsed) ? parsed : 0
 }
 
@@ -9,6 +18,10 @@ const sortByRecentVisit = (items) =>
 
 export function createSearchController({ apiRequest, elements, state, i18n, ui }) {
   const getTexts = () => i18n[state.currentLang]
+
+  // 乱序响应防护：连续输入时旧请求可能晚于新请求返回，序号作废旧响应（含旧错误）
+  //（Web 端 useSearchExecution 有 requestId+AbortController，扩展端此前漏网，第 32 轮 Pi L2）
+  let searchRequestSeq = 0
 
   const loadRecentBookmarks = async () => {
     // Do not use full-page loading overlay here: popup CSS reserves a fixed list
@@ -43,9 +56,15 @@ export function createSearchController({ apiRequest, elements, state, i18n, ui }
   }
 
   const performSearch = async (query) => {
+    const requestId = ++searchRequestSeq
     try {
       const result = await apiRequest(`/bookmark/search?q=${encodeURIComponent(query)}&limit=15`)
       const items = Array.isArray(result.items) ? result.items : []
+
+      if (requestId !== searchRequestSeq) {
+        // 旧响应晚到：已被更新的搜索/清空取代，丢弃
+        return
+      }
 
       if (!elements.searchResults) {
         return
@@ -72,6 +91,9 @@ export function createSearchController({ apiRequest, elements, state, i18n, ui }
       elements.searchResults.append(title, list)
       ui.renderBookmarkList(list, items)
     } catch {
+      if (requestId !== searchRequestSeq) {
+        return
+      }
       if (elements.searchResults) {
         elements.searchResults.textContent = ''
         const failed = document.createElement('div')
@@ -109,6 +131,9 @@ export function createSearchController({ apiRequest, elements, state, i18n, ui }
       window.clearTimeout(state.debounceTimer)
       state.debounceTimer = null
     }
+
+    // 作废任何在途搜索响应，防止清空后旧结果覆盖视图
+    searchRequestSeq++
 
     if (elements.searchInput) {
       elements.searchInput.value = ''

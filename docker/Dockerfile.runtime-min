@@ -2,6 +2,7 @@ ARG NODE_IMAGE=node:24.14.1-slim
 ARG RUNTIME_IMAGE=debian:bookworm-slim
 ARG APT_DEBIAN_MIRROR=
 ARG APT_DEBIAN_SECURITY_MIRROR=
+ARG NPM_REGISTRY=
 ARG HTTP_PROXY=
 ARG HTTPS_PROXY=
 ARG NO_PROXY=
@@ -10,12 +11,15 @@ FROM ${NODE_IMAGE} AS build-stage
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
+ARG NPM_REGISTRY
 WORKDIR /app
 COPY package*.json ./
 # .npmrc 统一承载 peer-dep 策略（openapi-typescript peer ^5 vs 根 typescript ^6），
 # 各阶段不再重复传 --legacy-peer-deps（第 16 轮审查）。
 COPY .npmrc ./
-RUN npm ci --ignore-scripts
+# 与主 Dockerfile 对齐：registry 默认回退官方源，镜像仓库/离线环境可经 NPM_REGISTRY 透传
+#（第 34 轮盲审 L9）。
+RUN npm ci --ignore-scripts --registry "${NPM_REGISTRY:-https://registry.npmjs.org/}"
 COPY . .
 RUN npm run build
 
@@ -26,6 +30,7 @@ ARG APT_DEBIAN_SECURITY_MIRROR
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
+ARG NPM_REGISTRY
 COPY package*.json ./
 COPY .npmrc ./
 RUN if [ -n "${APT_DEBIAN_MIRROR}" ] || [ -n "${APT_DEBIAN_SECURITY_MIRROR}" ]; then \
@@ -47,7 +52,7 @@ RUN if [ -n "${APT_DEBIAN_MIRROR}" ] || [ -n "${APT_DEBIAN_SECURITY_MIRROR}" ]; 
 # hadolint ignore=DL3008
 RUN apt-get -o Acquire::Retries=3 update && \
     apt-get -o Acquire::Retries=3 install -y --no-install-recommends python3 make g++ && \
-    npm ci --omit=dev --ignore-scripts && \
+    npm ci --omit=dev --ignore-scripts --registry "${NPM_REGISTRY:-https://registry.npmjs.org/}" && \
     npm rebuild better-sqlite3 && \
     apt-get purge -y --auto-remove python3 make g++ && \
     rm -rf /var/lib/apt/lists/* && \
@@ -108,7 +113,12 @@ COPY src/shared ./src/shared
 # 注意：前端运行时库（vue 等）自第 16 轮起归 dependencies（audit:prod 覆盖），
 # prod-deps 阶段安装的 node_modules 体积会相应增加；浏览器实际消费的是 dist 产物。
 
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# 与 Dockerfile 保持一致的 CRLF strip：ENTRYPOINT exec 形式依赖 shebang，CRLF 行尾的脚本
+# （`#!/bin/sh\r`）会在容器启动 exec 阶段即失败。git checkout 场景由 .gitattributes eol=lf
+# 保护，此处兜底非 git 来源（手工打 tar/编辑器转行尾）的 CRLF 行尾（第 24 轮漂移修复）。
+RUN tr -d "\r" < /usr/local/bin/docker-entrypoint.sh > /tmp/docker-entrypoint.sh \
+    && mv /tmp/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
 
 ENV NODE_ENV=production \
     PORT=8080 \
@@ -118,6 +128,9 @@ ENV NODE_ENV=production \
 EXPOSE 8080
 
 # 与 docker-compose.yml 探针保持一致（同步自 Dockerfile）
+# 注：Docker HEALTHCHECK 无 --user 选项，探活进程以镜像默认 root 运行（应用本身由
+# entrypoint 经 gosu 降权为 node）。有意保留现状而非引入多层 USER 指令，理由同主
+# Dockerfile（root 探活仅访问 127.0.0.1 的 GET /api/health，无写入面，见第 34 轮 L11）。
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s \
   CMD ["node", "-e", "fetch('http://127.0.0.1:8080/api/health').then((res)=>process.exit(res.ok?0:1)).catch(()=>process.exit(1))"]
 

@@ -72,8 +72,9 @@ describe('useBatchActions', () => {
     expect(composable.selectedItems.size).toBe(0)
   })
 
-  it('shows an error when batch move fails and leaves the selection intact', async () => {
-    // 服务端业务性拒绝以 ApiClientError 抛出，message 上屏（见 src/web/utils/errors.ts 说明）
+  it('does not double-toast when batch move fails and leaves the selection intact', async () => {
+    // 失败 toast 由 store batchMoveItems 统一上屏（rethrow 供调用方感知），composable 空吞
+    //（第 29 轮盲审 L3）；本测试 mock 了 store，故此处断言不重复弹
     dataStoreMock.batchMoveItems.mockRejectedValueOnce(new ApiClientError('move failed', 400))
 
     const composable = useBatchActions(vi.fn())
@@ -81,7 +82,8 @@ describe('useBatchActions', () => {
 
     await composable.handleBatchMove(2)
 
-    expect(mocks.messageError).toHaveBeenCalledWith('move failed')
+    expect(dataStoreMock.batchMoveItems).toHaveBeenCalledWith([7], 2)
+    expect(mocks.messageError).not.toHaveBeenCalled()
     expect(composable.selectionMode.value).toBe(true)
     expect(Array.from(composable.selectedItems)).toEqual([7])
   })

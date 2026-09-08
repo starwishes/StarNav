@@ -220,6 +220,9 @@ const handleSubmit = async () => {
       if (result.success) {
         ElMessage.success(t('auth.loginSuccess'))
         closeDialog()
+        // 凭据不驻留组件：登录成功后清空 password（username 可保留），
+        // 避免下次打开对话框/切换标签时残留可见字符；登出再登录需重新输入。
+        loginForm.password = ''
         // Honor an internal redirect target (router guard sets `redirect`
         // when a non-admin visits /admin/dashboard). Only allow site-relative
         // paths — never `//host` (protocol-relative) or external URLs.

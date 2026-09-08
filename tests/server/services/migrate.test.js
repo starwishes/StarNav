@@ -149,9 +149,10 @@ describe('migrate service', () => {
       path.join(testDataDir, 'users', 'garbage.json'),
       JSON.stringify({ password: '$2a$10$abcdefghijklmnopqrstuv', level: 'not-a-number' })
     )
-    // 字符串数字仍在合法区间时保留（Number 归一后钳制不变）
+    // 字符串数字仍在合法区间时保留（Number 归一后钳制不变）；用户名长度≥3（ok→okay，
+    // 文件名即用户名，需满足登录 charset 的 min 3，第 31 轮盲审 L3 后跳过的旧短名会失真）
     fs.writeFileSync(
-      path.join(testDataDir, 'users', 'ok.json'),
+      path.join(testDataDir, 'users', 'okay.json'),
       JSON.stringify({ password: '$2a$10$abcdefghijklmnopqrstuv', level: '2' })
     )
 
@@ -165,7 +166,7 @@ describe('migrate service', () => {
       { username: 'guest', level: 1 },
       { username: 'high', level: 3 },
       { username: 'low', level: 1 },
-      { username: 'ok', level: 2 }
+      { username: 'okay', level: 2 }
     ])
   })
 
@@ -235,6 +236,30 @@ describe('migrate service', () => {
     expect(getDb().prepare('SELECT username, password, level FROM users').all()).toEqual([
       { username: 'alice', password: '$2a$10$abcdefghijklmnopqrstuv', level: 2 }
     ])
+  })
+
+  it('skips users whose filename-based username violates the login charset (round-31 L3)', async () => {
+    testDataDir = createTestDataDir('starnav-migrate-bad-username')
+    fs.mkdirSync(path.join(testDataDir, 'users'), { recursive: true })
+    // 文件名作为迁移用户名，未走注册/登录的 alphanum 3-30 校验；不合规的旧文件跳过并告警
+    fs.writeFileSync(
+      path.join(testDataDir, 'users', 'bad_user!.json'),
+      JSON.stringify({ password: '$2a$10$abcdefghijklmnopqrstuv', level: 2 })
+    )
+    fs.writeFileSync(
+      path.join(testDataDir, 'users', 'alice.json'),
+      JSON.stringify({ password: '$2a$10$abcdefghijklmnopqrstuv', level: 2 })
+    )
+
+    const { migrateUsers, getDb } = await loadMigrationModule()
+
+    expect(migrateUsers()).toEqual({
+      inserted: 1,
+      skipped: 1,
+      failed: [],
+      ran: true
+    })
+    expect(getDb().prepare('SELECT username FROM users').all()).toEqual([{ username: 'alice' }])
   })
 
   it('re-parents dangling category references to uncategorized during migration', async () => {

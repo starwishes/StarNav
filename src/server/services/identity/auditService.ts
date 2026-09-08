@@ -64,13 +64,15 @@ export const auditService = {
       // 自动清理旧日志：内联裁剪只作兜底（cron 未运行时表也保持有界），
       // 上限与定时裁剪策略共用 AUDIT_LOG_MAX_ROWS，消除原先硬编码 2000 与
       // cron "90 天/10000 条"策略的矛盾（第 15 轮审查）。
+      // 排序键用 id（单调递增）而非 created_at：T 形与空格形混存的旧库中裸字符串
+      // created_at 比较会错排（同日 ' ' < 'T'），与 clear/getLogs 同族收口（第 24 轮）。
       const count =
         db.prepare<CountRow>('SELECT COUNT(*) as count FROM audit_logs').get()?.count ?? 0
       if (count > AUDIT_LOG_MAX_ROWS) {
         db.prepare(
           `
                     DELETE FROM audit_logs WHERE id IN (
-                        SELECT id FROM audit_logs ORDER BY created_at ASC LIMIT ?
+                        SELECT id FROM audit_logs ORDER BY id ASC LIMIT ?
                     )
                 `
         ).run(count - AUDIT_LOG_MAX_ROWS)

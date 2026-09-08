@@ -2,46 +2,54 @@
 
 > 目的：记录多轮全库审查的发现、修复与遗留项，供下一轮无缝衔接。
 > 流程与维度定义见 [REVIEW_CHECKLIST.md](./REVIEW_CHECKLIST.md)。
-> 基线版本 **1.0.7**（`package.json` 为准）。17 轮全库审查 → v1.0.7 release（`150e19a`）已发布，后续运维提交（HEALTHCHECK CI 修复、`REAL_CLIENT_IP_HEADER`、Cloudflare 真实 IP 自动检测）直接推 main。origin/main = `71eea62`。
+> 基线版本 **1.0.8**（`package.json` 为准）。17 轮全库审查 → v1.0.7 release（`150e19a`）；18-23 轮修复随 **v1.0.8 release**（`bb6a3d0` squash）发布，CI 修复 `4bfc13d` 后全绿。origin/main = `4bfc13d`。
 
 ## 当前状态
 
-| 提交      | 内容                                                                                                      |
-| --------- | --------------------------------------------------------------------------------------------------------- |
-| `7f365c1` | 第 1 轮审查修复（全库安全/正确性 + 构建层）                                                               |
-| `498c4fa` | 新增 `docs/REVIEW_CHECKLIST.md`                                                                           |
-| `20df7da` | 第 2 轮修复（安全/i18n/健壮性，18 项）                                                                    |
-| `f757918` | 第 3 轮修复（整洁度/科学度，22 项）                                                                       |
-| `3db9784` | 第 4 轮修复（幸存者扫描，20 项）                                                                          |
-| `fcf54e5` | 测试性能：纯 Node 测试改走 node 环境（墙钟 -40%）                                                         |
-| `a712108` | 第 5 轮修复（架构级/运维硬化，17 项）                                                                     |
-| `9ac2467` | 第 6 轮修复（变更回归/测试质量，15 项）                                                                   |
-| `5778a77` | 删除 PV/UV 采集（统计面板已下线）                                                                         |
-| `f2a4c6a` | 组件拆分专项（3 大组件 → 9 子组件）                                                                       |
-| `fa0f4fc` | 第 7 轮修复（死 key/类型/文档清理，12 项）                                                                |
-| `3385eb1` | 第 8 轮修复（UX/可访问性/扩展/构建，30 项）                                                               |
-| `864e9eb` | TRUST_PROXY 默认开启（信任一层反代）                                                                      |
-| `c33d505` | 第 9 轮修复（TRUST_PROXY 告警/a11y 测试，15 项）                                                          |
-| `5b99dbb` | 第 10 轮修复（数据层/性能/API 契约，18 项）                                                               |
-| `dff7b94` | 第 11 轮修复（前端运行时/安全纵深/测试，17 项）                                                           |
-| `cfdff50` | 第 12 轮修复（扩展生命周期/图标/主题，20 项）                                                             |
-| `582efed` | 第 13 轮修复（i18n parity/配置文档/集成，15 项）                                                          |
-| `017d11a` | 第 14 轮修复（可访问性/移动端/性能，25 项）                                                               |
-| `892a06e` | 第 15 轮修复（错误纵深/迁移完整性，14 项）                                                                |
-| `3fd3c21` | 第 16 轮修复（供应链/API docs 暴露，19 项）                                                               |
-| `f2cb153` | 第 17 轮收口修复（发布就绪，7 项）                                                                        |
-| `150e19a` | **v1.0.7 release**（squash 40 提交为单 release 提交，371 文件）                                           |
-| `1c3dd34` | release 后运维：HEALTHCHECK CMD 改 JSON 数组（CI hadolint DL3025 修复）                                   |
-| `371fcea` | release 后运维：`REAL_CLIENT_IP_HEADER`（CDN 专用客户端 IP 头支持）                                       |
-| `71eea62` | release 后运维：Cloudflare 真实 IP 自动检测（socket 对端 ∈ CF 官方网段才采信 `CF-Connecting-IP`，零配置） |
-| `7725ebe` | 第 18 轮修复（CF IP 链路专项：req.ip 赋值 500 High + 解析收紧 + 文档精确性）                              |
-| `7f4e527` | 第 19 轮修复（A+B：真机 IP 覆盖 smoke 用例、死代码/死 key/死导出清理、limiter 测试保真度）                |
-| `dd45d41` | 第 20 轮修复（A+B：SSRF mapped v6 封锁、dummy hash cost12、契约死类型/死 UI 行、写路径错误文案等 12 项）  |
-| `9751566` | 第 21 轮修复（A+B：SSRF compat/NAT64/6to4 封锁、SW denylist、错误文案统一等 15 项 + 历轮排除复核落地）    |
-| `df4c7a3` | 第 22 轮修复（A+B：login catch 收口、local-use NAT64 封锁、AppSelect a11y 名、排序决胜键等 7 项）         |
-| 未提交    | 第 23 轮修复（A+B：qs 6.16.0、NAT64 local-use /48 整块封锁、扩展 E2E 重写、网络错误文案收口等 10 项）     |
+| 提交      | 内容                                                                                                                                                                                                                                                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `7f365c1` | 第 1 轮审查修复（全库安全/正确性 + 构建层）                                                                                                                                                                                                                                                                                                |
+| `498c4fa` | 新增 `docs/REVIEW_CHECKLIST.md`                                                                                                                                                                                                                                                                                                            |
+| `20df7da` | 第 2 轮修复（安全/i18n/健壮性，18 项）                                                                                                                                                                                                                                                                                                     |
+| `f757918` | 第 3 轮修复（整洁度/科学度，22 项）                                                                                                                                                                                                                                                                                                        |
+| `3db9784` | 第 4 轮修复（幸存者扫描，20 项）                                                                                                                                                                                                                                                                                                           |
+| `fcf54e5` | 测试性能：纯 Node 测试改走 node 环境（墙钟 -40%）                                                                                                                                                                                                                                                                                          |
+| `a712108` | 第 5 轮修复（架构级/运维硬化，17 项）                                                                                                                                                                                                                                                                                                      |
+| `9ac2467` | 第 6 轮修复（变更回归/测试质量，15 项）                                                                                                                                                                                                                                                                                                    |
+| `5778a77` | 删除 PV/UV 采集（统计面板已下线）                                                                                                                                                                                                                                                                                                          |
+| `f2a4c6a` | 组件拆分专项（3 大组件 → 9 子组件）                                                                                                                                                                                                                                                                                                        |
+| `fa0f4fc` | 第 7 轮修复（死 key/类型/文档清理，12 项）                                                                                                                                                                                                                                                                                                 |
+| `3385eb1` | 第 8 轮修复（UX/可访问性/扩展/构建，30 项）                                                                                                                                                                                                                                                                                                |
+| `864e9eb` | TRUST_PROXY 默认开启（信任一层反代）                                                                                                                                                                                                                                                                                                       |
+| `c33d505` | 第 9 轮修复（TRUST_PROXY 告警/a11y 测试，15 项）                                                                                                                                                                                                                                                                                           |
+| `5b99dbb` | 第 10 轮修复（数据层/性能/API 契约，18 项）                                                                                                                                                                                                                                                                                                |
+| `dff7b94` | 第 11 轮修复（前端运行时/安全纵深/测试，17 项）                                                                                                                                                                                                                                                                                            |
+| `cfdff50` | 第 12 轮修复（扩展生命周期/图标/主题，20 项）                                                                                                                                                                                                                                                                                              |
+| `582efed` | 第 13 轮修复（i18n parity/配置文档/集成，15 项）                                                                                                                                                                                                                                                                                           |
+| `017d11a` | 第 14 轮修复（可访问性/移动端/性能，25 项）                                                                                                                                                                                                                                                                                                |
+| `892a06e` | 第 15 轮修复（错误纵深/迁移完整性，14 项）                                                                                                                                                                                                                                                                                                 |
+| `3fd3c21` | 第 16 轮修复（供应链/API docs 暴露，19 项）                                                                                                                                                                                                                                                                                                |
+| `f2cb153` | 第 17 轮收口修复（发布就绪，7 项）                                                                                                                                                                                                                                                                                                         |
+| `150e19a` | **v1.0.7 release**（squash 40 提交为单 release 提交，371 文件）                                                                                                                                                                                                                                                                            |
+| `1c3dd34` | release 后运维：HEALTHCHECK CMD 改 JSON 数组（CI hadolint DL3025 修复）                                                                                                                                                                                                                                                                    |
+| `371fcea` | release 后运维：`REAL_CLIENT_IP_HEADER`（CDN 专用客户端 IP 头支持）                                                                                                                                                                                                                                                                        |
+| `71eea62` | release 后运维：Cloudflare 真实 IP 自动检测（socket 对端 ∈ CF 官方网段才采信 `CF-Connecting-IP`，零配置）                                                                                                                                                                                                                                  |
+| `bb6a3d0` | **v1.0.8 release**（squash 第 18-23 轮修复 + 版本四方对齐 bump）                                                                                                                                                                                                                                                                           |
+| `4bfc13d` | release CI 修复：SSRF gate IPv6 字面量剥 `[]` 走内存直连（不依赖 dns.lookup，修 Windows 绿/Linux 红平台差异）                                                                                                                                                                                                                              |
+| `83f6eda` | compose 透传 `REAL_CLIENT_IP_HEADER`（本地，未推送）                                                                                                                                                                                                                                                                                       |
+| `0f350bc` | 第 24 轮修复（8 项 = SSRF fe 段 + audit/session 排序收口 + 扩展时间解析 + 测试时区无关 + 机密文件权限 + CI diff-check + runtime-min CRLF + compose 注释，未推送）                                                                                                                                                                          |
+| `eb8268d` | 第 25 轮全量盲审修复（12 项 = footerHtml RangeError + 导入 private 映射 + 拖拽未分类 + health 分级 + 登录限流只计失败 + 等清理，未推送）                                                                                                                                                                                                   |
+| `48c7de2` | 第 26 轮修复（6 处 = health 分级收口根治 + 面板鉴权端点 + JWT chmod 读取分支 + ADMIN_USERNAME trim + private 语义注释 + ci.yml force-push 兜底，未推送）                                                                                                                                                                                   |
+| `3ce6b56` | 第 27 轮盲审修复（6 处 = updateUser 全量校验 + requireAdmin fail-closed + 删除失败提示 + SSRF 两段 + 匿名去 version + GHA env 传递 + ui 转义，未推送）                                                                                                                                                                                     |
+| `d26f0a2` | 第 28 轮盲审修复（8 处 = 会话复用续期 + locale 缺 key + SessionManager/DataManager 静默吞错 + 双重 toast + ui data-id 转义 + 审计分页钳制 + FileReader onerror，未推送）                                                                                                                                                                   |
+| `57d3d72` | 第 29 轮盲审修复（5 处 = compose TRUST_PROXY=false + table.deleteSuccess 补 key + 双重 toast ×2 空吞 + stale 注释/文档去 version，未推送）                                                                                                                                                                                                 |
+| `d615b0f` | 第 30 轮盲审修复（7 处 = cache ECACHEFULL 降级 + 自降级守卫 + runUserAction 刷新分离 + JSDoc 去 version + 批量 ids max + update/delete 编码 + 游客回前台刷新，未推送）                                                                                                                                                                     |
+| `40a8647` | 第 31 轮盲审修复（3 L = release.yml 触发步 env 化 + SSRF 补 TEST-NET/6to4 relay 三段 + 迁移用户名 charset 校验，未推送）                                                                                                                                                                                                                   |
+| `f67129d` | 第 32 轮双报告修复（6 处 = IPv6 零地址拼写封锁 + 认证态数据刷新 + 扩展搜索 requestId + AdminDashboard 会话过期跳转 + docker semver + 会话仅延长续期）。**当前状态：本地 10 提交未推送（83f6eda→f67129d），origin/main = 4bfc13d**                                                                                                          |
+| `6e0b445` | 第 33 轮台账清账/清理/专项收口（`ea4c85c` B1、`58265a3` C1+C2、`6999cfb` B2+C4、`6e0b445` A，详见第 33 轮章节）                                                                                                                                                                                                                            |
+| 第 34 轮  | 盲审修复共 8 提交 = 7 修复提交（`33e2901` G2、`683fb1d` G3、`18f8836` G1M1+G5、`7e3e50c` G1L1、`0e5f267` G4、`8ed3f34` G6、`15c3af1` G7L10）+ 本台账提交（G1 文案/清空 + G2 后端口径 + G3 错误态 + G4 a11y/死 API + G5 守卫 + G6 docker + G7 交付维护，见下章）。**当前状态：本地 22 提交未推送（83f6eda→本提交），origin/main = 4bfc13d** |
 
-验证门槛：`npm run typecheck`、`npm run lint:check`、`npm run test:fast`、`npm run versions:check`、`npm run extension:sync-common:check`、`npm run openapi:types:check`、`npm run build`。`test:fast` 现为 **197 文件 / 1089 测试**（会排除 `tests/integration/**` 与 `tests/smoke/runtime.smoke.test.js`，另手动跑 = integration + smoke 16）。
+验证门槛：`npm run typecheck`、`npm run lint:check`、`npm run test:fast`、`npm run versions:check`、`npm run extension:sync-common:check`、`npm run openapi:types:check`、`npm run build`。`test:fast` 现为 **198 文件 / 1126 测试**（会排除 `tests/integration/**` 与 `tests/smoke/runtime.smoke.test.js`，另手动跑 = integration + smoke 19）。
 
 ## 第 1 轮（`7f365c1`，前序会话完成）
 
@@ -153,7 +161,7 @@
 - **L** 死代码清理：locale `health.runtimeDataDir/uploadsDir`、web `LoginResponse` 死类型、`JWT_EXPIRES_IN='7d'` 常量
 - **L** 测试质量：sessionService 隐藏 revoke 副作用断言拆开、`validation.test.js` 移目录、statsService 测试用真实 ua-parser-js
 - 排除项（DeepSeek 核实无问题）：bot 过滤不对称、`minLevel`、`pinned` 默认值
-- 遗留：`MaxIdRow` 类型导出（categoryWriteService 移除使用后成死类型，删需动 domain.ts 类型组，超范围未动）
+- 遗留：`MaxIdRow` 类型导出（categoryWriteService 移除使用后成死类型，删需动 domain.ts 类型组，超范围未动）——**已过时/固定**：第 33 轮核实该类型已不存在于代码（全库 grep 仅台账自身引用，早前轮次随 domain 类型组整理一并消失），无需再处理
 
 ## 第 7 轮（`fa0f4fc`，12 项 = 全 L，视角：三大变更回归 + 清理）
 
@@ -379,6 +387,198 @@ Pi / Kimi 独立审查 + 主会话修复。修复项 CodeBuddy 主会话直接�
 - **B7（Info，Kimi）data.ts logger.debug 语义漂移**：`getWriteErrorMessage` 按 `error.status` 区分——status>0（服务端 4xx 拒绝）debug "rejected by server"；status=0（客户端防御性抛，2xx-但信封空）debug "rejected by client-side guard"。
 
 **验证**：typecheck（server+web）、lint:check、test:fast（197 文件 1089 过 + 2 smoke 并行超时假失败降并发复跑 7/7 过）、audit:prod=0、extension:sync-common:check、versions:check、build（B4/B5 产物核验）。未改 src/shared → 不触发 openapi:types:check。
+
+## 第 24 轮（基线 `4bfc13d` + 本地 `83f6eda`，视角：发布后回归 + 平台差异同族 + 运维/部署面 + 幸存者复扫）
+
+Pi / Kimi 独立审查（DeepSeek 本轮会话被环境取消，按规则跳过；其网络/SSRF 聚焦面已由 Pi/Kimi 双覆盖）。**两提交零回归**：`4bfc13d`（SSRF IPv6 字面量免 DNS，剥 [] 时机在私网判定与 literal 快路径之前、全记法覆盖）与 `83f6eda`（compose 透传，空值语义闭环与 config 校验链一致）。
+
+**新发现 8 项 = 全 L（0 H/M）+ 2 条 Info 文档**，主会话直接落地（CodeBuddy）：
+
+- **L1 SSRF fe 段翻案（Pi，tsx 实测）**：`networkTargetSafety.ts` 私网 IPv6 回退表只覆盖链路本地 fe80-febf（fe8-feb），RFC 3879 已废弃站点本地 `fec0::/10` 与保留 `fe00-fe7f` 漏判——`http://[fec0::1]/`、`[fe00::1]` 实测 ALLOWED，20-23 轮 SSRF 封锁同族最后一段 fe 缝隙。修复：数值分支按首字节 `0xfe` 对整段 fe00::/9 位级封锁 + 4 新用例（fe00/fe0f/fec0/feff）。**排除项复核**：Teredo 2001::/32、ISATAP、文档段均不成向量（Pi+Kimi 独立结论一致），维持排除。
+- **L2 auditService 内联裁剪失序（Pi）**：`log()` 兜底 DELETE `ORDER BY created_at ASC` 裸字符串——第 21/22 轮 clear/getLogs/accountService 同族收口的第三处漏网，混格式旧库同日会裁错行。改 `ORDER BY id ASC`（id 单调，与 cron 侧对偶）。
+- **L3 sessionService 会话列表排序（Pi，Info~L）**：`getByUsername` `ORDER BY last_active_at DESC` 同族混格式（仅展示顺序）。改 `replace(last_active_at,' ','T') DESC, session_id DESC`。
+- **L4 扩展"最近书签"时间解析（Kimi）**：`popup/modules/search.js` `Date.parse` 对历史空格格式行按本地时区解析（Web 侧第 4 轮 parseDateString 已修，扩展漏网）；`last_visited` snake 回退为死分支。修复：局部归一空格形补 `T`+`Z`（注释互引 web datetime.ts）+ 删死回退。
+- **L5 测试依赖机器时区（Kimi，平台差异同族藏测试）**：`siteTableHelpers.test.ts` fallback 用例断言固定 `'4/1/2026'`——2026-04-01T10:00Z 在 UTC−11/UTC+14 渲染 03/31、04/02 必红。改现场用同一 `toLocaleDateString('en-US')` 算期望值（时区无关，断言 fallback 语义本身）。
+- **L6 机密文件 mode:0o600 仅创建时生效（Kimi）**：`config/index.ts` `.jwt_secret` 与 `adminBootstrapService` `.admin_bootstrap_password` 文件已存在（旧版 0644/手工 touch/卷挂载）重写不收紧权限。修复：写后补 `fs.chmodSync(path, 0o600)`（Linux 生效、Windows 无操作；测试 fs mock 补 chmodSync + 断言）。
+- **L7 CI `git diff --check` 空转（Pi）**：无参数比较工作树 vs 暂存区，CI 全新 checkout 恒空，从未拦截过任何东西。修复：checkout 加 `fetch-depth: 0`，步骤改对 `pull_request.base.sha` / push `before` 做 `git diff --check "$base...HEAD"`。
+- **L8 Dockerfile.runtime-min CRLF strip 漂移（Pi）**：主 Dockerfile 有 entrypoint `tr -d "\r"`，runtime-min 只 chmod——CRLF 脚本在 exec 启动即失败（第 8/9 轮同步清单漏此项）。修复：runtime-min 补同款 strip + 互引注释。
+- **Info（Pi+Kimi 双报）compose 注释示例打架**：`cf-connecting-ip` 示例与 .env.example"CF 直连勿设（关闭网段门禁）"有张力。改示例 `x-real-ip` + 补"CF 直连留空、反代需先把客户端 IP 写入所选头"前提。
+- **负面清单（防下轮重报）**：尾点 FQDN、Teredo/ISATAP、IPv4 文档/基准段（fail-closed）、时区静态白名单、`TextDecoder gb18030` small-icu 回退、全部测试 mock DNS、`.gitattributes` eol=lf、mapped 公网 v6 literal V6ONLY 平台差异（Info 不改）。
+
+**验证**：typecheck（web+server）、lint:check、test:fast（197 文件 **1092** 测试过）、integration + smoke 手动跑（18 过）、extension:sync-common:check、versions:check、openapi:types:check、build 全绿。
+
+## 第 25 轮（基线 `0f350bc`，视角：全量盲审——去锚定从零全库 + 台账真实性与跨轮集成）
+
+用户发起"完整审查"轮：**Pi / Kimi 各自【不带台账】从零全库盲审**（明确要求不读 REVIEW_LEDGER/CHECKLIST，防锚定），事后主会话对账。DeepSeek 未参与本轮。**0 H**，**3 M（均为 24 轮台账未覆盖的真实边界）+ 6 L（Pi）+ 6 L（Kimi）**。两 agent "已核实无问题"大清单与 24 轮排除项互为印证。
+
+**M 级修复**
+
+- **M1 footerHtml 超界字符引用 → 500 放大**（Kimi）：`footerHtml.ts` `String.fromCodePoint` 对 `&#1114112;`（>0x10FFFF）抛 RangeError；写路径 500，而 `settingsService.getPublic()`（settingsService.ts:98）读路径每次跑同一清洗——越界值经 restore/手工 SQL 入库后公开 `GET /api/settings` 对全体访客持续 500。修复：`decodeCodePoint` 对码点 0..0x10FFFF 守卫、越界保留原文（后续 escapeHtml 转义 &），新增 4 单测。
+- **M2 导入 `private:true` 静默丢弃 → 私密书签变公开**（Kimi）：itemSchema/categorySchema 仍接受 `private` 布尔（validation.ts:91/103）但无 private 列、写路径不落库——旧导出/第三方 JSON 导入后以 level 0（游客可见）入库。修复：`normalizeBulkPayload`（bookmarkCommandService.ts）`applyLegacyPrivateFlag` 把 `private:true` 且无显式 level≥1 的项/分类映射为 level 1（USER）；显式更高 level 保留。补 2 单测。
+- **M3 拖拽无法落入"未分类"**（Kimi）：`useSiteDrag` commitMove 要求 `finalTargetId>0`，未分类虚拟分类 id=0 → 静默 no-op（API 本身支持 categoryId=0）。修复：落点判定区分"无落点"与"未分类落点"（hoverCategoryId=0 + hoverItemIndex≥0 即合法），targetCategoryId 统一为 0 走 moveItem。补单测。
+
+**Pi L 级修复**
+
+- **L1 /api/health 匿名公开部署指纹**：getHealth 增加 `{detailed}`，`/health` 前挂 `optionalAuth`——匿名探活（healthcheck/负载均衡）只返回最小负载（status/version/timestamp/checks.database.ok），登录管理员才返回 runtime/memory/cache/queries/uptime 明细（系统健康面板消费不受影响）。API.md/ARCHITECTURE/PERFORMANCE_TESTING 同步注明。
+- **L3 登录限流把成功登录计入桶**：合法用户 15 分钟内反复登出登入 >10 次会自我 429。loginLimiter/loginIpLimiter 加 `skipSuccessfulRequests: true`（express-rate-limit v8 支持，只计 4xx/5xx 失败），限流配置快照测试同步。
+- **L5 bookmarkImport `url.startsWith('http')` 过宽**（会匹配 httpx://）→ 双前缀 `http://`/`https://`（服务端本就兜底，纵深收紧）。
+
+**Kimi L 级修复**
+
+- AdminSidebar `avatar_url` 死 img 分支删除（buildAuthUser 恒不下发，保留首字母占位 + 注释）；`ADMIN_USERNAME` validateEnv 格式校验（3-30 位字母/数字，与 loginSchema 一致，防 bootstrap 建号后无法登录的配置陷阱，补单测）；server.ts 缺失 `/uploads/*` 返回 404（此前被 SPA fallback 吞成 200 HTML，破坏删除后清理的 404 语义）；api/client.ts `decodeURIComponent(filename*)` try/catch 兜底畸形头值；useBookmarkImportDialog 关闭延迟 reset 的 setTimeout 卸载时清理；sanitizeText 非字符串真值改走统一 trim+控制字符+截断管线。
+
+**已记录不修(Info/取舍)**:Pi L2(link-check 公网主机端口扫描--admin 权限 + HEAD + 超时,需产品决策是否限 80/443；第 33 轮重新评估后维持 wontfix，理由见第 33 轮 C3）、L4（cache useClones:false freeze 会破坏 patchItemClickInCache，宜加注释）、L6（sort_order 删除不压缩，拖拽自愈）；Kimi「管理员互相改密/降级」为已接受语义（bootstrap 自动恢复主管理员 level）——**已过时/固定**：该语义已被第 27 轮（主管理员禁改名/降级）+ 第 30 轮（管理员自降级拒绝）收口，原「接受」结论不再适用；integration sleep(50) 误导注释(无害);compose env_file 措辞(本就 fail-fast)。
+
+**验证**：typecheck（web+server）、lint:check、test:fast（198 文件 **1101** 测试过）、integration + smoke 手动跑（18 过）、extension:sync-common:check、versions:check、openapi:types:check、build 全绿。
+
+## 第 26 轮（基线 `eb8268d`，视角：本地三提交回归 + 幸存者复扫）
+
+Pi / Kimi 独立全库 + DeepSeek 聚焦复核（对照台账只报新增）。**本地三提交（83f6eda/0f350bc/eb8268d）零功能回归**；新发现集中于第 25 轮 health 分级修复自身两个缺口（M1 三路同报、M2 Kimi）+ 3 个 L。6 处已落地：
+
+- **M1（Pi+Kimi+DeepSeek 同报）health 匿名"最小负载"仍整份下发 DB 统计**：`systemHealthService.ts` 只剥 dbPath，匿名 `checks.database` 含 `userCount/itemCount/categoryCount/size/tables/writable/journalMode`——与 JSDoc + API.md 承诺矛盾；测试用嵌套 `objectContaining` 结构性放过。修复：匿名恒 `{ ok }`，全量统计移入 detailed。
+- **M2（Kimi）SystemHealth 面板会话失效崩溃（eb8268d 新增路径）**：`/health` 挂 optionalAuth 后会话失效返回 200+最小负载（不再是 401），模板直读 `checks.cache.hits`/`runtime.nodeEnv` → TypeError，且绕过 client 401 清登录态。
+  - **根治（M1+M2 一并）**：新增管理员端点 `GET /admin/system/health`（authenticate+requireAdmin，@swagger 注解同步）；公开 `/health` 去掉 optionalAuth、恒最小负载；前端 `adminApi.getSystemHealth` 改走 `/admin/system/health`——面板会话失效恢复真 401（走既有清登录态链），匿名永拿不到明细。openapi.generated.ts 重新生成并提交；smoke 补"匿名最小 / 管理员详细"双断言（含否定 userCount/runtime）。
+- **L1（Kimi）JWT secret chmod 覆盖面窄**：chmodSync 只在"重新生成"分支执行，旧版遗留的非空 0644 `.jwt_secret` 走读取分支 early-return 永不被收紧。修复：读取分支返回前补幂等 `chmodSync(0o600)`。
+- **L2（DeepSeek）ADMIN_USERNAME 空白绕过**：validateEnv 先 `.trim()` 再校验，但 `DEFAULT_ADMIN_NAME` 不 trim、bootstrap 按原文建号——`" admin "` 过校验却建出带空白账号仍无法登录。修复：`DEFAULT_ADMIN_NAME` 取值处统一 `.trim()`（含注释）。
+- **L3（DeepSeek）`applyLegacyPrivateFlag` 注释与实现不符**：注释称"未显式给到 level≥1 才映射"，实现 `level<1` 即覆盖（显式 level:0 也被提升，Joi default 后无法区分显式/缺省 0）。修复：注释改为"private:true 为权威可见性位，level<1 一律提升为 1，显式更高 level 保留" + 补显式 level:0 边界测试。
+- **Info 顺带修**：ci.yml force-push 后 `github.event.before` 可能不在 fetch 历史 → diff-check 假红，补 `git cat-file -e` 兜底 origin/main；swagger HealthCheck schema 补分级 description（完整字段仅 /admin/system/health）。
+- **记录不修（Info）**：`&#0;`→NUL 微瑕（HTML 解析替换 U+FFFD，无安全影响）、useSiteDrag 鼠标路径 hoverCatIndex 死分支（有单测固化兜底语义，留待对称重构）、import dialog 关闭 200ms 内重开清新状态（pre-existing）。
+
+**验证**：typecheck（web+server）、lint:check、test:fast（198 文件 **1102** 测试过）、integration（11）+ smoke（19）全过、openapi:types（生成文件随提交）、versions、extension sync、build 全绿。
+
+## 第 27 轮（基线 `48c7de2`，视角：全量盲审——去锚定从零全库）
+
+Pi / Kimi 不带台账从零盲审（DeepSeek 会话第二次被环境取消，跳过；其网络/SSRF 范围由 Pi/Kimi 独立覆盖）。**0 H**；M1 双报 + M2（Kimi）+ 4 L。6 处已落地：
+
+- **M1（Pi+Kimi 双报）`PATCH /admin/users/:username` 无 password 时整个 payload 零校验**：level 任意类型原样入库（`"boss"` 使 `requireAdmin` 的 `"boss" < 3`=NaN **fail-open** 放行）、newUsername 任意字符可把账号改砖、`DEFAULT_ADMIN_NAME` 可被改名/降级。修复：新增 `adminUpdateUserSchema`（newUsername alphanum 3-30 / level int 0-3 / password 可选强密码，min(1)，unknown(true) 容忍旧字段）在 updateUser 恒校验；`requireAdmin` 改 fail-closed（`Number.isInteger(level)` 判定）；`resolveAuthenticatedUser` 对 level 做 `Number()` 归一兜历史脏数据；**禁止重命名/降级主管理员**（更新 round-25"管理员互改密/降级可接受"记录——主管理员现受保护）。补 3 组单测 + identityService 测试模块 mock 适配。
+- **M2（Kimi）删除类操作静默失败**：`store/data.ts` `deleteCategory`/`deleteItem` 无错误上屏，调用方 `catch { /* cancel */ }` 把"取消确认"与"API 失败"混吞（批量删除有回滚+toast）。修复：两个 delete 方法补 `catch → ElMessage.error(getWriteErrorMessage(e)); throw`（本地只在成功后移除，无需回滚）。
+- **L1（Pi）SSRF IPv4 表补段**：`isPrivateIpv4Address` 补 RFC 2544 `198.18.0.0/15` 与 RFC 7335 `192.0.0.0/24` + 3 用例。
+- **L2（Kimi）匿名 `/health` 去掉精确 version**（部署指纹）——version 仅管理员端点返回；测试/API.md/smoke 同步（smoke 补匿名无 version、管理员有 version 双断言）。
+- **L3（Pi）GHA 脚本注入面**：`docker-publish.yml`/`release.yml` 把 `inputs.version/source_ref/force` 及 event 字段直接内插进 `run:` → 改经步骤级 `env:` 传递后引用 `$VAR`（run-name/with 表达式保持原样）。
+- **L4（Kimi）扩展 popup 图标首字符补 `escapeHtml`**（单字符本不可利用，消毒纪律一行收口）。
+- **记录不修（Info）**：Clock 硬编码中文（round-1 已记）、normalizeUrl 静默改写（台账取舍）、icon-unavailable 懒清理、handleJsonImport 客户端不校验（服务端 400 兜底）、favicon hostname 外泄第三方（inherent）、全局滚动条隐藏。
+
+**验证**：typecheck（web+server）、lint:check、test:fast（198 文件 **1105** 测试过）、integration（11）+ smoke（19）全过、versions、extension sync、openapi types、build 全绿。
+
+## 第 28 轮（基线 `3ce6b56`，视角：全量盲审——去锚定从零全库）
+
+Pi / Kimi 不带台账从零盲审。**0 H**；M1 双报（Pi 定 M）+ Kimi 组 M2-M4 + L1-L4。8 处已落地：
+
+- **M1（双报）会话复用不续期**：`sessionService.create` 同 username+IP+UA 复用只刷 last_active_at——`remember`(90 天) 重登拿到 90 天 JWT/cookie 但 sessions 行仍按旧 30 天过期 → 提前 401 与 UI 承诺不符。修复：复用分支同步把 `expires_at` 续到本次请求到期点。Pi 主张的"轮换 sessionId 踢旧 token"副作用会误伤同 UA 多 profile/多窗口正常复用（且既有 password 变更/revoke-others 已提供吊销语义），记录取舍不采纳轮换。补单测（reuse 续期断言）。
+- **M2 locale 缺 key**（已核实部分成立）：`common.empty`/`common.total` 两语言均缺失但被 AuditLog 空态/分页、SessionManager 空态使用 → 用户看到字面量。修复：空态改用已存在的 `common.noData`，分页新增 `common.total`（zh "共"/en "Total"，双文件同加保 parity）。Kimi/Pi 附带指控 `table.deleteSuccess` 缺失——主会话当时**误判为误报**（错认 zh/en:223 处的 deleteSuccess 属 `table` 段，实属 `admin` 段）；第 29 轮复核确认为**真实缺失**并补 key（见第 29 轮）。
+- **M3 SessionManager 撤销静默**：`catch { // 取消操作 }` 混吞 confirm 取消与 API 真失败（round-27 delete 修复的同族漏网）。修复：`error !== 'cancel'` 时 `ElMessage.error(getErrorMessage(...))`（revokeSession/revokeOthers）。
+- **M4 DataManager 增改保存静默 + 注释撒谎**：saveCategory/saveItem catch 注释"Error handled in store"，store add/update **只 throw 不上屏** → 后台增改分类/书签失败无反馈；右键 togglePin 同根。修复：useDataManagement/useContextMenuActions 层补 `getErrorMessage` 上屏，注释与事实对齐。
+- **L1（Kimi）右键移动分类双重 toast**：store 上屏后 rethrow 无 catch → 全局 unhandled 再弹一次。修复：context menu `moveCategory` 补 catch 吞（store 已回滚+上屏）。
+- **L2（Kimi）扩展 `ui.js` `data-id` 未转义**：两按钮 data-id 补 `escapeHtml`（id 恒为服务端数值，纪律性一行）。
+- **L3（Pi）审计分页 page 无上限**：钳 `≤ 10000`，防 `OFFSET 5e10` 无谓全表跳过。
+- **L4（Kimi）DataManagerToolbar FileReader 缺 onerror**：补读取失败上屏 + 清 input。
+- **记录不修（Info/取舍）**：CSP img-src `http:`（http 部署兼容，round-17 记录）、style-src unsafe-inline（Element Plus 依赖）、normalizeUrl 剥离功能性参数（台账取舍）、会话不轮换（见 M1 说明）、用户增删对话框在服务端响应前关闭重置（重填可接受，UI 边角）。`table.deleteSuccess` 是否缺失见上方更正——实为真实缺失，round-29 已补 key。
+
+**验证**：typecheck（web+server）、lint:check、test:fast（198 文件 **1106** 测试过）、integration（11）+ smoke（19）全过、versions、extension sync、openapi types、build 全绿。
+
+## 第 29 轮（基线 `d26f0a2`，视角：全量盲审——去锚定从零全库）
+
+Pi / Kimi 不带台账从零盲审（首轮两路均交付失败——Pi 终态空、Kimi 卡死，按约束重跑成功）。**0 H / 0 M（Pi）**；Kimi 提出 1 M（部署拓扑级）+ 双路若干 L。5 处已落地：
+
+- **M1（Kimi）compose 直连拓扑下 TRUST_PROXY 默认 true → 伪造 XFF 换桶绕过按 IP 限流**：`ports: 8080:8080` 无受信反代却未显式 `TRUST_PROXY=false`。修复：compose 加 `TRUST_PROXY: ${TRUST_PROXY:-false}` + 注释（有受信反代/入口者自设 true；CF 专用头与 socket 网段门禁路径不受影响）。
+- **L1（Pi+Kimi 双报）`table.deleteSuccess` 缺失（主会话 round-28 误判为误报）**：round-28 已修 `common.empty/total` 但漏了此 key（zh/en:224 处同名键属 `admin` 段，`table` 段确实没有）；删除书签/批量删除成功 toast 显示字面量。修复：zh/en `table` 段补 `deleteSuccess`，双文件同加保 parity。
+- **L2（Kimi）`useSiteDrag` commitMove 双重错误 toast**：store `moveItem` 已上屏并 rethrow，commitMove catch 再弹 → 改空吞（注释说明），移除不再使用的 getErrorMessage import；单测改为断言"不重复弹"。
+- **L3（Kimi）`useBatchActions.handleBatchMove` 双重错误 toast**：同模式改空吞 + 移除 import；单测同步。
+- **L4（Kimi）stale 注释/文档残留 version**：`system.ts` 路由注释与 `swagger.ts` HealthCheck description 仍称匿名含 `version`（round-27 已从实现移除）→ 改"status/timestamp/checks.database.ok"；openapi.generated.ts 随 spec 重生成并提交。
+- **记录不修（Info/取舍）**：Pi L1 revokeOthers 在无 Cookie sessionId 的 bearer/CLI 上下文语义未定义（前端恒走 cookie；改 authVersion 会连调用者一起登出）；Pi L3 `getErrorMessage` 对纯对象信封 message 直上屏（服务端 5xx 已脱敏）；Pi L4 `handleBatchDelete` 空 catch 依赖 store toast（同模式已有先例）；Kimi L5 撤销已过期会话返回 403 语义近 404（纯 UX）；Kimi L6 audit UA 无上限——**UA 已在 requestContext 统一截 256**（round-16），details 一般固定文案，风险低；测试环境限流 skip 盲区、无 sessionId 旧 JWT 兼容窗、会话复用按 ip+ua 归并取舍（均已有注释/台账）。
+
+**验证**：typecheck（web+server）、lint:check、test:fast（198 文件 **1106** 测试过）、integration（11）+ smoke（19）全过、versions、extension sync、openapi types（生成文件随提交）、build 全绿。
+
+## 第 30 轮（基线 `57d3d72`，视角：全量盲审——去锚定从零全库）
+
+Pi 盲审完整交付（0 H，1 M + 若干 L）；Kimi 三轮交付失败（round-29 卡死取消一次、本轮空终态一次、early-empty 一次，平台终稿丢失），后由用户补来 Kimi 视角完整报告并指定先做两项核验（locale 动态键、7 本地提交一致性）再修。主会话核对：**locale 使用侧→定义侧 387=387 无真实缺失（唯一"缺失"为动态拼接 menu./userLevel. 与注释误报）**；**7 个本地提交与代码逐一吻合**。合并 7 处已落地：
+
+- **M1（Pi）cache ECACHEFULL 语义误解**：node-cache `maxKeys` 满载**抛 ECACHEFULL**（已核 node_cache.js:411-413，且在覆盖判断前）而非注释所称"逐出最旧"；search/data/categories 的 `cache.set` 无防护 → 刷不同关键词填满 1000 键后可致新增缓存写 500。修复：`CacheRuntimeService.set` try/catch 降级 debug+返回 false（缓存写失败 ≠ 业务失败）+ 注释纠正 + 满载单测。
+- **M1（Kimi 视角）管理员自降级无自锁**：round-27 只护主管理员，非主管理员可 `PATCH` 自己 `level<ADMIN` → 会话全撤后若站内无他管理员即锁死（deleteUser 有"删自己"保护，update 无）。修复：`context.operator === targetUsername && level<ADMIN` 拒绝 + 单测（降他人仍允许）。
+- **M2（Kimi 视角）`useUserManagement.runUserAction` 双 toast**：成功 toast 先于 `await fetchUserList()`，刷新失败落 catch → "成功+失败"矛盾提示且返回 false 跳过自改名同步。修复：刷新单独 try/catch 降级为 warn 日志，动作结果不受刷新影响。
+- **L1（Kimi 视角）游客回前台永不刷新**：App.vue visibilitychange 仅管理员触发（loadData 有 in-flight/saving 保护）。修复：游客同享 5s 节流回前台刷新。
+- **L3（Kimi 视角）`systemHealthService` JSDoc 残留 version**（round-29 只改路由注释+swagger，漏 service 自身）→ JSDoc 与实现对齐。
+- **L5（Kimi 视角）批量 ids 无上限** → `bookmarkBatchDeleteSchema`/`bookmarkBatchMoveSchema` 加 `.max(500)`（防 IN 展开超 better-sqlite3 变量上限 32766 落 500）。
+- **L2（Pi）`adminApi.updateUser/deleteUser` 用户名补 `encodeURIComponent`**（与 deleteUpload 纪律一致）。
+- **待定记录**：SW 60s 轮询 + skipWaiting 自动刷新可能在编辑中途丢未保存输入（建议改手动提示条，UI 改动较大暂缓）；`sessions.revokeCurrent` 键名与使用场景相反（纯命名，暂不改）；前后端 URL 去重口径不一致（后端精确 vs 前端 normalizeUrl，低危一致性）；getOrSet 无生产调用方；任 level-3 管理员可改主管理员密码（平权取舍，运维文档化建议）。**locale 核验方法与 7 提交核对已记录于本段上文。**
+
+**验证**：typecheck（web+server）、lint:check、test:fast（198 文件 **1108** 测试过）、integration（11）+ smoke（19）全过、versions、extension sync、openapi types、build 全绿。
+
+## 第 31 轮（基线 `d615b0f`，视角：全量盲审——去锚定从零全库）
+
+Pi 盲审交付（**0 H / 0 M**，3 L）；Kimi 起始即卡住被取消（未产出）。3 处已落地：
+
+- **L1（release.yml 触发步注入面，round-27 env 化只做一半）**："Trigger Docker publish" step 把 `steps.plan.outputs.workflow_ref/source_ref/version` 直接内插进 `run:` shell——workflow_ref 在 dispatch 场景源自 git 分支名（可含 `"`/`$`/反引号）。修复：该 step（与 Skip step 的 reason）同口径走 `env:` 引用。
+- **L2（SSRF 前缀表补段，顺带收窄 round-27 的过宽判定）**：原 `first===192 && second===0` 实为 /16 过宽；改为 third 参与保持 /24 精确，并补 RFC 5737 文档测试 TEST-NET-1/2/3（`192.0.2.0/24`、`198.51.100.0/24`、`203.0.113.0/24`）与已废弃 6to4 relay anycast `192.88.99.0/24` + 4 用例（均不可公网路由，一致性加固）。
+- **L3（users JSON 迁移不校验用户名）**：迁移用户名取自 `users/*.json` 文件名、未走注册/登录 alphanum 3-30 校验——超长/特殊字符会污染审计展示且永远无法登录。修复：不合规跳过并告警（与明文密码同处置），补单测；既有夹具 `ok.json`（2 字符）改 `okay.json` 以保留"字符串 level"覆盖。
+- **记录 Info**：compose `env_file:.env` 需空文件存在（README 说明项）；docker-publish release tag 未做 semver 校验（健壮性）——**已过时/固定**：第 32 轮 L2（f67129d）已为 docker-publish 独立 dispatch 的 version 加同款 semver 正则校验；main.ts SW 轮询不清理（App 生命周期有意）；round-30 待定项（SW 手动提示条、`revokeCurrent` 改名、URL 去重口径）继续挂起——其中 SW 手动提示条与 URL 去重口径已于第 33 轮处理，`revokeCurrent` 改名维持不改。
+
+**验证**：typecheck（web+server）、lint:check、test:fast（198 文件 **1110** 测试过）、integration（11）+ smoke（19）全过、versions、extension sync、openapi types、build 全绿。
+
+## 第 32 轮（基线 `40a8647`，视角：全量盲审——去锚定从零全库，双报告合并）
+
+Pi 交付（0 H，1 M + 若干 L）；Kimi 起始卡住被取消，后由用户补来其视角完整报告（0 H，1 M 隐私面 + 3 L）。用户先在 Pi 报告后选择"先停"，补入 Kimi 报告后批准全修 6 处：
+
+- **M1（Pi）IPv6 未指定地址拼写变体绕过 SSRF**：`isPrivateIpv6Address` 仅在 `normalized==='::'` 拦零地址，`::0`/`0:0:0:0:0:0:0:0`/`0::0`/`::0.0.0.0` 等解析为 `0n` 却放行 → 直连按本机处理。修复：`value===0n` 一律判私有（保留字符串分支兜底）+ 4 用例。
+- **M1（Kimi 视角）认证态变化不刷新数据（登出隐私面）**：登出/401 清态后 level1-3 私有书签原样残留（同机旁站可见），登录后仍游客视图。修复：App.vue `watch(isAuthenticated → dataStore.loadData())` 统一两个方向（loadData 自带去重/写保护）。
+- **L1（Pi）扩展 popup 搜索无乱序防护**：加模块级 `searchRequestSeq`，旧响应/旧错误丢弃；`clearSearch` 亦作废在途。
+- **L1（Kimi 视角）AdminDashboard 会话中途过期不跳转**：`watch(isAuthenticated)` 失活即 `router.push('/')`。
+- **L2（Kimi 视角）docker-publish 独立 dispatch 的 version 无 semver 校验**（可向 metadata-action yaml 注入行）：复用 release.yml 同正则，非法即 fail。
+- **L3（Kimi 视角）会话复用直接覆盖 expires_at 会把长档位会话缩短**：改"仅向更长方向续期"（`parseStoredExpiresAtMs` 兼容空格形；保留 round-28 的"90 不被旧 30 卡死"）+ 单测。
+- **待定记录**：Pi L1 bulk 导入悬空 parent_id/categoryId 跨组∪现库校验（改动较大，专项）；Info（pinia persist 死依赖、迁移不洗 URL、Windows 保留设备名、REAL_CLIENT_IP_HEADER 无条件采信等）记录台账。
+
+**验证**：typecheck（web+server）、lint:check、test:fast（198 文件 **1112** 测试过）、integration（11）+ smoke（19）全过、versions、extension sync、openapi types、build 全绿。
+
+## 第 33 轮（基线 `f67129d`，视角：台账清账 + 死代码/死依赖清理 + 历轮待定项专项收口）
+
+主会话指定清单（A/B/C 三类），Pi 直接落地（提交：`ea4c85c` = B1、`58265a3` = C1+C2、`6999cfb` = B2+C4、本条目所在提交 = A）。
+
+**A 类 · 台账清账**
+
+- 状态表补 `f67129d` = 第 32 轮提交行 + 当前状态（10 提交未推送，origin/main = 4bfc13d）。
+- 三笔已过时项移到历史/标 fixed：(a) 第 6 轮遗留 `MaxIdRow` 死类型——第 33 轮全库 grep 核实已不存在于代码（仅台账引用）；(b) 第 25 轮「管理员互相改密/降级 accepted」——被第 27 轮（主管理员禁改名/降级）+ 第 30 轮（自降级拒绝）收口；(c) 第 31 轮 Info「docker-publish release tag 未做 semver 校验」——第 32 轮 L2 已修。
+
+**B 类 · 死代码/清理**
+
+- **B1 `getOrSet` 删除**：全库 grep 确认生产代码零引用，唯一消费者是测试该死方法本身的两个 describe/用例（cacheService.test.js `getOrSet 方法` 4 用例、cacheRuntimeService.test.js stats 用例）→ 删除方法 + 同步删/改对应测试（保留 stats 覆盖，改用 get/set/del 驱动）。
+- **B2 `pinia-plugin-persistedstate` 死依赖移除**：main.ts import + `pinia.use`、vite.config.ts manualChunks 提及、vite-env.d.ts `declare module`、main.test.ts doMock、package.json 依赖（npm install 刷新 lock）、ARCHITECTURE.md 运行时库措辞同步（docker 目录无提及，核实无需改）；`npm audit --omit=dev` 保持 **0**。
+- **B3 全局滚动条隐藏复核——Info 不改**：App.vue 全局 `::-webkit-scrollbar{width:0}` 为有意设计（注释明示「装饰性页面滚动隐藏，数据表格恢复」），第 14 轮 #24 已恢复 `.sn-table-scroll`、第 27 轮已记 Info。本轮复核受影响面：弹窗 overflow 容器（第 14 轮 #11 的 max-height+overflow-y 生命周期）、侧栏/搜索结果等仍无滚动条可视提示，但滚轮/触摸/键盘均可滚，属装饰性隐藏的既定取舍；无实际可达性阻断，维持不改。
+
+**C 类 · 真实未决**
+
+- **C1 bulk 导入悬空父引用服务端兑底（第 32 轮 Pi L1 专项）**：saveData 是全量替换语义（事务内先 DELETE 全部再 INSERT），故合法引用集合 = 导入文件内分类 id 集——「文件内 ∪ 现库」不适用，现库分类此时已全部被替换，指向现库的引用导入后必然悬空（这正是悬空的来源）。`categories.parent_id` 无 FK，悬空静默入库令子分类从首页树消失；`items.category_id` 有 FK（database.ts `foreign_keys=ON`）但报错为泛化 SQLITE_CONSTRAINT 400。修复：`bookmarkMutationService.saveData` 在写前备份/删除**之前**新增 `assertBulkReferences` 精确校验，报错带条目序号+名称；前端 useImportExport 已先行 remap（无映射归根/归未分类），本校验是原始 API/CLI 导入的服务端兑底。补 3 单测（悬空 item categoryId / 悬空 category parentId / 文件内引用通过）。
+- **C2 前后端 URL 去重口径 + 迁移不洗 URL——注释收口不改行为**：核实后端去重键 = `items.url` UNIQUE 精确原始字符串（`normalizeOptionalUrl` 只校验不归一化）；前端 useImportExport 合并去重键 = 共享 `normalizeUrl`（协议补全/主机小写/剥尾斜杠/剥跟踪参数），口径确不一致。结论：服务端为权威、不引入历史数据迁移（写入侧归一化需同步改写存量 URL，风险 > 收益）；在 databaseSchemaService（UNIQUE 约束处）与 bookmarkCommandService.normalizeBulkPayload 各加注释说明差异与取舍。
+- **C3 link-check 公网端口扫描——wontfix（产品决策）**：现状：`POST /check-links` 挂 `authenticate + requireAdmin`（system.ts），目标经 `resolvePublicHttpTarget` 全量 SSRF 门禁（私网/保留段/重绑定防护，20-32 轮持续收口）后才 HEAD，且逐条 5s 超时。残余暴露 = 受信管理员可让服务器对任意公网 host:port 发 HEAD。决策：单用户自部署场景管理员本就可配置任意书签/探测目标，限制非 80/443 端口会误伤自建服务（如 https://example.com:8443 这类常见导航书签），收益低于误伤 → 维持 wontfix，此前第 25 轮 Info 同口径。
+- **C4 SW 自动刷新丢未保存输入（第 30 轮待定项）**：根因不止 main.ts 的 `updateServiceWorker(true)`——registerType 'autoUpdate' 下插件自动注入 `self.skipWaiting()`（dist/sw.js 顶层），新版本一安装即接管页面并 reload。修复：vite.config `registerType: 'autoUpdate' → 'prompt'`（插件不再注入 skipWaiting，产物改为监听 SKIP_WAITING 消息；显式保留 `clientsClaim: true` 确保确认激活后 controllerchange 链路生效）+ main.ts `onNeedRefresh` 改弹确认框（`@/utils/feedback` ElMessageBox + 新双语 key `feedback.newVersionReady/newVersionMessage`），用户确认后才 `messageSkipWaiting` 激活；60s 轮询与 controllerchange reload 保留。已知取舍：另一标签页确认后本页仍会因 controllerchange 自动刷新（跨标签无确认机制，记 Info）。main.test.ts 适配（mock `utils/feedback`、registerSW 返回可断言的 update mock、i18n stub 补 `global.t`）+ 新增 2 用例（确认后才激活 / 取消不激活）；build 产物核验 dist/sw.js 无顶层 skipWaiting。
+
+**验证**：typecheck（web+server）、lint:check、test:fast（198 文件 **1113** 测试过 = 1112 −4 getOrSet 死用例 +3 C1 +2 C4）、integration + smoke 手动跑（19 过）、audit:prod = 0、versions:check、extension:sync-common:check、openapi:types:check、build（含 dist/sw.js 产物核验）全绿。
+
+## 第 34 轮（基线 `6e0b445`，主会话修复：三路盲审 2M + 10L + 1Info 收口）
+
+Pi / Kimi / DeepSeek 三路盲审发现 2M+10L+1Info，主会话合并去重后按 G1–G7 分组直接修复，7 个提交（`33e2901`/`683fb1d`/`18f8836`/`7e3e50c`/`0e5f267`/`8ed3f34`/`15c3af1`），全部本地提交未推送。
+
+- **G1 文案/清空**
+  - **M1（SW 新版本文案失真）**：`src/web/locales/zh-CN.json:441` / `en-US.json:441` 的 `feedback.newVersionMessage` 原称"未保存的输入不会被丢失"，与动作相反（确认即 `updateServiceWorker(true)` → controllerchange → 整页 reload）。改为如实文案（zh"检测到网站新版本，点击"立即刷新"将重新加载页面——若正在编辑，请先保存当前内容。"，en 对应），新增 `feedback.refreshNow`（"立即刷新"/"Refresh now"），`src/web/main.ts:82` `confirmButtonText` 改引 refreshNow（`feedback.confirm` 仍被 dialog.ts 使用，未动）。main.test.ts 断言同步为 `feedback.refreshNow`。
+  - **L1（登录表单残留）**：`src/web/components/admin/LoginDialog.vue:222-226` 登录成功分支补 `loginForm.password = ''`（username 保留）。LoginDialog.test.ts 新增用例"clears the password…keeps the username"；既有"drops external…redirect"用例第二次提交需按清空后的真实交互重填密码。
+- **G2 后端口径（服务端小改 + 单测）**
+  - **L6（move/batchMove 目标分类不存在落 500）**：`src/server/services/bookmark/bookmarkWriteService.ts` 新增 `assertTargetCategoryExists`（文件头 22-33 行），`move`（:180）与 `batchMove`（:260）在写前校验 `targetCategoryId>0` 且分类存在，不存在抛 `errors.badRequest('分类不存在')`——与 addBookmark/updateBookmark 同口径，不再把 FK 原始 SQLITE 错误当 500；未分类（0/NULL）豁免。writeService 单测新增 2 用例（不存在目标分类 move/batchMove 抛 ApiError 400 且零写入、合法分类/未分类仍可移）。
+  - **L7（bulk schema id 缺 .integer()）**：`src/server/validation.ts` `itemSchema.id`/`categorySchema.id` 补 `.integer()`，`itemSchema.categoryId` 补 `.integer().min(0)`——非整数 categoryId 此前会被 `normalizeDbCategoryId` 静默归入未分类，现与增量写路径（bookmarkCreateSchema）对齐。validation.test.js 新增用例：非整数 id/categoryId、负 categoryId、超出 `Number.MAX_SAFE_INTEGER` 的 id 全部被拒，合法整数通过。
+- **G3 错误态（前端）**
+  - **M2（SessionManager / AuditLog 加载失败被当无数据）**：两组件此前失败只弹瞬态 toast，UI 落 `common.noData` 空态且 SessionManager 无重试入口。仿照 `Site.vue:27-35` error-state + retry 模式：`SessionManager.vue:14-19,75-90`、`AuditLog.vue:32-37,122-140` 新增 `loadError` 状态位、`sn-error-state`（role=status）渲染 `common.loadFailed` + `common.retry` 按钮（AuditLog 复用顶部手动刷新同一 `fetchLogs` 链路），成功/开始重试时清位。两个组件测试改为断言错误态可见 + 重试后恢复。
+- **G4 a11y**
+  - **L2（自绘弹窗无可访问名）**：`src/web/utils/feedback/dialog.ts:79-118` 新增稳定 id（模块级 `dialogInstanceCounter`，`sn-feedback-dialog-title-N`/`message-N`）并挂 `aria-labelledby`/`aria-describedby`（消息为空时不挂 describedby）。feedbackCore.test.ts confirm 用例加属性断言。
+  - **L3（AppSelect 键盘死角）**：选项菜单 Teleport 到 body 后，若选项可被 Tab 聚焦，方向键/Esc 的 keydown 只绑 combobox root 会失效。选方案一（纯 aria-activedescendant）：`src/web/components/AppSelect.vue:36` 选项 button 加 `tabindex="-1"` 并把键盘焦点恒留在 combobox；注释说明为何不选"menu 上补同款 keydown"（双处理路径复杂且易重入）。AppSelect.test 新增"keeps menu options out of the tab sequence"。
+  - **L4（右键菜单）**：三件事（a）焦点归还——`src/web/composables/useSiteMenu.ts` 关闭逻辑记录触发元素并按"键盘打开的任何路径 / 关闭时焦点仍在菜单内（Esc/选择）"归还，外部指针点击已把焦点移到其他可聚焦元素时不抢回；（b）键盘入口——新 `src/web/utils/events.ts` 导出 `isContextMenuKey`（ContextMenu 键 / Shift+F10），SiteCard 卡片链接、SiteCategory 分类标题（新增 `tabindex="0"` + `:focus-visible`）与子分类 tab 的 keydown 走既有 contextmenu 事件流上抛，composable 按事件类型定位（键盘事件无 clientX/Y，取触发元素 rect）；（c）`SiteContextMenu.vue` role=menu 补本地化 `aria-label`（新增 `context.itemMenuLabel`/`categoryMenuLabel`）。SiteCard/SiteCategory/SiteContextMenu/useSiteMenu 四组测试补齐（键盘打开、Shift+F10、菜单 aria-label、焦点归还/不抢回）。
+- **G5 防御/UX 守卫**
+  - **L5（bootstrap localStorage 无守卫）**：`src/web/plugins/i18n.ts:6,36`、`src/web/utils/theme.ts:39-76`、`src/web/store/config.ts:62-83`、`src/web/main.ts:103` 的 getItem/setItem/removeItem 全部包 try/catch 降级默认值/静默（主题读写 helper `readStoredThemeMode`/`writeStoredThemeMode` 统一承载，storage 参数保持测试注入语义）。theme.test 新增"degrades gracefully when localStorage access is blocked"。
+  - **L8（controllerchange 首访多余 reload）**：`src/web/main.ts:50-72` 注册时快照 `navigator.serviceWorker.controller`——无 controller（首访）跳过首个 controllerchange（clientsClaim 首次接管），其后任何 controllerchange 照常 reload；有 controller（已受控页）首个即 reload。main.test.ts 原用例改为带 controller 快照断言 reload，新增"首次 claim 跳过、后续替换 reload"用例。
+- **G6 Docker 一致性**
+  - **L9（runtime-min 缺 NPM_REGISTRY 透传）**：`docker/Dockerfile.runtime-min` 顶层与 build/prod-deps 两阶段补 `ARG NPM_REGISTRY`，两处 `npm ci` 追加 `--registry "${NPM_REGISTRY:-https://registry.npmjs.org/}"`，与主 `docker/Dockerfile:21,44` 对齐。
+  - **L11（HEALTHCHECK 以 root 探活）**：选保守方案 B——两个 Dockerfile 的 HEALTHCHECK 旁注释说明"HEALTHCHECK 无 --user 选项，探活有意以容器默认 root 执行，仅访问 localhost GET /api/health 无写入面；不引入多层 USER 指令（会复杂化 entrypoint 降权/数据目录权限链路）"。理由已写进注释。
+- **G7 交付维护**
+  - **L10（globIgnores 硬编码漂移）**：`vite.config.ts:39-56` 改从单一常量 `ADMIN_LAZY_CHUNK_PREFIXES` 派生（flatMap 出 js/css 两段 glob），注释写明命名来源（router 懒加载视图 + useAdminDashboardViews 的 defineAsyncComponent）与取舍——选择"常量收敛 + 注释互引"而非构建期断言（5 个名字的断言复杂度高于收益；漂移形态是 glob 死条目/漏配，不破坏构建）。`npm run build` 验证：5 个 chunk 前缀在 dist/assets 全部存在、dist/sw.js 预缓存清单零命中。
+  - **Info（feedback.ts prompt 死面）**：`src/web/utils/feedback.ts:30` `ElMessageBox.prompt` 全库零调用 → **删除**（删除面小且安全）。连带删除 dialog.ts prompt 分支/输入框逻辑、types.ts DialogKind/输入选项字段、dom.ts `.sn-feedback-dialog-input` 样式、feedback-core/feedback 的 prompt 方法与转发；两处测试移除 prompt 流程。决策理由：删除面集中在 feedback 私有子模块，约 60 行 + 样式，无生产引用面。
+- **验证**：typecheck（web+server）、lint:check、test:fast（198 文件 **1126** 测试过）、integration + smoke 手动跑（19 过）、build（dist 产物核验：5 个管理 chunk 不进 SW 预缓存）全绿。未改 package.json → audit/versions/extension-sync/openapi 面未触发。
 
 ## 已知遗留 / 有意保留
 

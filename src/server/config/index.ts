@@ -21,8 +21,10 @@ export const ADMIN_BOOTSTRAP_PASSWORD_PATH = path.join(DATA_DIR, '.admin_bootstr
 
 /**
  * 默认管理员名称 (主数据拥有者)
+ * trim：bootstrap 按该值原样建号，而登录校验只认字母/数字；首尾空白会让
+ * validateEnv 的 trim 校验通过却建出永远无法登录的账号（第 26 轮审查）。
  */
-export const DEFAULT_ADMIN_NAME = process.env.ADMIN_USERNAME || 'admin'
+export const DEFAULT_ADMIN_NAME = (process.env.ADMIN_USERNAME || 'admin').trim()
 /**
  * 默认信任一层反向代理：Express 从 X-Forwarded-For 读取真实客户端 IP，
  * 日志/会话/限流均按真实 IP 处理（覆盖最常见的反代部署形态）。
@@ -76,6 +78,9 @@ export const getOrCreateJwtSecret = () => {
     if (fs.existsSync(JWT_SECRET_PATH)) {
       const secret = fs.readFileSync(JWT_SECRET_PATH, 'utf8').trim()
       if (secret) {
+        // 旧版本以 0644 创建的已存在非空密钥只走读取分支，不会经过下面的"重新生成→
+        // chmodSync"路径——这里幂等收紧一次，覆盖第 24 轮 L6 声称的遗留场景（第 26 轮审查）。
+        fs.chmodSync(JWT_SECRET_PATH, 0o600)
         return secret
       }
       logger.warn(`.jwt_secret 文件为空，将重新生成`)
@@ -88,6 +93,10 @@ export const getOrCreateJwtSecret = () => {
       fs.mkdirSync(DATA_DIR, { recursive: true })
     }
     fs.writeFileSync(JWT_SECRET_PATH, secret, { mode: 0o600 })
+    // writeFileSync 的 mode 仅在创建时生效：文件已存在（旧版以 0644 创建、手工 touch、
+    // 卷挂载带入）时重写不会收紧权限，故补 chmodSync 强制收紧。Linux 上生效；Windows 上
+    // POSIX mode 本就无效（依赖目录 ACL），chmodSync 为无操作不抛错（第 24 轮审查）。
+    fs.chmodSync(JWT_SECRET_PATH, 0o600)
     logger.warn('已生成新的 JWT_SECRET 并保存到文件。注意：旧的 Token 将失效。')
     return secret
   } catch (err) {
@@ -295,6 +304,17 @@ export const validateEnv = () => {
         )
       }
     }
+  }
+
+  // 10. ADMIN_USERNAME 校验
+  // ADMIN_USERNAME 会被 bootstrap 按原文建号（adminBootstrapService.ts），而登录/注册
+  // 校验（validation.ts loginSchema）要求用户名 ^[a-zA-Z0-9]{3,30}$——若配了连字符/下划线
+  // 等字符，管理员账户会创建成功却永远无法通过登录校验（第 25 轮盲审 L）。
+  const adminUsername = (process.env.ADMIN_USERNAME || '').trim()
+  if (adminUsername && !/^[a-zA-Z0-9]{3,30}$/.test(adminUsername)) {
+    errors.push(
+      'ADMIN_USERNAME 仅支持 3-30 位字母/数字（与登录校验一致），否则 bootstrap 创建的管理员账户将无法登录'
+    )
   }
 
   // 输出结果

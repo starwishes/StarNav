@@ -108,6 +108,10 @@ const options = {
         },
         HealthCheck: {
           type: 'object',
+          description:
+            '完整字段（runtime/memory/cache/queries/uptime/version/database 统计）仅管理员端点 ' +
+            'GET /admin/system/health 返回；公开 GET /health（匿名探活）只返回 ' +
+            'status/timestamp/checks.database.ok（第 25/26 轮分级收口，第 29 轮文档同步）。',
           properties: {
             status: { type: 'string', enum: ['healthy', 'unhealthy'], example: 'healthy' },
             version: { type: 'string', example: APP_VERSION },

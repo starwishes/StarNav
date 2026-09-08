@@ -73,4 +73,51 @@ describe('validation schemas', () => {
     expect(category.error).toBeUndefined()
     expect(category.value.parentId).toBeNull()
   })
+
+  it('rejects non-integer and oversized bulk ids/categoryIds (round 34 L7)', () => {
+    // item id 非整数
+    const badItemId = dataSchema.validate({
+      categories: [{ id: 1, name: 'Root' }],
+      items: [{ id: 1.5, name: 'Docs', url: 'https://docs.test', categoryId: 1 }]
+    })
+    expect(badItemId.error).toBeDefined()
+
+    // item categoryId 非整数：此前会被静默归入未分类
+    const badCategoryId = dataSchema.validate({
+      categories: [{ id: 1, name: 'Root' }],
+      items: [{ id: 2, name: 'Docs', url: 'https://docs.test', categoryId: 1.5 }]
+    })
+    expect(badCategoryId.error).toBeDefined()
+
+    // item categoryId 为负
+    const negativeCategoryId = dataSchema.validate({
+      categories: [{ id: 1, name: 'Root' }],
+      items: [{ id: 2, name: 'Docs', url: 'https://docs.test', categoryId: -1 }]
+    })
+    expect(negativeCategoryId.error).toBeDefined()
+
+    // category id 非整数
+    const badCategoryIdField = dataSchema.validate({
+      categories: [{ id: 1.5, name: 'Root' }],
+      items: []
+    })
+    expect(badCategoryIdField.error).toBeDefined()
+
+    // 超出 Number.MAX_SAFE_INTEGER 的 id（Joi number() 默认上限，避免以
+    // 不精确的浮点 id 落库后被别处 Number() 语义破坏）
+    const oversizedItemId = dataSchema.validate({
+      categories: [{ id: 1, name: 'Root' }],
+      items: [
+        { id: Number.MAX_SAFE_INTEGER + 1, name: 'Docs', url: 'https://docs.test', categoryId: 1 }
+      ]
+    })
+    expect(oversizedItemId.error).toBeDefined()
+
+    // 合法整数 id 仍通过
+    const ok = dataSchema.validate({
+      categories: [{ id: 1, name: 'Root' }],
+      items: [{ id: 2, name: 'Docs', url: 'https://docs.test', categoryId: 0 }]
+    })
+    expect(ok.error).toBeUndefined()
+  })
 })

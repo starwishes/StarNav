@@ -54,6 +54,8 @@ const persistBootstrapPassword = (username: string, password: string) => {
 
   fs.mkdirSync(DATA_DIR, { recursive: true })
   fs.writeFileSync(ADMIN_BOOTSTRAP_PASSWORD_PATH, contents, { mode: 0o600 })
+  // 同 config/index.ts 的 .jwt_secret：mode 仅创建时生效，文件已存在时补 chmodSync 强制收紧
+  fs.chmodSync(ADMIN_BOOTSTRAP_PASSWORD_PATH, 0o600)
 }
 
 const readBootstrapPasswordRecord = () => {

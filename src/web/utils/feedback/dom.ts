@@ -201,24 +201,6 @@ const FEEDBACK_STYLES = `
   flex-shrink: 0;
 }
 
-.sn-feedback-dialog-input {
-  width: 100%;
-  margin-top: 18px;
-  min-height: 42px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 12px;
-  padding: 10px 14px;
-  font-size: 14px;
-  color: #0f172a;
-  background: rgba(255, 255, 255, 0.92);
-}
-
-.sn-feedback-dialog-input:focus {
-  outline: none;
-  border-color: rgba(37, 99, 235, 0.35);
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-}
-
 .sn-feedback-dialog-footer {
   display: flex;
   justify-content: flex-end;

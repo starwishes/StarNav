@@ -4,6 +4,31 @@ import { resolve } from 'path'
 import pkg from './package.json'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// SW 预缓存忽略的管理懒加载 chunk 前缀（第 34 轮盲审 L10）。
+//
+// 命名来源：dist 产物 chunk 以异步组件文件名为前缀——AdminDashboard 来自 router 的
+// 懒加载视图（views/AdminDashboard.vue），DataManager/MonitoringDashboard/
+// SystemSettings/UserTable 来自 useAdminDashboardViews.ts 的 defineAsyncComponent。
+// 这些 chunk 仅在登录后按需加载，且 /assets 已由 runtimeCaching 走 NetworkFirst，
+// 不预缓存它们可让首页安装更快、部署后旧 chunk 尽快过期。
+//
+// 名单与懒加载组件命名隐性耦合：新增/改名上述组件时必须同步本列表。选择"常量收敛 +
+// 注释互引"而非构建期断言，理由：断言需要把 config 与 useAdminDashboardViews 的源
+// 文件/路由建立解析依赖，复杂度高于 5 个名字的清单收益；常量导出至少让清单成为显式
+// 事实源，供 grep/审查发现漂移（漂移形态只是 glob 死条目或漏配，不破坏构建）。
+const ADMIN_LAZY_CHUNK_PREFIXES = [
+  'AdminDashboard',
+  'DataManager',
+  'MonitoringDashboard',
+  'SystemSettings',
+  'UserTable'
+] as const
+
+const adminLazyChunkGlobIgnores = ADMIN_LAZY_CHUNK_PREFIXES.flatMap((chunkName) => [
+  `assets/js/${chunkName}-*.js`,
+  `assets/css/${chunkName}-*.css`
+])
+
 // https://vitejs.dev/config/
 export default defineConfig(() => {
   // 加载环境变量
@@ -13,9 +38,16 @@ export default defineConfig(() => {
     plugins: [
       vue(),
       VitePWA({
-        registerType: 'autoUpdate',
+        // 'prompt' 模式（第 33 轮）：检测到新版本时由 main.ts 弹确认框，用户确认
+        // 后才 messageSkipWaiting 激活——避免 autoUpdate 下新版本一安装就接管页面
+        // 自动 reload，丢掉用户未保存的表单输入。切换为 prompt 后插件不再自动
+        // 注入 skipWaiting；显式保留 clientsClaim：用户确认激活后新 SW 立即接管
+        // 受控页，controllerchange → reload 的链路确定生效（workbox generateSW
+        // 默认不 claim 旧客户端）。
+        registerType: 'prompt',
         includeAssets: ['favicon.svg', 'pwa-icon.svg', 'logo.svg'],
         workbox: {
+          clientsClaim: true,
           // Drop previous precaches after deploy so old AdminDashboard-*.js hashes die quickly.
           cleanupOutdatedCaches: true,
           // 首页是核心离线场景，后台和反馈弹层属于按需能力，不必在安装阶段全部预缓存。
@@ -29,18 +61,7 @@ export default defineConfig(() => {
           // 否则 SW 会把 404 的 API/资源路径 fallback 成 index.html（API 反而被
           // HTML 响应替代、上传链接返回首页），见第 21 轮审查。
           navigateFallbackDenylist: [/^\/api\//, /^\/uploads\//, /^\/api-docs/],
-          globIgnores: [
-            'assets/js/AdminDashboard-*.js',
-            'assets/js/DataManager-*.js',
-            'assets/js/MonitoringDashboard-*.js',
-            'assets/js/SystemSettings-*.js',
-            'assets/js/UserTable-*.js',
-            'assets/css/AdminDashboard-*.css',
-            'assets/css/DataManager-*.css',
-            'assets/css/MonitoringDashboard-*.css',
-            'assets/css/SystemSettings-*.css',
-            'assets/css/UserTable-*.css'
-          ],
+          globIgnores: adminLazyChunkGlobIgnores,
           runtimeCaching: [
             {
               // Hashed build assets: network first so image rebuilds do not stick to deleted chunk URLs.
@@ -151,7 +172,7 @@ export default defineConfig(() => {
                 return 'vue-core'
               }
               // Pinia 状态管理
-              if (id.includes('pinia') || id.includes('pinia-plugin-persistedstate')) {
+              if (id.includes('pinia')) {
                 return 'store'
               }
               // 其他第三方库

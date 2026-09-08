@@ -189,9 +189,36 @@ describe('useSiteDrag', () => {
     expect(dataStoreMock.moveItem).toHaveBeenCalledWith(15, 2, 2)
   })
 
-  it('reports move failures and ignores drag attempts when the user is not authenticated', async () => {
-    // 服务端业务性拒绝以 ApiClientError 抛出（client.ts 对非 2xx 的封装），message 上屏；
-    // 纯网络层原生 Error（Failed to fetch 等）自第 21 轮起不再回显原文（走 i18n fallback）
+  it('commits a drop onto the virtual uncategorized slot (categoryId 0)', async () => {
+    // 第 25 轮盲审 M3：未分类虚拟分类 id=0 是合法 move 目标，此前被 finalTargetId>0
+    // 判定为"无落点"静默 no-op。handleMouseEnter(itemIndex, categoryId=0) 表示指针停在
+    // 未分类条目槽上，应触发 categoryId=0 的移动。
+    const { api } = mountHarness()
+
+    api.startMove(
+      {
+        id: 21,
+        name: 'FromDocs',
+        url: 'https://docs.test',
+        description: '',
+        categoryId: 2
+      },
+      1,
+      0,
+      100,
+      120
+    )
+    api.handleMouseEnter(0, 0)
+    await api.handleMouseDragUp()
+
+    expect(dataStoreMock.moveItem).toHaveBeenCalledWith(21, 0, 0)
+    expect(dataStoreMock.moveItem).toHaveBeenCalledTimes(1)
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('移动成功')
+  })
+
+  it('does not double-toast move failures and ignores drag attempts when unauthenticated', async () => {
+    // 失败 toast 由 store moveItem 统一上屏（本测试 mock 了 store，故 composable 空吞不弹）；
+    // 此处断言"不重复弹"——真正提示职责在 store（data.test 覆盖）（第 29 轮盲审 L2）
     dataStoreMock.moveItem.mockRejectedValueOnce(new ApiClientError('move failed', 400))
 
     const { api } = mountHarness()
@@ -211,7 +238,8 @@ describe('useSiteDrag', () => {
     api.handleMouseEnter(1, 1)
     await api.handleMouseDragUp()
 
-    expect(mocks.messageError).toHaveBeenCalledWith('move failed')
+    expect(dataStoreMock.moveItem).toHaveBeenCalledWith(20, 1, 1)
+    expect(mocks.messageError).not.toHaveBeenCalled()
 
     adminStoreMock.isAuthenticated = false
     api.startMove(

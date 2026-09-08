@@ -43,6 +43,23 @@ export const strongPasswordSchema = Joi.object({
   level: Joi.number().integer().min(1).max(3).optional()
 })
 
+// 管理员更新用户：无 password 时也必须校验 newUsername/level——level 原样入库曾让
+// 非数值（如 "boss"）绕过 requireAdmin 数值比较、newUsername 任意字符可把账号改砖
+//（第 27 轮盲审 M1）。min(1) 拒绝空更新。
+export const adminUpdateUserSchema = Joi.object({
+  newUsername: Joi.string().alphanum().min(3).max(30).optional(),
+  password: Joi.string().pattern(passwordPattern).optional().messages({
+    'string.pattern.base': 'ERR_PASSWORD_WEAK'
+  }),
+  level: Joi.number().integer().min(0).max(3).optional()
+})
+  .min(1)
+  // 容忍历史/客户端附带的多余字段（如旧版 username 别名），仅校验上述三个关键字段
+  .unknown(true)
+  .messages({
+    'object.min': '更新内容不能为空'
+  })
+
 const accessLevelSchema = Joi.number().integer().min(0).max(3)
 const optionalStringSchema = Joi.string().allow('', null)
 const optionalParentIdSchema = Joi.number().integer().allow(null).empty('').default(null)
@@ -83,11 +100,14 @@ const safeTimezoneSchema = Joi.string()
   })
 
 export const itemSchema = Joi.object({
-  id: Joi.number().required(),
+  id: Joi.number().integer().required(),
   name: Joi.string().trim().required(),
   url: Joi.string().trim().required(), // 移除 uri() 校验，兼容内网 IP 或不规范地址
   description: optionalStringSchema,
-  categoryId: Joi.number().required(),
+  // .integer().min(0)：非整数 categoryId（如 1.5）此前会被 normalizeDbCategoryId
+  // 静默归入未分类（第 34 轮 L7），与增量写路径（bookmarkCreateSchema 同款约束）对齐；
+  // 0 表示"未分类"。
+  categoryId: Joi.number().integer().min(0).required(),
   private: Joi.boolean().default(false),
   pinned: Joi.boolean().default(false),
   level: accessLevelSchema.default(0),
@@ -97,7 +117,7 @@ export const itemSchema = Joi.object({
 }).unknown(true) // 允许未知字段，防止因前端增加额外属性导致保存失败
 
 export const categorySchema = Joi.object({
-  id: Joi.number().required(),
+  id: Joi.number().integer().required(),
   name: Joi.string().trim().required(),
   icon: optionalStringSchema.optional(),
   private: Joi.boolean().optional(),
@@ -154,11 +174,13 @@ export const bookmarkMoveSchema = Joi.object({
 }).unknown(false)
 
 export const bookmarkBatchDeleteSchema = Joi.object({
-  ids: Joi.array().items(Joi.number().integer().positive()).min(1).required()
+  // max(500)：批量上限（第 30 轮盲审 L5）。超大 ids 会在 better-sqlite3 的 IN(...)
+  // 展开时突破变量上限（32766）或撑爆语句，应在校验层 400 拒绝而非落 500
+  ids: Joi.array().items(Joi.number().integer().positive()).min(1).max(500).required()
 }).unknown(false)
 
 export const bookmarkBatchMoveSchema = Joi.object({
-  ids: Joi.array().items(Joi.number().integer().positive()).min(1).required(),
+  ids: Joi.array().items(Joi.number().integer().positive()).min(1).max(500).required(),
   categoryId: Joi.number().integer().min(0).required()
 }).unknown(false)
 

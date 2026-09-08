@@ -39,6 +39,10 @@ export const useBookmarkImportDialog = (options: {
   const fileInputRef = ref<HTMLInputElement | null>(null)
   const dialogPanelRef = ref<HTMLElement | null>(null)
 
+  // 关闭后延迟 200ms 重置状态（等抽屉收起动画）；组件若在延迟内卸载，定时器需清理，
+  // 否则会向已卸载组件写 ref（第 25 轮盲审 L）
+  let resetTimer: ReturnType<typeof setTimeout> | null = null
+
   const totalBookmarks = computed(() =>
     parsedCategories.value.reduce((sum, cat) => sum + cat.items.length, 0)
   )
@@ -129,7 +133,11 @@ export const useBookmarkImportDialog = (options: {
 
   const handleClose = () => {
     options.setModelValue(false)
-    setTimeout(() => {
+    if (resetTimer !== null) {
+      clearTimeout(resetTimer)
+    }
+    resetTimer = setTimeout(() => {
+      resetTimer = null
       resetState()
     }, 200)
   }
@@ -152,6 +160,10 @@ export const useBookmarkImportDialog = (options: {
   })
 
   onUnmounted(() => {
+    if (resetTimer !== null) {
+      clearTimeout(resetTimer)
+      resetTimer = null
+    }
     document.removeEventListener('keydown', handleDialogKeydown)
   })
 

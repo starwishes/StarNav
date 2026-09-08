@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -38,8 +40,24 @@ jobs:
         run: npm run lint:ops
 
       # Soft guard: conflict markers / trailing whitespace (not a full CRLF rewrite).
+      # `git diff --check` without args compares worktree vs index — a fresh CI checkout
+      # is always clean, so it never failed (no-op, round 24). Diff against the PR base
+      # (or the previously pushed commit) so it actually checks the introduced changes.
+      # force-push 后 github.event.before 指向的旧提交可能不在 fetch 历史中 → 兜底 origin/main。
       - name: Git whitespace check
-        run: git diff --check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            base=origin/main
+          fi
+          if ! git cat-file -e "$base" 2>/dev/null; then
+            base=origin/main
+          fi
+          git diff --check "$base...HEAD"
 
       - name: Production dependency audit
         run: npm run audit:prod

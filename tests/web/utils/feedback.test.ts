@@ -41,26 +41,18 @@ describe('feedback', () => {
 
     const confirmSpy = vi.spyOn(core.ElMessageBox, 'confirm').mockResolvedValue('confirm')
     const alertSpy = vi.spyOn(core.ElMessageBox, 'alert').mockResolvedValue('close')
-    const promptSpy = vi
-      .spyOn(core.ElMessageBox, 'prompt')
-      .mockResolvedValue({ value: 'Bob', action: 'confirm' })
     const closeSpy = vi.spyOn(core.ElMessageBox, 'close').mockImplementation(() => {})
 
     await expect(feedback.ElMessageBox.confirm('继续?', '确认', { type: 'warning' })).resolves.toBe(
       'confirm'
     )
     await expect(feedback.ElMessageBox.alert('已完成', '提示')).resolves.toBe('close')
-    await expect(feedback.ElMessageBox.prompt('输入名称', '编辑')).resolves.toEqual({
-      value: 'Bob',
-      action: 'confirm'
-    })
 
     feedback.ElMessageBox.close()
     await Promise.resolve()
 
     expect(confirmSpy).toHaveBeenCalledWith('继续?', '确认', { type: 'warning' })
     expect(alertSpy).toHaveBeenCalledWith('已完成', '提示')
-    expect(promptSpy).toHaveBeenCalledWith('输入名称', '编辑')
     expect(closeSpy).toHaveBeenCalledTimes(1)
   })
 })
