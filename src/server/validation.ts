@@ -100,7 +100,10 @@ const safeTimezoneSchema = Joi.string()
   })
 
 export const itemSchema = Joi.object({
-  id: Joi.number().integer().required(),
+  // .positive()：id 为自增主键（恒 ≥1）。此前仅 .integer() 允许 0/负数，
+  // 会与前端虚拟"未分类" id=0 撞 id、落库成僵尸行，且与 batchDelete/Move 的
+  // .positive() 口径不一致（第 35 轮 G3）。
+  id: Joi.number().integer().positive().required(),
   name: Joi.string().trim().required(),
   url: Joi.string().trim().required(), // 移除 uri() 校验，兼容内网 IP 或不规范地址
   description: optionalStringSchema,
@@ -117,7 +120,8 @@ export const itemSchema = Joi.object({
 }).unknown(true) // 允许未知字段，防止因前端增加额外属性导致保存失败
 
 export const categorySchema = Joi.object({
-  id: Joi.number().integer().required(),
+  // 同 itemSchema.id：自增主键恒 ≥1，拒绝 0/负数（第 35 轮 G3）。
+  id: Joi.number().integer().positive().required(),
   name: Joi.string().trim().required(),
   icon: optionalStringSchema.optional(),
   private: Joi.boolean().optional(),
@@ -125,17 +129,23 @@ export const categorySchema = Joi.object({
   parentId: optionalParentIdSchema.optional()
 }).unknown(true)
 
+// 导入数组上界：express.json 的 10mb 只兜住字节量，不能阻止数组长度本身撑爆
+// 内存/写事务。5000/20000 为远高于正常个人导航规模、又能挡住 DoS 的量级
+//（第 35 轮 G3）。超限由 Joi 落 400。
+const categoryListSchema = Joi.array().items(categorySchema).max(5000).required()
+const itemListSchema = Joi.array().items(itemSchema).max(20000).required()
+
 const directDataSchema = Joi.object({
   action: Joi.string().allow('').optional(),
-  categories: Joi.array().items(categorySchema).required(),
-  items: Joi.array().items(itemSchema).required()
+  categories: categoryListSchema,
+  items: itemListSchema
 }).unknown(true)
 
 const wrappedDataSchema = Joi.object({
   action: Joi.string().allow('').optional(),
   content: Joi.object({
-    categories: Joi.array().items(categorySchema).required(),
-    items: Joi.array().items(itemSchema).required(),
+    categories: categoryListSchema,
+    items: itemListSchema,
     action: Joi.string().allow('').optional()
   })
     .unknown(true)

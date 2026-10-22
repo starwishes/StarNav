@@ -24,11 +24,23 @@ export const authStorage = {
     }
   },
 
+  // 写/清与 read() 同族：禁用站点数据/隐私模式下 localStorage 会抛
+  // SecurityError。登录成功路径若在此抛错会被 LoginDialog 当登录失败处理
+  //（此时服务端 cookie 已建），401 清态也会中断——故一律降级不阻断主流程
+  //（第 35 轮 G1，34 轮 L5 同族漏网）。
   write(user: AuthUser) {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
+    try {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
+    } catch {
+      // 存储不可用/配额满：该值仅用于跨会话 UX 引导，失败静默
+    }
   },
 
   clear() {
-    localStorage.removeItem(AUTH_STORAGE_KEY)
+    try {
+      localStorage.removeItem(AUTH_STORAGE_KEY)
+    } catch {
+      // 存储不可用：清态由内存 store 承担，失败静默
+    }
   }
 }

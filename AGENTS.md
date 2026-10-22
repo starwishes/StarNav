@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Repo-local rules for coding agents working on **StarNav** (product version **1.0.9**).
+Repo-local rules for coding agents working on **StarNav** (product version **1.0.10**).
 
 ## What this project is
 

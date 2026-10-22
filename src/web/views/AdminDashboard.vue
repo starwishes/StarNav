@@ -111,6 +111,7 @@ const {
 
 const {
   users,
+  usersLoadError,
   fetchUserList,
   handleUpdateUserLevel,
   handleAddUser,
@@ -118,7 +119,7 @@ const {
   handleUpdateUser
 } = useUserManagement()
 
-const { systemSettings, fetchSettings, handleSaveSettings } = useSystemSettings()
+const { systemSettings, settingsLoadError, fetchSettings, handleSaveSettings } = useSystemSettings()
 
 const saveDataSync = async () => {
   await dataStore.saveData('import')
@@ -158,7 +159,9 @@ const {
   loadError,
   loadData,
   users,
+  usersLoadError,
   systemSettings,
+  settingsLoadError,
   fetchUserList,
   handleUpdateUserLevel,
   handleAddUser,

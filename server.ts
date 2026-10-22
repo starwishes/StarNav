@@ -133,9 +133,18 @@ const realClientIpOverride: RequestHandler = (req, _res, next) => {
   next()
 }
 
+/**
+ * API 响应统一 Cache-Control: no-store。认证/会话/数据/健康等 /api/** 响应
+ * 不应被浏览器或中间代理缓存（第 35 轮 G3，Kimi L3）。仅挂到 /api 路由链上，
+ * dist 静态资源（setStaticCacheHeaders）与 /uploads 的缓存头不受影响。
+ */
+const noStoreApiResponses: RequestHandler = (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store')
+  next()
+}
+
 const createConfiguredApp = async () => {
   const app = express()
-
   app.set('trust proxy', TRUST_PROXY ? 1 : false)
 
   // 真实客户端 IP 覆盖层必须最先注册（置于任何中间件/路由之前），
@@ -239,6 +248,7 @@ const createConfiguredApp = async () => {
     })
   )
 
+  app.use('/api', noStoreApiResponses)
   app.use('/api', authRoutes)
   app.use('/api', bookmarkRoutes)
   app.use('/api', systemRoutes)

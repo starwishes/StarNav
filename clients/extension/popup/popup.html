@@ -92,7 +92,7 @@
       <section id="addForm" class="add-form" style="display: none">
         <div class="form-header">
           <span data-i18n="addBookmark">Add Bookmark</span>
-          <button id="cancelAdd" class="icon-btn">×</button>
+          <button id="cancelAdd" class="icon-btn" aria-label="Close" title="Close">×</button>
         </div>
         <div id="duplicateWarning" class="warning-alert" style="display: none">
           ⚠️ <span data-i18n="urlStored">URL already stored:</span><span id="duplicateName"></span>
@@ -132,11 +132,18 @@
         </div>
       </section>
 
-      <div id="categoryModal" class="modal" style="display: none">
+      <div
+        id="categoryModal"
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="categoryModalTitle"
+        style="display: none"
+      >
         <div class="modal-content">
           <div class="form-header">
-            <span data-i18n="newCategory">New Category</span>
-            <button id="closeCategoryModal" class="icon-btn">×</button>
+            <span id="categoryModalTitle" data-i18n="newCategory">New Category</span>
+            <button id="closeCategoryModal" class="icon-btn" aria-label="Close" title="Close">×</button>
           </div>
           <div class="form-group">
             <label for="newCategoryParent" data-i18n="parentCategory">Parent Category</label>

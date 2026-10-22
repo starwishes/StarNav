@@ -120,4 +120,55 @@ describe('validation schemas', () => {
     })
     expect(ok.error).toBeUndefined()
   })
+
+  it('rejects zero and negative bulk ids (round 35 G3)', () => {
+    const build = (categories, items) => dataSchema.validate({ categories, items })
+
+    // item id 为 0/负数：与前端虚拟"未分类" id=0 撞 id，且与 batchDelete 的 .positive() 口径不一致
+    expect(
+      build(
+        [{ id: 1, name: 'Root' }],
+        [{ id: 0, name: 'Docs', url: 'https://d.test', categoryId: 1 }]
+      ).error
+    ).toBeDefined()
+    expect(
+      build(
+        [{ id: 1, name: 'Root' }],
+        [{ id: -3, name: 'Docs', url: 'https://d.test', categoryId: 1 }]
+      ).error
+    ).toBeDefined()
+
+    // category id 为 0/负数
+    expect(build([{ id: 0, name: 'Root' }], []).error).toBeDefined()
+    expect(build([{ id: -1, name: 'Root' }], []).error).toBeDefined()
+  })
+
+  it('rejects bulk arrays beyond the configured size caps (round 35 G3)', () => {
+    const tooManyCategories = dataSchema.validate({
+      categories: Array.from({ length: 5001 }, (_, index) => ({
+        id: index + 1,
+        name: `C${index}`
+      })),
+      items: []
+    })
+    expect(tooManyCategories.error).toBeDefined()
+
+    const tooManyItems = dataSchema.validate({
+      categories: [{ id: 1, name: 'Root' }],
+      items: Array.from({ length: 20001 }, (_, index) => ({
+        id: index + 1,
+        name: `I${index}`,
+        url: 'https://docs.test',
+        categoryId: 1
+      }))
+    })
+    expect(tooManyItems.error).toBeDefined()
+
+    // 恰好达到上限仍通过
+    const atCap = dataSchema.validate({
+      categories: [{ id: 1, name: 'Root' }],
+      items: []
+    })
+    expect(atCap.error).toBeUndefined()
+  })
 })

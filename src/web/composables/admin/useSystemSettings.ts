@@ -16,14 +16,19 @@ export function useSystemSettings() {
   const configStore = useConfigStore()
 
   const systemSettings = ref<Partial<SystemSettings>>({})
+  const settingsLoadError = ref(false)
 
   /**
    * 获取系统设置
    */
   const fetchSettings = async () => {
+    settingsLoadError.value = false
     try {
       systemSettings.value = await adminStore.getAdminSettings()
     } catch (error) {
+      // 失败不再只弹瞬态 toast 后落空表单（保存会被服务端 min(1) 400 拦）：
+      // 置 loadError 渲染错误态 + 重试入口（第 35 轮 G2，与用户/会话列表同型）。
+      settingsLoadError.value = true
       ElMessage.error(getErrorMessage(error, t('common.loadFailed')))
     }
   }
@@ -48,6 +53,7 @@ export function useSystemSettings() {
 
   return {
     systemSettings,
+    settingsLoadError,
     fetchSettings,
     handleSaveSettings
   }

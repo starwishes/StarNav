@@ -15,10 +15,6 @@ on:
         required: false
         type: string
 
-env:
-  GHCR_IMAGE: ghcr.io/${{ github.repository_owner }}/starnav
-  DOCKERHUB_IMAGE: starwisher/starnav
-
 concurrency:
   group: docker-publish-${{ github.ref }}
   cancel-in-progress: false
@@ -29,7 +25,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write
 
     steps:
       - name: Resolve release version
@@ -74,28 +69,6 @@ jobs:
         with:
           ref: ${{ steps.version.outputs.source_ref }}
 
-      - name: Resolve publish targets
-        id: targets
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        run: |
-          publish_dockerhub=false
-
-          if [ -n "${DOCKER_USERNAME}" ] && [ -n "${DOCKER_PASSWORD}" ]; then
-            publish_dockerhub=true
-          fi
-
-          {
-            echo 'images<<EOF'
-            echo "${GHCR_IMAGE}"
-            if [ "${publish_dockerhub}" = "true" ]; then
-              echo "${DOCKERHUB_IMAGE}"
-            fi
-            echo 'EOF'
-            echo "publish_dockerhub=${publish_dockerhub}"
-          } >> "$GITHUB_OUTPUT"
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
 
@@ -109,18 +82,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log into Docker Hub
-        if: steps.targets.outputs.publish_dockerhub == 'true'
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ${{ steps.targets.outputs.images }}
+          images: ghcr.io/${{ github.repository_owner }}/starnav
           tags: |
             type=raw,value=${{ steps.version.outputs.version }}
             type=raw,value=${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}

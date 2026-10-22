@@ -111,6 +111,16 @@ export function createUiHelpers({ elements, state, i18n, onEdit, onDelete }) {
       elements.clearSearch.setAttribute('aria-label', clearSearchText)
     }
 
+    // "×" 关闭按钮（添加表单 / 新建分类弹窗）的可访问名随语言切换
+    //（第 35 轮 G4）；缺 key 回退英文。
+    const closeText = texts.close || 'Close'
+    ;[elements.cancelAdd, elements.closeCategoryModal].forEach((button) => {
+      if (button) {
+        button.title = closeText
+        button.setAttribute('aria-label', closeText)
+      }
+    })
+
     if (elements.searchInput) {
       const searchText = texts.searchPlaceholder || 'Search bookmarks...'
       elements.searchInput.placeholder = searchText

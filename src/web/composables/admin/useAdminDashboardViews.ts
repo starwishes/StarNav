@@ -45,8 +45,10 @@ interface UseAdminDashboardViewsOptions {
   loadError: Ref<string>
   loadData: () => MaybePromise
   users: Ref<User[]>
+  usersLoadError: Ref<boolean>
   systemSettings: Ref<Partial<SystemSettings>>
-  fetchUserList: () => MaybePromise
+  settingsLoadError: Ref<boolean>
+  fetchUserList: (options?: { silent?: boolean }) => MaybePromise
   handleUpdateUserLevel: (username: string, level: number) => MaybePromise
   handleAddUser: (payload: UserAddPayload) => MaybePromise
   handleDeleteUser: (username: string) => MaybePromise
@@ -91,10 +93,13 @@ export function useAdminDashboardViews(options: UseAdminDashboardViewsOptions) {
           icon: 'icon-md-settings',
           onEnter: options.fetchSettings,
           props: {
-            initialSettings: options.systemSettings.value
+            initialSettings: options.systemSettings.value,
+            loadError: options.settingsLoadError.value
           },
           events: {
-            save: options.handleSaveSettings
+            save: options.handleSaveSettings,
+            // 加载失败态的重试入口（第 35 轮 G2）。
+            retry: () => void Promise.resolve(options.fetchSettings()).catch(() => {})
           },
           requiresAdmin: true
         },
@@ -104,13 +109,16 @@ export function useAdminDashboardViews(options: UseAdminDashboardViewsOptions) {
           icon: 'icon-bianji-yonghu',
           onEnter: options.fetchUserList,
           props: {
-            users: options.users.value
+            users: options.users.value,
+            loadError: options.usersLoadError.value
           },
           events: {
             'update-level': options.handleUpdateUserLevel,
             add: options.handleAddUser,
             delete: options.handleDeleteUser,
-            update: options.handleUpdateUser
+            update: options.handleUpdateUser,
+            // 加载失败态的重试入口；fetchUserList 内部已吞错并置错误态，这里仅防御性兜底 rejection。
+            retry: () => void Promise.resolve(options.fetchUserList()).catch(() => {})
           },
           requiresAdmin: true
         },

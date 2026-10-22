@@ -283,6 +283,19 @@ describe('categoryWriteService', () => {
     ).toThrowError(expect.objectContaining({ statusCode: 400 }))
   })
 
+  it('handles a deep parent chain without quadratic re-traversal (round 35 G3)', () => {
+    const { db } = ctx
+    const depth = 5000
+    // 反向插入顺序（最深节点在前）：旧实现无全局 visited，会从每个入口重复下探整条链
+    const categories = []
+    for (let id = depth; id >= 1; id -= 1) {
+      categories.push({ id, name: `C${id}`, parentId: id === 1 ? null : id - 1 })
+    }
+
+    expect(() => categoryWriteService.bulkInsert(categories, db)).not.toThrow()
+    expect(db.prepare('SELECT COUNT(*) as count FROM categories').get().count).toBe(depth)
+  })
+
   it('accepts bulk imports whose parents reference categories not in the import set', () => {
     const { db } = ctx
 

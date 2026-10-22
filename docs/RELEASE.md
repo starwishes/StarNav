@@ -55,11 +55,11 @@ npm run docker:smoke
 
 本地执行 `docker:build` / `docker:smoke` 时，脚本**不会**默认切换任何镜像源，apt 走 Debian 官方源；如网络受限可在执行时显式传 `APT_DEBIAN_MIRROR` / `APT_DEBIAN_SECURITY_MIRROR` 指向镜像站（例如 TUNA 的 HTTP Debian 镜像 `http://mirrors.tuna.tsinghua.edu.cn/debian` / `http://mirrors.tuna.tsinghua.edu.cn/debian-security`）。`CI` / `GITHUB_ACTIONS` 环境同样不注入镜像源。
 
-默认镜像基线固定为 `node:24.14.1-slim`。如果要验证新的 Node 24 patch 线，可临时覆盖：
+默认镜像基线固定为 `node:24.22.1-slim`（含 2026-10-21 Node 安全修复）。如需切换到其他 Node 24 patch 线，可临时覆盖：
 
 ```bash
-NODE_IMAGE=node:24.15.0-slim npm run docker:build
-NODE_IMAGE=node:24.15.0-slim npm run docker:smoke
+NODE_IMAGE=node:24.22.1-slim npm run docker:build
+NODE_IMAGE=node:24.22.1-slim npm run docker:smoke
 ```
 
 ## 2. 自动发布（Docker 镜像，无 GitHub Releases）
@@ -82,7 +82,7 @@ NODE_IMAGE=node:24.15.0-slim npm run docker:smoke
 3. [Docker Publish](../.github/workflows/docker-publish.yml)
    - 由 Release workflow `workflow_dispatch` 调起，传入 `version` + `source_ref`（通常为通过 CI 的 commit SHA）
    - `release.published` 仅作「你手工建了 GitHub Release」时的可选兜底，日常不用
-   - 推送多架构镜像到 `ghcr.io`；配置了 Docker Hub secrets 时再推 Hub
+   - 推送多架构镜像到 `ghcr.io`（Docker Hub 自 1.0.9 起不再发布）
 
 清理历史 GitHub Release（可选）：
 

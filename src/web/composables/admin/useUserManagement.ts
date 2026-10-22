@@ -16,9 +16,23 @@ export function useUserManagement() {
   const logger = createScopedLogger('web:user-management')
 
   const users = ref<ApiUser[]>([])
+  const usersLoadError = ref(false)
 
-  const fetchUserList = async () => {
-    users.value = await adminStore.fetchUsers()
+  const fetchUserList = async (options: { silent?: boolean } = {}) => {
+    usersLoadError.value = false
+    try {
+      users.value = await adminStore.fetchUsers()
+    } catch (error) {
+      // 失败不再让列表停留在"无数据"空态：置 loadError 渲染错误态 + 重试入口
+      //（第 35 轮 G2，与 SessionManager/AuditLog 同型漏网）。
+      logger.error('Failed to fetch user list.', error)
+      usersLoadError.value = true
+      // 动作成功后的刷新失败走 silent：避免"操作成功 + 加载失败"矛盾双 toast
+      //（第 30 轮 M2 语义），但仍置错误态供用户手动重试。
+      if (!options.silent) {
+        ElMessage.error(t('common.loadFailed'))
+      }
+    }
   }
 
   const runUserAction = async (action: () => Promise<unknown>, successKey: string) => {
@@ -30,13 +44,9 @@ export function useUserManagement() {
         return false
       }
       ElMessage.success(t(successKey))
-      // 列表刷新失败 ≠ 动作失败：单独捕获并降级为日志，避免"操作成功+操作失败"
-      // 矛盾双 toast 与调用方误判（第 30 轮盲审 M2）
-      try {
-        await fetchUserList()
-      } catch (error) {
-        logger.warn('Action succeeded but user list refresh failed.', error)
-      }
+      // 列表刷新失败 ≠ 动作失败：fetchUserList 内部降级为日志 + 错误态，
+      // silent 抑制 toast，避免"操作成功+操作失败"矛盾双 toast（第 30 轮 M2）。
+      await fetchUserList({ silent: true })
       return true
     } catch (error) {
       ElMessage.error(getErrorMessage(error, t('admin.operationFailed')))
@@ -86,6 +96,7 @@ export function useUserManagement() {
 
   return {
     users,
+    usersLoadError,
     fetchUserList,
     handleUpdateUserLevel,
     handleAddUser,

@@ -3,7 +3,7 @@ set -eu
 
 IMAGE_NAME="${IMAGE_NAME:-starnav}"
 IMAGE_TAG="${IMAGE_TAG:-$(node -p "require('./package.json').version")}"
-NODE_IMAGE="${NODE_IMAGE:-node:24.14.1-slim}"
+NODE_IMAGE="${NODE_IMAGE:-node:24.22.1-slim}"
 DOCKERFILE="${DOCKERFILE:-docker/Dockerfile}"
 APT_DEBIAN_MIRROR="${APT_DEBIAN_MIRROR:-}"
 APT_DEBIAN_SECURITY_MIRROR="${APT_DEBIAN_SECURITY_MIRROR:-}"

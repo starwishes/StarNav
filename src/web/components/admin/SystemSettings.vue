@@ -1,6 +1,13 @@
 <template>
   <div class="system-settings">
-    <form class="settings-form" @submit.prevent="saveSettings">
+    <div v-if="loadError" class="sn-error-state" role="status">
+      <p class="sn-error-state__text">{{ t('common.loadFailed') }}</p>
+      <button type="button" class="settings-button" @click="emit('retry')">
+        {{ t('common.retry') }}
+      </button>
+    </div>
+
+    <form v-else class="settings-form" @submit.prevent="saveSettings">
       <SystemSettingsAccount
         :registration-enabled="settings.registrationEnabled"
         :default-user-level="settings.defaultUserLevel"
@@ -66,9 +73,10 @@ type AssetField = 'backgroundUrl' | 'faviconUrl' | 'logoUrl'
 
 const { t } = useI18n()
 
-const props = defineProps<{ initialSettings: Partial<SystemSettingsModel> }>()
+const props = defineProps<{ initialSettings: Partial<SystemSettingsModel>; loadError?: boolean }>()
 const emit = defineEmits<{
   (e: 'save', settings: Partial<SystemSettingsModel>): void
+  (e: 'retry'): void
 }>()
 
 const {
@@ -144,6 +152,22 @@ void uploadInputRef
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.sn-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 180px;
+  color: var(--gray-500, rgba(100, 116, 139, 0.85));
+}
+
+.sn-error-state__text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .settings-button {

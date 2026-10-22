@@ -80,12 +80,19 @@ const assertNoCategoryCycle = (categories: Array<CategoryPayload & { id?: IdLike
   }
 
   const visiting = new Set<number>()
+  // 全局 visited：一个节点处理完即标记，避免从每个入口重复遍历同一条祖先链
+  //（深链曾退化为 O(n²) 并可能栈溢出）。链深已由 validation.ts 的数组 max 兜住。
+  const visited = new Set<number>()
   const visit = (id: number) => {
+    if (visited.has(id)) {
+      return
+    }
     if (visiting.has(id)) {
       throw errors.badRequest('导入的分类数据存在父分类环引用（分类互为父子）')
     }
     const parent = parentById.get(id)
     if (parent == null) {
+      visited.add(id)
       return
     }
     visiting.add(id)
@@ -93,6 +100,7 @@ const assertNoCategoryCycle = (categories: Array<CategoryPayload & { id?: IdLike
       visit(parent)
     }
     visiting.delete(id)
+    visited.add(id)
   }
 
   for (const id of parentById.keys()) {

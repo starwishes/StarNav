@@ -161,6 +161,21 @@ describe('SystemSettings', () => {
     ).toContain('/uploads/next.jpg')
   })
 
+  it('renders the error state with a retry action instead of the form when loading failed (round 35 G2)', async () => {
+    const wrapper = createWrapper({ siteName: 'StarNav' })
+    await flushAsync()
+
+    await wrapper.setProps({ loadError: true })
+    await flushAsync()
+
+    expect(wrapper.find('.sn-error-state').exists()).toBe(true)
+    expect(wrapper.find('.sn-error-state').attributes('role')).toBe('status')
+    expect(wrapper.find('form').exists()).toBe(false)
+
+    await wrapper.find('.sn-error-state button').trigger('click')
+    expect(wrapper.emitted('retry')).toHaveLength(1)
+  })
+
   it('fills the default footer, integrates uploaded-file actions, and emits the save payload', async () => {
     mocks.confirm.mockResolvedValue('confirm')
     mocks.deleteUpload.mockResolvedValue({ success: true })

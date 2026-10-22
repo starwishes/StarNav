@@ -185,6 +185,29 @@ describe('searchUtils', () => {
     })
   })
 
+  it('degrades to defaults when storage access is blocked (round 35 G1)', () => {
+    const blockedStorage = {
+      getItem() {
+        throw new DOMException('Access is denied for this document.', 'SecurityError')
+      },
+      setItem() {
+        throw new DOMException('Access is denied for this document.', 'SecurityError')
+      },
+      removeItem() {
+        throw new DOMException('Access is denied for this document.', 'SecurityError')
+      }
+    }
+
+    const state = loadSearchEngineState(true, blockedStorage)
+    expect(state.searchEngines).toEqual(DEFAULT_SEARCH_ENGINES)
+    expect(state.currentEngine).toEqual(DEFAULT_SEARCH_ENGINES[0])
+
+    const engine = { id: 'duck', name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=' }
+    expect(() => persistSearchEngines([engine], blockedStorage)).not.toThrow()
+    expect(() => persistCurrentEngine(engine, blockedStorage)).not.toThrow()
+    expect(() => persistCurrentEngine(null, blockedStorage)).not.toThrow()
+  })
+
   it('filters and ranks local search results by visibility and name match', () => {
     const results = searchLocalBookmarks(
       [

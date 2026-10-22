@@ -260,10 +260,12 @@ describe('server app assembly', () => {
     expect(app.use).toHaveBeenCalledWith('/api', runtime.bookmarkRoutes)
     expect(app.use).toHaveBeenCalledWith('/api', runtime.systemRoutes)
 
-    // 未匹配的 /api 请求应返回 JSON 404，而不是落入 SPA 回退
-    const apiNotFoundHandler = app.use.mock.calls.find(
+    // 未匹配的 /api 请求应返回 JSON 404，而不是落入 SPA 回退。
+    // 取最后一个挂到 /api 的函数式 handler（首个是 no-store 中间件）。
+    const apiFunctionCalls = app.use.mock.calls.filter(
       ([path, handler]) => path === '/api' && typeof handler === 'function'
-    )?.[1]
+    )
+    const apiNotFoundHandler = apiFunctionCalls[apiFunctionCalls.length - 1][1]
     const notFoundRes = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn()
@@ -377,6 +379,34 @@ describe('server app assembly', () => {
     expect(server.port).toBe(9090)
     expect(logger.info).toHaveBeenCalledWith('🚀 StarNav Server v9.9.9-test')
     expect(logger.info).toHaveBeenCalledWith('   Running on port 9090 in test mode')
+  })
+
+  it('sets Cache-Control: no-store on /api responses without touching static asset headers (round 35 G3)', async () => {
+    runtime = await loadServerModule({ nodeEnv: 'test' })
+
+    const { app, staticMiddlewares } = runtime
+    const noStoreCall = app.use.mock.calls.find(
+      ([path, handler]) =>
+        path === '/api' && typeof handler === 'function' && handler.name === 'noStoreApiResponses'
+    )
+    expect(noStoreCall).toBeTruthy()
+
+    const res = { setHeader: vi.fn() }
+    const next = vi.fn()
+    noStoreCall[1]({}, res, next)
+    expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store')
+    expect(next).toHaveBeenCalledTimes(1)
+
+    // 静态指纹资源缓存头不受 /api no-store 影响
+    const assetHeaderRes = { setHeader: vi.fn() }
+    staticMiddlewares[0].options.setHeaders(
+      assetHeaderRes,
+      path.join('/tmp/dist', 'assets', 'js', 'index-abc123.js')
+    )
+    expect(assetHeaderRes.setHeader).toHaveBeenCalledWith(
+      'Cache-Control',
+      'public, max-age=31536000, immutable'
+    )
   })
 
   it('routes listen errors through graceful shutdown so checkpoint + closeDb still run', async () => {

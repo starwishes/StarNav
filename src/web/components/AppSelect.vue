@@ -35,7 +35,10 @@
                tabindex=-1，键盘焦点始终留在 combobox root。菜单 Teleport 到 body 后，
                若允许 Tab 落入选项按钮，方向键/Esc 的 keydown 只绑在 combobox root 上会
                失效（键盘死角）；移出 Tab 序列后活动项由 aria-activedescendant + 键盘
-               高亮表达，鼠标点击/悬停不受影响。 -->
+               高亮表达，鼠标点击/悬停不受影响。
+               第 35 轮 G4：鼠标/触控按下会把焦点移到选项按钮，选中后菜单卸载焦点落
+               body。@mousedown.prevent 阻止这次焦点转移（不影响 click 触发），保证焦点
+               恒留在 root。 -->
           <button
             v-for="(option, index) in options"
             :key="getOptionKey(option, index)"
@@ -53,6 +56,7 @@
             :aria-selected="isOptionSelected(option)"
             :disabled="option.disabled"
             @mouseenter="activeIndex = index"
+            @mousedown.prevent
             @click.stop="handleOptionClick(option)"
           >
             <span class="app-select__option-label">{{ option.label }}</span>

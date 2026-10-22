@@ -113,10 +113,8 @@ const SiteCategoryStub = defineComponent({
   name: 'SiteCategory',
   props: ['category', 'catIndex'],
   emits: [
-    'header-click',
     'header-contextmenu',
     'mouseenter',
-    'add-item',
     'item-mouseenter',
     'item-click',
     'item-contextmenu',

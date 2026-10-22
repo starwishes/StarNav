@@ -241,8 +241,9 @@ describe('SiteCategory', () => {
     expect(wrapper.findAll('.tab-item')[2].classes()).toContain('active')
   })
 
-  it('makes the category title keyboard-focusable and opens its menu from the context-menu key', async () => {
-    // 键盘入口（第 34 轮 L4）：无子分类的叶分类只有标题可聚焦来触发右键菜单
+  it('makes the category title a menu-host button that opens its menu from the context-menu key', async () => {
+    // 键盘入口（第 34 轮 L4）：无子分类的叶分类只有标题可聚焦来触发右键菜单。
+    // 第 35 轮 G4：由无 href 的 <a> 改为真 <button>（正确语义 + Enter/Space 激活）。
     const wrapper = createWrapper({
       id: 5,
       name: 'Tools',
@@ -252,7 +253,8 @@ describe('SiteCategory', () => {
 
     const title = wrapper.find('.category-title')
     expect(title.exists()).toBe(true)
-    expect(title.attributes('tabindex')).toBe('0')
+    expect(title.element.tagName).toBe('BUTTON')
+    expect(title.attributes('type')).toBe('button')
 
     await title.trigger('keydown', { key: 'ContextMenu' })
     const payload = wrapper.emitted('header-contextmenu')?.[0]?.[0] as
@@ -263,6 +265,34 @@ describe('SiteCategory', () => {
       | undefined
     expect(payload?.event).toBeInstanceOf(KeyboardEvent)
     expect(payload?.category.id).toBe(5)
+  })
+
+  it('opens the category menu when the title button is activated with Enter/Space or clicked (round 35 G4)', async () => {
+    const wrapper = createWrapper({
+      id: 6,
+      name: 'Reading',
+      content: [buildItem(1, 6, 'Read Site')],
+      children: []
+    })
+
+    const title = wrapper.find('.category-title')
+
+    await title.trigger('keydown', { key: 'Enter' })
+    const enterPayload = wrapper.emitted('header-contextmenu')?.[0]?.[0] as
+      { event: Event; category: Category } | undefined
+    expect(enterPayload?.category.id).toBe(6)
+    expect(enterPayload?.event).toBeInstanceOf(KeyboardEvent)
+
+    await title.trigger('keydown', { key: ' ' })
+    const spacePayload = wrapper.emitted('header-contextmenu')?.[1]?.[0] as
+      { event: Event; category: Category } | undefined
+    expect(spacePayload?.category.id).toBe(6)
+
+    await title.trigger('click')
+    const clickPayload = wrapper.emitted('header-contextmenu')?.[2]?.[0] as
+      { event: Event; category: Category } | undefined
+    expect(clickPayload?.category.id).toBe(6)
+    expect(clickPayload?.event).toBeInstanceOf(MouseEvent)
   })
 
   it('opens the category menu from Shift+F10 on a child sub-category tab', async () => {

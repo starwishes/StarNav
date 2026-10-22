@@ -231,4 +231,25 @@ describe('AppSelect', () => {
     await wrapper.vm.$nextTick()
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['1'])
   })
+
+  it('prevents mousedown on options from stealing focus from the combobox root (round 35 G4)', async () => {
+    // 鼠标/触控按下会把焦点移到选项按钮，选中后菜单卸载 → 焦点落 body。
+    // @mousedown.prevent 阻止该焦点转移（不影响 click 触发），焦点恒留 root。
+    const wrapper = createWrapper({ modelValue: '' }, '<option value="1">One</option>')
+
+    await wrapper.find('.app-select').trigger('click')
+    const option = document.body.querySelector(
+      '.app-select__menu button.app-select__option'
+    ) as HTMLElement
+
+    const mousedown = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    option.dispatchEvent(mousedown)
+    expect(mousedown.defaultPrevented).toBe(true)
+
+    // 点击仍正常选中并关闭菜单
+    option.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['1'])
+    expect(document.body.querySelector('.app-select__menu')).toBeNull()
+  })
 })

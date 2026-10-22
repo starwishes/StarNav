@@ -1590,7 +1590,7 @@ export interface components {
        * @enum {string}
        */
       status?: 'healthy' | 'unhealthy'
-      /** @example 1.0.9 */
+      /** @example 1.0.10 */
       version?: string
       /** Format: date-time */
       timestamp?: string

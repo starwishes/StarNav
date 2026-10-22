@@ -56,6 +56,30 @@ describe('useUserManagement', () => {
     expect(users.value).toEqual([{ username: 'alice', level: 1 }])
   })
 
+  it('flags a load error and toasts when the user list fails to load (round 35 G2)', async () => {
+    mocks.fetchUsers.mockRejectedValue(new Error('boom'))
+
+    const { users, usersLoadError, fetchUserList } = useUserManagement()
+    await fetchUserList()
+
+    expect(users.value).toEqual([])
+    expect(usersLoadError.value).toBe(true)
+    expect(mocks.messageError).toHaveBeenCalledWith('translated:common.loadFailed')
+  })
+
+  it('keeps a post-action refresh failure silent but still flags the error (round 35 G2)', async () => {
+    mocks.addUser.mockResolvedValue({ success: true })
+    mocks.fetchUsers.mockRejectedValue(new Error('boom'))
+
+    const { usersLoadError, handleAddUser } = useUserManagement()
+    await handleAddUser({ username: 'bob', password: 'secret', level: 2 })
+
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('translated:admin.addSuccess')
+    // 刷新失败不应与"操作成功"形成矛盾双 toast（第 30 轮 M2 语义），但错误态仍置位
+    expect(mocks.messageError).not.toHaveBeenCalled()
+    expect(usersLoadError.value).toBe(true)
+  })
+
   it('adds a user, shows success feedback, and refreshes the list', async () => {
     mocks.addUser.mockResolvedValue({ success: true })
     mocks.fetchUsers.mockResolvedValue([{ username: 'bob', level: 2 }])

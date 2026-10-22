@@ -31,7 +31,9 @@ const createOptions = (overrides = {}) => ({
   loadError: ref(''),
   loadData: vi.fn(),
   users: ref<User[]>([]),
+  usersLoadError: ref(false),
   systemSettings: ref<Partial<SystemSettings>>({}),
+  settingsLoadError: ref(false),
   fetchUserList: vi.fn(),
   handleUpdateUserLevel: vi.fn(),
   handleAddUser: vi.fn(),
@@ -104,6 +106,22 @@ describe('useAdminDashboardViews', () => {
     await nextTick()
 
     expect(views.currentView.value).toBe('monitor')
+  })
+
+  it('forwards the user list load error and retry handler to the users view (round 35 G2)', async () => {
+    const fetchUserList = vi.fn()
+    const views = useAdminDashboardViews(
+      createOptions({ isAdmin: ref(true), fetchUserList, usersLoadError: ref(true) })
+    )
+
+    await views.handleMenuClick('users')
+    await nextTick()
+
+    expect(views.currentViewConfig.value.props?.loadError).toBe(true)
+
+    fetchUserList.mockClear()
+    ;(views.currentViewConfig.value.events?.retry as () => void)()
+    expect(fetchUserList).toHaveBeenCalledTimes(1)
   })
 
   it('pushes the named route when switching to a non-default view', async () => {

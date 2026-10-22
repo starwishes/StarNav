@@ -59,6 +59,33 @@ const safeJsonParse = (value: string | null) => {
   }
 }
 
+// localStorage 访问在禁用站点数据/隐私模式下会抛 SecurityError。搜索设置
+// 读写必须降级——读回退默认引擎、写静默，否则 setup 期异常会让首页搜索
+// 组件挂载失败（第 35 轮 G1，34 轮 L5 同族漏网）。storage 为显式注入（测试用）。
+const safeStorageGet = (storage: Pick<Storage, 'getItem'>, key: string): string | null => {
+  try {
+    return storage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+const safeStorageSet = (storage: Pick<Storage, 'setItem'>, key: string, value: string) => {
+  try {
+    storage.setItem(key, value)
+  } catch {
+    // 存储不可用/配额满：搜索设置仅当前会话生效
+  }
+}
+
+const safeStorageRemove = (storage: Pick<Storage, 'removeItem'>, key: string) => {
+  try {
+    storage.removeItem(key)
+  } catch {
+    // 存储不可用：忽略
+  }
+}
+
 const sanitizeSearchEngineInput = (value: string) =>
   value.replace(SEARCH_ENGINE_INPUT_SANITIZE_PATTERN, '').trim()
 
@@ -151,7 +178,7 @@ export const loadSearchEngineState = (
     }
   }
 
-  const parsedEngines = safeJsonParse(storage.getItem(USER_SEARCH_ENGINES_KEY))
+  const parsedEngines = safeJsonParse(safeStorageGet(storage, USER_SEARCH_ENGINES_KEY))
   const storedEngines = Array.isArray(parsedEngines)
     ? parsedEngines
         .filter(isSearchEngineOption)
@@ -163,7 +190,7 @@ export const loadSearchEngineState = (
   const searchEngines =
     storedEngines.length > 0 ? normalizeSearchEngines(storedEngines) : [...DEFAULT_SEARCH_ENGINES]
 
-  const parsedCurrentEngine = safeJsonParse(storage.getItem(CURRENT_SEARCH_ENGINE_KEY))
+  const parsedCurrentEngine = safeJsonParse(safeStorageGet(storage, CURRENT_SEARCH_ENGINE_KEY))
   const currentEngine = isSearchEngineOption(parsedCurrentEngine)
     ? searchEngines.find((engine) => isSameSearchEngine(engine, parsedCurrentEngine)) ||
       searchEngines[0] ||
@@ -180,7 +207,11 @@ export const persistSearchEngines = (
   searchEngines: SearchEngineOption[],
   storage: Pick<Storage, 'setItem'> = localStorage
 ) => {
-  storage.setItem(USER_SEARCH_ENGINES_KEY, JSON.stringify(normalizeSearchEngines(searchEngines)))
+  safeStorageSet(
+    storage,
+    USER_SEARCH_ENGINES_KEY,
+    JSON.stringify(normalizeSearchEngines(searchEngines))
+  )
 }
 
 export const persistCurrentEngine = (
@@ -188,11 +219,15 @@ export const persistCurrentEngine = (
   storage: Pick<Storage, 'setItem' | 'removeItem'> = localStorage
 ) => {
   if (!currentEngine) {
-    storage.removeItem(CURRENT_SEARCH_ENGINE_KEY)
+    safeStorageRemove(storage, CURRENT_SEARCH_ENGINE_KEY)
     return
   }
 
-  storage.setItem(CURRENT_SEARCH_ENGINE_KEY, JSON.stringify(normalizeSearchEngine(currentEngine)))
+  safeStorageSet(
+    storage,
+    CURRENT_SEARCH_ENGINE_KEY,
+    JSON.stringify(normalizeSearchEngine(currentEngine))
+  )
 }
 
 export const buildSearchPlaceholder = (

@@ -214,11 +214,11 @@ npm run test -- --watch
 - Swagger 文档链路属于非生产诊断面：`swagger-jsdoc` / `swagger-ui-express` 只在非生产环境用于 `/api-docs` 和 `/api-docs.json`，真实兼容性应通过对应测试和非生产启动验证，而不是把它视为生产运行时依赖。
 - 书签/分类读写直接使用 `bookmarkReadService` / `bookmarkWriteService` / `categoryReadService` / `categoryWriteService`；`BookmarkManager` / `CategoryManager` 兼容 facade 已删除。
 - 本地执行 `npm run docker:build` / `npm run docker:smoke` 时，脚本默认走 Debian 官方源、**不会**自动切换镜像源；如网络受限可显式传 `APT_DEBIAN_MIRROR` / `APT_DEBIAN_SECURITY_MIRROR` 指向镜像站（例如 TUNA 的 HTTP Debian 镜像 `http://mirrors.tuna.tsinghua.edu.cn/debian` / `http://mirrors.tuna.tsinghua.edu.cn/debian-security`）；`CI` / `GITHUB_ACTIONS` 环境同样不注入镜像源。
-- Docker 构建默认固定到 `node:24.14.1-slim`，如需做受控升级，可在本地显式覆盖：
+- Docker 构建默认固定到 `node:24.22.1-slim`（含 2026-10-21 Node 安全修复），如需做受控升级/回退，可在本地显式覆盖：
 
 ```bash
-NODE_IMAGE=node:24.15.0-slim npm run docker:build
-NODE_IMAGE=node:24.15.0-slim npm run docker:smoke
+NODE_IMAGE=node:24.22.1-slim npm run docker:build
+NODE_IMAGE=node:24.22.1-slim npm run docker:smoke
 ```
 
 ---

@@ -57,6 +57,21 @@ describe('useSystemSettings', () => {
     })
   })
 
+  it('flags a load error and toasts when fetching settings fails (round 35 G2)', async () => {
+    mocks.getAdminSettings.mockRejectedValueOnce(new Error('boom'))
+
+    const { settingsLoadError, fetchSettings } = useSystemSettings()
+    await fetchSettings()
+
+    expect(settingsLoadError.value).toBe(true)
+    expect(mocks.messageError).toHaveBeenCalledWith('translated:common.loadFailed')
+
+    // 重试成功应清位
+    mocks.getAdminSettings.mockResolvedValueOnce({ siteName: 'StarNav' })
+    await fetchSettings()
+    expect(settingsLoadError.value).toBe(false)
+  })
+
   it('shows a success message and syncs global config after a successful save', async () => {
     mocks.updateAdminSettings.mockResolvedValue({ success: true })
 

@@ -13,6 +13,14 @@ HEALTH_INTERVAL_SECONDS="${HEALTH_INTERVAL_SECONDS:-2}"
 DRY_RUN="${DRY_RUN:-0}"
 SKIP_PULL="${SKIP_PULL:-0}"
 
+# 数据库备份/恢复在容器内执行：纯 Docker 交付的宿主机可能没有 node_modules，
+# 直接跑宿主机 `npm run db:backup/restore` 会第一步即失败（第 35 轮 G5）。
+# compose 把 ./data 挂载到容器 /app/data，故写到该目录下的备份文件宿主机可见。
+HOST_DATA_DIR="${HOST_DATA_DIR:-${ROOT_DIR}/data}"
+CONTAINER_DATA_DIR="${CONTAINER_DATA_DIR:-/app/data}"
+# 恢复用的一次性容器镜像；留空时取当前 STARNAV_IMAGE:STARNAV_TAG。
+TOOL_IMAGE="${TOOL_IMAGE:-}"
+
 log() {
   printf '%s\n' "$*"
 }
@@ -136,25 +144,56 @@ make_backup_path() {
   printf '%s/%s-%s.db.bak' "${STATE_DIR}" "${prefix}" "$(timestamp)"
 }
 
+# 宿主机 data 目录下的路径 → 容器内路径（db:backup/restore 在容器内执行时使用）。
+to_container_path() {
+  host_path="$1"
+
+  case "${host_path}" in
+    "${HOST_DATA_DIR}"/*)
+      printf '%s/%s' "${CONTAINER_DATA_DIR}" "${host_path#"${HOST_DATA_DIR}"/}"
+      ;;
+    *)
+      fail "备份路径必须位于宿主数据目录 ${HOST_DATA_DIR} 下（compose 仅挂载该目录到容器）：${host_path}"
+      ;;
+  esac
+}
+
+container_running() {
+  [ "$(docker inspect -f '{{.State.Running}}' "${CONTAINER_NAME}" 2>/dev/null || true)" = "true" ]
+}
+
+resolve_tool_image() {
+  if [ -z "${TOOL_IMAGE}" ]; then
+    TOOL_IMAGE="${STARNAV_IMAGE}:${STARNAV_TAG}"
+  fi
+}
+
 backup_database() {
   output_path="$1"
 
   if [ "${DRY_RUN}" = "1" ]; then
-    log "[dry-run] npm run db:backup -- --output ${output_path}"
+    log "[dry-run] docker exec ${CONTAINER_NAME} npm run db:backup -- --output $(to_container_path "${output_path}")"
     return 0
   fi
 
-  (
-    cd "${ROOT_DIR}"
-    npm run db:backup -- --output "${output_path}"
-  )
+  # 部署前备份针对"当前运行中的容器"。容器未运行（首次部署/已停止）说明没有在跑的
+  # 数据需要保护，给明确提示后跳过，不阻断部署流程。
+  if ! container_running; then
+    log "容器 ${CONTAINER_NAME} 未运行，跳过部署前数据库备份（无运行中数据需要保护）。"
+    return 0
+  fi
+
+  # 以容器默认（root）执行：备份输出目录由宿主机 mkdir 创建，属主可能与容器 node
+  # 用户（uid 1000）不一致，root 可无碍写入；文件对宿主/容器均可读。
+  docker exec "${CONTAINER_NAME}" \
+    npm run db:backup -- --output "$(to_container_path "${output_path}")"
 }
 
 restore_database() {
   backup_path="$1"
 
   if [ "${DRY_RUN}" = "1" ]; then
-    log "[dry-run] npm run db:restore -- --from ${backup_path}"
+    log "[dry-run] docker run --rm -v ${HOST_DATA_DIR}:${CONTAINER_DATA_DIR} ${TOOL_IMAGE:-<image>} npm run db:restore -- --from $(to_container_path "${backup_path}")"
     return 0
   fi
 
@@ -162,10 +201,13 @@ restore_database() {
     fail "找不到可用于恢复的数据库备份: ${backup_path}"
   fi
 
-  (
-    cd "${ROOT_DIR}"
-    npm run db:restore -- --from "${backup_path}"
-  )
+  # 恢复前应用容器已被 stop，无法 docker exec 到已停止的容器：改用一次性容器复用
+  # 同一镜像里的 node_modules 执行 db:restore，并挂载宿主 data 目录。
+  resolve_tool_image
+  docker run --rm \
+    -v "${HOST_DATA_DIR}:${CONTAINER_DATA_DIR}" \
+    "${TOOL_IMAGE}" \
+    npm run db:restore -- --from "$(to_container_path "${backup_path}")"
 }
 
 wait_for_health() {

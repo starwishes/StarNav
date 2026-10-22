@@ -26,7 +26,7 @@ CSP_UPGRADE_INSECURE_REQUESTS=true
   2. 转发 `X-Forwarded-Proto`
   3. `CORS_ORIGINS` 配置为实际访问域名，而不是 `*`；未配置时生产环境不会再回退 `localhost` 跨域白名单
 
-- **`TRUST_PROXY` 默认开启（信任一层反向代理）**：限流（登录、写操作、公开点击接口）与会话/审计日志均按 `req.ip` 计数，默认从 `X-Forwarded-For` 读取真实客户端 IP。请确认反代正确透传 `X-Forwarded-For`。**仅当应用端口直连公网（无受信任反代）时**，建议显式设置 `TRUST_PROXY=false`，避免客户端伪造 `X-Forwarded-For` 头绕过按 IP 的限流。
+- **`TRUST_PROXY`（应用代码默认开启，信任一层反向代理）**：限流（登录、写操作、公开点击接口）与会话/审计日志均按 `req.ip` 计数，默认从 `X-Forwarded-For` 读取真实客户端 IP。请确认反代正确透传 `X-Forwarded-For`。**仅当应用端口直连公网（无受信任反代）时**，建议显式设置 `TRUST_PROXY=false`，避免客户端伪造 `X-Forwarded-For` 头绕过按 IP 的限流。**注意：仓库自带的 `docker/docker-compose.yml` 主入口默认 `TRUST_PROXY=false`（`ports` 直连映射、默认无受信反代）**，与上句的代码默认相反——若 compose 前方确有受信反代/入口并会把真实客户端 IP 写入 `X-Forwarded-For`，请在 `.env` 显式设 `TRUST_PROXY=true`，否则限流/审计会把反代出口当作客户端 IP。
 - **多跳代理（如 Cloudflare → Nginx → 应用）**：当前 `trust proxy` 固定为 `1`（`server.ts` 中 `app.set('trust proxy', ...)`），只信任一跳——`req.ip` 会取 `X-Forwarded-For` 里**倒数第二跳**的地址（即离应用最近的那个反代出口，而不是真正的客户端 IP）。如需精确真实 IP，Express 支持把 `trust proxy` 配置为可信代理 IP 列表/子网（当前实现未做区分）；在保持现状的前提下，请至少确认离应用最近的一跳反代由你方可信控制并正确透传 `X-Forwarded-For`，否则基于 IP 的限流/审计仍可能被间接污染。
 - **Cloudflare（或带专用客户端 IP 头的 CDN）**：Cloudflare 到源站的 socket 是 CF 边缘 IP，真实客户端 IP 在 `CF-Connecting-IP` 头（CF 会丢弃并重写客户端伪造值）。应用**默认自动识别**：当连接对端落在 Cloudflare 官方网段内时采信 `CF-Connecting-IP`，限流分桶 / 会话 / 审计 IP 显示真实客户端 IP，无需任何配置。直连源站 IP 的请求对端不在 CF 网段，伪造头不被采信（内置网段表来自 cloudflare.com/ips，官方增补时请同步 `src/server/utils/cloudflareIp.ts`）。**前提：应用必须直接面向 CF 边缘**——若中间还有 Nginx/cloudflared 等自控一跳，socket 对端不是 CF 网段，自动检测不会触发，请改用上一条的 `X-Forwarded-For` 语义或显式 `REAL_CLIENT_IP_HEADER`。**CF 部署勿设 `REAL_CLIENT_IP_HEADER=cf-connecting-ip`**：显式设置会关闭 socket 网段门禁、无条件采信该头（其他 CDN 无公开网段表，只能这样信任）。
 
@@ -92,7 +92,7 @@ npm run admin:bootstrap-password
 | 2    | `curl http://127.0.0.1:8080/api/health`                             | 运行中实例存活                           |
 | 3    | `npm run admin:bootstrap-password`（仅首登且未设 `ADMIN_PASSWORD`） | 取出并销毁一次性管理员密码               |
 | 4    | `npm run test:smoke`                                                | 隔离进程 API 冒烟（登录/会话/书签/上传） |
-| 5    | `npm run db:backup` / `npm run db:restore -- --input <path>`        | 备份恢复演练（变更前建议先 4）           |
+| 5    | `npm run db:backup` / `npm run db:restore -- --from <path>`         | 备份恢复演练（变更前建议先 4）           |
 | 6    | `npm run test:browser`（可选）                                      | 主站 Playwright 回归                     |
 
 CI 已覆盖 typecheck、audit:prod、coverage、runtime smoke、build、docker:smoke；本地改动优先 `npm run typecheck` + `npm run test:fast`。
@@ -104,7 +104,7 @@ CI 已覆盖 typecheck、audit:prod、coverage、runtime smoke、build、docker:
 ```bash
 # 1) 需要镜像 starnav:smoke（可先 npm run docker:smoke 或 docker build -f docker/Dockerfile -t starnav:smoke .）
 # 2) 启动容器；脚本用 realisticBookmarkDataset 生成种子 JSON 再导入（默认 100 条，不提交 fixtures）
-cd /mnt/d/Project/CodeProject/StarNav   # 按实际挂载路径调整
+cd /mnt/d/path/to/StarNav            # 按实际挂载路径调整
 sh scripts/docker/run-manual-demo.sh
 
 # 可选：SEED_COUNT=1000 sh scripts/docker/run-manual-demo.sh
@@ -114,7 +114,7 @@ sh scripts/docker/run-manual-demo.sh
 默认：
 
 - URL：`http://127.0.0.1:8080`
-- 账号：`admin` / 脚本内 `ADMIN_PASSWORD`（与 `.env.example` 示例一致，仅本地）
+- 账号：`admin` / 密码默认**每次运行随机生成**（脚本结束会打印；需固定可用 `ADMIN_PASSWORD` 覆盖，仅本地）
 - 数据目录：`data/manual-demo`（挂载到容器 `/app/data`；生成的 seed JSON 也落在此目录）
 - 种子：`tsx src/server/tools/realisticBookmarkDataset.ts` → 10 分类 + 100 书签（`SEED_COUNT` 可改）
 
@@ -260,7 +260,7 @@ npm run docker:smoke
 如果当前就是通过仓库 `docker/docker-compose.yml` 交付，推荐直接走脚本化部署：
 
 ```bash
-STARNAV_TAG=2.2.8 npm run deploy:compose
+STARNAV_TAG=<release-version> npm run deploy:compose
 ```
 
 这条命令会顺序执行：
@@ -270,6 +270,10 @@ STARNAV_TAG=2.2.8 npm run deploy:compose
 3. `docker compose up -d nav`
 4. 轮询 `http://127.0.0.1:${STARNAV_PORT:-8080}/api/health`
 5. 如果失败，自动停服务、恢复备份库，并切回上一版镜像
+
+> 数据库备份/恢复均在应用容器内执行（备份走 `docker exec`，恢复走一次性 `docker run`），
+> 纯 Docker 交付无需宿主机安装 `node_modules`。首次部署（当前无运行中容器）会跳过部署前
+> 备份并打印提示——此时没有在跑的旧数据需要保护。
 
 如果要手动回滚到上一个成功版本：
 

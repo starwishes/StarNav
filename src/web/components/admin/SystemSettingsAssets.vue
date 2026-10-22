@@ -42,8 +42,10 @@
                 {{ t('settings.resetAsset') }}
               </button>
             </div>
+            <!-- 预览图仅装饰：相邻 asset-preview-label 已说明资产类型，空 alt
+                 避免读屏重复播报，并消除硬编码英文（第 35 轮 G4）。 -->
             <div v-if="logoUrl" class="media-preview asset-media-frame">
-              <img :src="logoUrl" class="logo-preview" alt="Logo Preview" />
+              <img :src="logoUrl" class="logo-preview" alt="" />
             </div>
             <div v-else class="asset-preview-empty">{{ t('settings.notConfigured') }}</div>
           </div>
@@ -61,7 +63,7 @@
               </button>
             </div>
             <div v-if="faviconUrl" class="media-preview asset-media-frame compact">
-              <img :src="faviconUrl" class="favicon-preview" alt="Favicon Preview" />
+              <img :src="faviconUrl" class="favicon-preview" alt="" />
             </div>
             <div v-else class="asset-preview-empty">{{ t('settings.notConfigured') }}</div>
           </div>

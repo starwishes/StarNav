@@ -112,6 +112,7 @@ vi.mock('@/composables/admin/useDataManagement', () => ({
 vi.mock('@/composables/admin/useUserManagement', () => ({
   useUserManagement: () => ({
     users: ref([]),
+    usersLoadError: ref(false),
     fetchUserList: fetchUserListMock,
     handleUpdateUserLevel: vi.fn(),
     handleAddUser: vi.fn(),
@@ -123,6 +124,7 @@ vi.mock('@/composables/admin/useUserManagement', () => ({
 vi.mock('@/composables/admin/useSystemSettings', () => ({
   useSystemSettings: () => ({
     systemSettings: ref({ siteName: 'StarNav' }),
+    settingsLoadError: ref(false),
     fetchSettings: fetchSettingsMock,
     handleSaveSettings: vi.fn()
   })

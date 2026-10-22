@@ -3,14 +3,33 @@
 set -eu
 
 ROOT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)"
+
+# 本地 demo 容器凭据默认每次运行随机生成（避免固定默认值造成"已保密"的错觉）；
+# 需要固定凭据时可用 ADMIN_PASSWORD / JWT_SECRET 环境变量覆盖。
+random_hex() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex "$1"
+  elif [ -r /dev/urandom ]; then
+    od -An -N "$1" -tx1 /dev/urandom | tr -d ' \n'
+  else
+    echo ""
+  fi
+}
+
 IMAGE_NAME="${IMAGE_NAME:-starnav:smoke}"
 CONTAINER_NAME="${CONTAINER_NAME:-starnav-manual-demo}"
 HOST_PORT="${HOST_PORT:-8080}"
 DATA_DIR="${DATA_DIR:-${ROOT_DIR}/data/manual-demo}"
 ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-UkTm7hXOUp27pbRFsY88GoS8}"
-JWT_SECRET="${JWT_SECRET:-rucL6_4F8NDlKvQ0WBUPhbvos9xjIOoYQd65i-4HJcs83FsM6Ufr1RqeImf9NzAn}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-$(random_hex 16)}"
+JWT_SECRET="${JWT_SECRET:-$(random_hex 32)}"
 TZ="${TZ:-Asia/Shanghai}"
+
+if [ -z "${ADMIN_PASSWORD}" ] || [ -z "${JWT_SECRET}" ]; then
+  echo "failed to generate demo credentials (openssl and /dev/urandom unavailable);" >&2
+  echo "set ADMIN_PASSWORD / JWT_SECRET explicitly and retry" >&2
+  exit 1
+fi
 # Default: generate seed JSON via realisticBookmarkDataset (no committed fixtures).
 # Override count with SEED_COUNT=1000, or pass a prebuilt file with FIXTURE=/path/to.json
 SEED_COUNT="${SEED_COUNT:-100}"
@@ -79,6 +98,7 @@ docker run -d \
   -e "ADMIN_PASSWORD=${ADMIN_PASSWORD}" \
   -e "JWT_SECRET=${JWT_SECRET}" \
   -e "TZ=${TZ}" \
+  -e "TRUST_PROXY=${TRUST_PROXY:-false}" \
   -v "${DATA_DIR}:/app/data" \
   --restart unless-stopped \
   "${IMAGE_NAME}" >/dev/null

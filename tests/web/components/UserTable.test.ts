@@ -43,10 +43,11 @@ vi.mock('vue-i18n', () => ({
 
 const UserTable = (await import('@/components/admin/UserTable.vue')).default
 
-const createWrapper = (users: UserRow[]) => {
+const createWrapper = (users: UserRow[], loadError = false) => {
   const wrapper = mount(UserTable, {
     props: {
-      users
+      users,
+      loadError
     },
     global: {
       stubs: {
@@ -80,6 +81,18 @@ describe('UserTable', () => {
     const wrapper = createWrapper([])
 
     expect(wrapper.text()).toContain('translated:common.noData')
+  })
+
+  it('renders the error state with a retry action instead of the empty state (round 35 G2)', async () => {
+    const wrapper = createWrapper([], true)
+
+    expect(wrapper.find('.sn-error-state').exists()).toBe(true)
+    expect(wrapper.find('.sn-error-state').attributes('role')).toBe('status')
+    expect(wrapper.text()).toContain('translated:common.loadFailed')
+    expect(wrapper.text()).not.toContain('translated:common.noData')
+
+    await wrapper.find('.sn-error-state button').trigger('click')
+    expect(wrapper.emitted('retry')).toHaveLength(1)
   })
 
   it('renders users, disables protected actions, and emits level updates', async () => {

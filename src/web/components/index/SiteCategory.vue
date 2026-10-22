@@ -3,19 +3,22 @@
     <header
       class="category-header"
       :data-cat-index="catIndex"
-      @click.stop="$emit('header-click', $event)"
       @contextmenu.prevent="$emit('header-contextmenu', { event: $event, category: category })"
     >
       <i class="category-icon relative left-px-2 iconfont icon-tag"></i>
-      <!-- tabindex 让分类标题可被键盘聚焦：无子分类的叶分类只有这里能触发右键菜单 -->
-      <a
+      <!-- 分类标题是"菜单宿主"按钮：鼠标点击或 Enter/Space 激活都打开分类右键菜单，
+           键盘 ContextMenu 键 / Shift+F10 走 handleMenuKeydown（第 34 轮 L4，第 35 轮 G4）。
+           无子分类的叶分类只有这里能触发菜单。 -->
+      <button
+        type="button"
         class="category-title"
-        :name="category.name"
-        tabindex="0"
+        @click.stop="openCategoryMenuFromPointer($event, category)"
         @keydown="(e) => handleMenuKeydown(e, category)"
+        @keydown.enter.prevent="(e) => openCategoryMenuFromKeyboard(e, category)"
+        @keydown.space.prevent="(e) => openCategoryMenuFromKeyboard(e, category)"
       >
         {{ category.name }}
-      </a>
+      </button>
     </header>
 
     <div
@@ -154,11 +157,9 @@ const props = defineProps<{
   moveState: SiteMoveState
   selectionMode?: boolean
   selectedItems?: Set<number>
-  showAdd?: boolean
 }>()
 
 const emit = defineEmits<{
-  (e: 'header-click', event: Event): void
   (e: 'header-contextmenu', payload: { event: Event; category: Category }): void
   (e: 'item-mouseenter', payload: { itemIndex: number; categoryId: number }): void
   (e: 'item-click', payload: { item: DisplayedSiteItem; event: Event }): void
@@ -170,7 +171,6 @@ const emit = defineEmits<{
     e: 'item-touchstart',
     payload: { item: DisplayedSiteItem; itemIndex: number; event: Event; categoryId: number }
   ): void
-  (e: 'add-item', categoryId: number): void
   (e: 'toggle-selection', item: DisplayedSiteItem): void
 }>()
 
@@ -214,6 +214,20 @@ const handleTablistKeydown = (event: KeyboardEvent) => {
 // header-contextmenu，上游 useSiteMenu 按事件类型区分坐标来源与焦点归还。
 const handleMenuKeydown = (event: KeyboardEvent, menuCategory: Category) => {
   if (!isContextMenuKey(event)) return
+  event.preventDefault()
+  event.stopPropagation()
+  emit('header-contextmenu', { event, category: menuCategory })
+}
+
+// 鼠标点击标题：以指针事件（带 clientX/Y）打开分类菜单，菜单落点跟随光标。
+const openCategoryMenuFromPointer = (event: MouseEvent, menuCategory: Category) => {
+  emit('header-contextmenu', { event, category: menuCategory })
+}
+
+// Enter/Space 激活标题按钮：无坐标，以 KeyboardEvent 打开菜单，让 useSiteMenu
+// 取触发元素 rect 定位（与 ContextMenu 键同路径）。@keydown.enter/space.prevent
+// 已阻止原生合成 click，避免与指针路径重复打开。
+const openCategoryMenuFromKeyboard = (event: KeyboardEvent, menuCategory: Category) => {
   event.preventDefault()
   event.stopPropagation()
   emit('header-contextmenu', { event, category: menuCategory })
@@ -304,6 +318,12 @@ const getFallbackFaviconUrl = (item: DisplayedSiteItem) =>
 }
 
 .category-title {
+  /* <button> 重置：标题视觉保持不变（无背景/边框/内边距） */
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   font-family: var(--ui-font-display);
   font-size: clamp(30px, 4vw, 40px);
   line-height: 1.08;

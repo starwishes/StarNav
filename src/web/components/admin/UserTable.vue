@@ -9,7 +9,14 @@
         </button>
       </div>
 
-      <div v-if="users.length === 0" class="sn-empty-state">
+      <div v-if="loadError" class="sn-error-state" role="status">
+        <p class="sn-error-state__text">{{ t('common.loadFailed') }}</p>
+        <button type="button" class="table-link-button primary" @click="emit('retry')">
+          {{ t('common.retry') }}
+        </button>
+      </div>
+
+      <div v-else-if="users.length === 0" class="sn-empty-state">
         {{ t('common.noData') }}
       </div>
 
@@ -114,13 +121,14 @@ type UserRow = ApiUser & {
 const { t } = useI18n()
 const { formatDateTime } = useDateTimeFormatter()
 
-defineProps<{ users: UserRow[] }>()
+defineProps<{ users: UserRow[]; loadError?: boolean }>()
 
 const emit = defineEmits<{
   (e: 'update-level', username: string, level: number): void
   (e: 'delete', username: string): void
   (e: 'add', payload: { username: string; password: string; level: number }): void
   (e: 'update', username: string, payload: { newUsername: string; password?: string }): void
+  (e: 'retry'): void
 }>()
 
 const adminStore = useAdminStore()
@@ -276,6 +284,22 @@ const getLevelClass = (level: number) => {
 
 .level-select {
   min-width: 132px;
+}
+
+.sn-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 180px;
+  color: var(--gray-500, rgba(100, 116, 139, 0.85));
+}
+
+.sn-error-state__text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .table-link-button {
