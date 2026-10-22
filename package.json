@@ -9,6 +9,9 @@
   },
   "overrides": {
     "qs": "6.16.0",
+    "proxy-addr": "2.0.8",
+    "ip-address": "10.7.4",
+    "source-map-js": "1.2.2",
     "glob": {
       "minimatch": "9.0.9"
     },
@@ -107,18 +110,18 @@
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.9.0",
-    "compression": "^1.8.1",
+    "compression": "^1.8.2",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.1",
     "helmet": "^8.1.0",
-    "joi": "^18.2.1",
+    "joi": "^18.3.0",
     "jsonwebtoken": "^9.0.2",
     "node-cache": "^5.1.2",
     "node-cron": "^4.2.1",
     "pinia": "^3.0.4",
     "tsx": "^4.23.1",
-    "vue": "^3.5.34",
+    "vue": "^3.5.44",
     "vue-i18n": "^11.4.2",
     "vue-router": "^5.0.6"
   },
